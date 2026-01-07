@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MindBoggling</title>
+  <style>
+    :root { --active: #0ea5e9; }
+
+    /* Update tile hover effect */
+    .tile:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 8px 0 rgba(0,0,0,0.2), 0 0 20px rgba(14, 165, 233, 0.3);
+      z-index: 5;
+    }
+
+    /* Update active tile for better visibility */
+    .tile.active {
+      background: var(--active);
+      color: white;
+      transform: scale(1.08) translateZ(30px);
+      z-index: 10;
+      box-shadow: 0 0 40px var(--active), 0 10px 30px rgba(14, 165, 233, 0.4);
+      animation: breathe 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    .tile.active .letter-score {
+      background: rgba(255, 255, 255, 1);
+      color: #0f172a;
+      font-weight: 900;
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(1.08) translateZ(30px); }
+      50%      { transform: scale(1.12) translateZ(30px); }
+    }
+
+    /* small demo styles */
+    .tile {
+      display: inline-block;
+      padding: 1rem;
+      border-radius: 8px;
+      background: #f1f5f9;
+      transition: transform .18s ease, box-shadow .18s ease;
+      margin: 0.5rem;
+    }
+    .letter-score {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      margin-left: 0.5rem;
+      background: rgba(0,0,0,0.06);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>MindBoggling — Demo</h1>
+    <div class="tile active">A<span class="letter-score">5</span></div>
+    <div class="tile">B<span class="letter-score">3</span></div>
+  </main>
+</body>
+</html>
