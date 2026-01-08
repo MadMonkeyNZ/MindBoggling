@@ -406,6 +406,39 @@ input[type=range]::-webkit-slider-thumb:hover {
   animation: glowPulse 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
+.tile.rainbow {
+  animation: rainbowFlash 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  z-index: 15 !important;
+}
+
+@keyframes rainbowFlash {
+  0%, 100% { 
+    background: var(--tile-bg); 
+    color: #0f172a;
+    transform: scale(1);
+  }
+  10%, 90% {
+    transform: scale(1.15);
+    box-shadow: 0 0 40px rgba(255, 255, 255, 0.8);
+  }
+  20% { 
+    background: #ff0000 !important; 
+    color: white !important;
+  }
+  40% { 
+    background: #ff9900 !important; 
+    color: white !important;
+  }
+  60% { 
+    background: #ffff00 !important; 
+    color: #0f172a !important;
+  }
+  80% { 
+    background: #00ff00 !important; 
+    color: #0f172a !important;
+  }
+}
+
 @keyframes pop {
   0% { transform: scale(1); }
   50% { transform: scale(1.2); }
@@ -893,59 +926,46 @@ input[type=range]::-webkit-slider-thumb:hover {
   box-shadow: 0 2px 4px rgba(219, 39, 119, 0.3);
 }
 
-/* Missed Opportunities */
-.missed-opportunities {
+/* Longest Word Info */
+.longest-word-info {
   margin: 20px 0;
   padding: 15px;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05));
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(124, 58, 237, 0.05));
   border-radius: 16px;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border: 1px solid rgba(139, 92, 246, 0.3);
 }
 
-.missed-header {
+.longest-word-header {
   font-size: 1.1rem;
-  color: #ef4444;
+  color: #8b5cf6;
   margin-bottom: 10px;
   text-align: center;
 }
 
-.missed-word {
-  text-align: center;
-  font-size: 1.3rem;
-  font-weight: 700;
+.longest-word-text {
+  font-size: 1.8rem;
+  font-weight: 800;
   color: #fbbf24;
   margin: 10px 0;
+  text-align: center;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
-.path-hint {
-  display: grid;
-  gap: 4px;
-  margin: 15px 0;
+.longest-word-status {
+  font-size: 1.1rem;
+  color: #94a3b8;
+  margin-top: 10px;
+  text-align: center;
 }
 
-.path-row {
-  display: flex;
-  justify-content: center;
-  gap: 4px;
-}
-
-.path-tile {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(34, 197, 94, 0.2);
-  border-radius: 8px;
-  font-weight: 700;
+.longest-word-status.found {
   color: #22c55e;
-  border: 2px solid rgba(34, 197, 94, 0.4);
+  font-weight: 700;
 }
 
-.path-tile.highlight {
-  background: rgba(34, 197, 94, 0.4);
-  transform: scale(1.1);
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+.longest-word-status.missed {
+  color: #ef4444;
 }
 
 /* Particle Canvas */
@@ -1050,6 +1070,111 @@ input[type=range]::-webkit-slider-thumb:hover {
 .special-multiplier.TL {
   background: linear-gradient(135deg, #ec4899, #db2777);
 }
+
+/* Game Mode Styles */
+.mode-toggle {
+  display: flex;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 4px;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mode-btn {
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.mode-btn.active {
+  background: rgba(14, 165, 233, 0.2);
+  color: #0ea5e9;
+}
+
+.difficulty-toggle {
+  display: flex;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 4px;
+  margin-top: 5px;
+}
+
+.difficulty-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.difficulty-btn.active {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.difficulty-btn.easy {
+  color: #22c55e;
+}
+
+.difficulty-btn.moderate {
+  color: #fbbf24;
+}
+
+.difficulty-btn.hard {
+  color: #ef4444;
+}
+
+/* Mode-specific UI elements */
+.mode-info {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 10px 15px;
+  margin-top: 10px;
+  display: none;
+  text-align: center;
+}
+
+#target-words-display {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0ea5e9;
+}
+
+#efficiency-display {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #8b5cf6;
+}
+
+#give-up-btn {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: 15px;
+}
+
+#give-up-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+}
 </style>
 </head>
 <body>
@@ -1071,6 +1196,26 @@ input[type=range]::-webkit-slider-thumb:hover {
     
     <!-- Settings Panel -->
     <div class="settings-panel">
+      <!-- Game Mode -->
+      <div class="setting-row" style="flex-direction: column; align-items: flex-start;">
+        <div class="setting-label" style="margin-bottom: 8px;">Game Mode</div>
+        <div class="mode-toggle">
+          <button class="mode-btn active" data-mode="classic">Classic (Time Attack)</button>
+          <button class="mode-btn" data-mode="find-x">Find X Words (2 Min)</button>
+          <button class="mode-btn" data-mode="endless">Endless (100% Efficiency)</button>
+        </div>
+      </div>
+      
+      <!-- Difficulty for Find X Words Mode -->
+      <div id="difficulty-setting" class="setting-row" style="flex-direction: column; align-items: flex-start; display: none;">
+        <div class="setting-label" style="margin-bottom: 8px;">Difficulty</div>
+        <div class="difficulty-toggle">
+          <button class="difficulty-btn easy active" data-difficulty="easy">Easy (20%)</button>
+          <button class="difficulty-btn moderate" data-difficulty="moderate">Moderate (40%)</button>
+          <button class="difficulty-btn hard" data-difficulty="hard">Hard (60%)</button>
+        </div>
+      </div>
+      
       <!-- Grid Size -->
       <div class="setting-row">
         <div class="setting-label">Grid Size</div>
@@ -1082,8 +1227,8 @@ input[type=range]::-webkit-slider-thumb:hover {
         </div>
       </div>
       
-      <!-- Time Limit -->
-      <div class="setting-row">
+      <!-- Time Limit (only for classic mode) -->
+      <div id="time-setting" class="setting-row">
         <div class="setting-label">Time Limit</div>
         <div class="setting-controls">
           <input type="range" id="time-slider" min="30" max="300" step="30" value="30">
@@ -1147,6 +1292,19 @@ input[type=range]::-webkit-slider-thumb:hover {
       </div>
     </div>
     
+    <!-- Mode Info Display -->
+    <div id="mode-info-display" class="mode-info">
+      <div id="classic-info" style="display: block;">
+        Find as many words as you can before time runs out!
+      </div>
+      <div id="find-x-info" style="display: none;">
+        Find <span id="target-percentage">40%</span> of all possible words in 2 minutes!
+      </div>
+      <div id="endless-info" style="display: none;">
+        Keep playing until you find 100% of all possible words!
+      </div>
+    </div>
+    
     <!-- High Score Display -->
     <div class="high-score">
       <div class="hud-lbl">High Score</div>
@@ -1169,6 +1327,20 @@ input[type=range]::-webkit-slider-thumb:hover {
       <button id="quit-btn" onclick="quitGame()">Quit</button>
     </div>
 
+    <!-- Mode-specific info -->
+    <div id="mode-ui-container" style="text-align: center; margin-bottom: 10px;">
+      <div id="target-words-ui" class="mode-info" style="display: none;">
+        <div style="font-size: 0.9rem; color: #94a3b8;">Target: 
+          <span id="target-words-display">0/0</span> words
+        </div>
+      </div>
+      <div id="efficiency-ui" class="mode-info" style="display: none;">
+        <div style="font-size: 0.9rem; color: #94a3b8;">Efficiency: 
+          <span id="efficiency-display">0%</span>
+        </div>
+      </div>
+    </div>
+
     <div id="board-wrap">
       <div id="board"></div>
       <canvas id="lineCanvas"></canvas>
@@ -1176,6 +1348,11 @@ input[type=range]::-webkit-slider-thumb:hover {
 
     <div style="text-align:center; min-height:40px; margin-top:10px;">
       <div id="current-word" style="font-size:1.8rem; font-weight:800; letter-spacing:2px; text-transform:uppercase;"></div>
+    </div>
+    
+    <!-- Give Up Button for Endless Mode -->
+    <div id="give-up-container" style="text-align: center; margin-top: 15px; display: none;">
+      <button id="give-up-btn" onclick="giveUpGame()">Give Up</button>
     </div>
   </div>
   
@@ -1190,6 +1367,14 @@ input[type=range]::-webkit-slider-thumb:hover {
         <div style="font-size:0.9rem; color:#94a3b8; margin-bottom:5px;">Performance</div>
         <div id="rating-letter" class="rating-letter">B</div>
         <div id="rating-desc" class="rating-desc">Solid Performance</div>
+      </div>
+      
+      <!-- Longest Word Info -->
+      <div id="longest-word-info" class="longest-word-info">
+        <div class="longest-word-header">Longest Possible Word</div>
+        <div id="longest-word-display" class="longest-word-text">WORD</div>
+        <div id="longest-word-status" class="longest-word-status"></div>
+        <div id="longest-word-length" style="font-size:0.9rem; color:#94a3b8; margin-top:5px; text-align:center;"></div>
       </div>
       
       <!-- Score Comparison -->
@@ -1235,17 +1420,6 @@ input[type=range]::-webkit-slider-thumb:hover {
         <div class="stat-box">
           <div class="stat-value" id="stat-avg">0.0</div>
           <div class="stat-label">Avg Points</div>
-        </div>
-      </div>
-      
-      <!-- Missed Opportunities -->
-      <div id="missed-opportunities" class="missed-opportunities">
-        <div class="missed-header">Improvement Tip</div>
-        <div id="missed-message"></div>
-        <div id="longest-word-hint" style="display:none;">
-          <div class="missed-word" id="longest-word-text"></div>
-          <div style="font-size:0.9rem; color:#94a3b8; margin:10px 0;">Could have scored <span id="longest-word-score" style="color:#22c55e; font-weight:700;">0</span> points!</div>
-          <div id="path-hint" class="path-hint"></div>
         </div>
       </div>
       
@@ -1307,7 +1481,9 @@ let config = {
   scoring: "traditional",
   uiVolume: 0.7,  // UI sound volume (0-1)
   musicVolume: 0.5,  // Music volume (0-1)
-  musicType: "synth"  // synth, retro, chill, epic
+  musicType: "synth",  // synth, retro, chill, epic
+  gameMode: "classic",  // classic, find-x, endless
+  difficulty: "moderate"  // easy, moderate, hard (for find-x mode)
 };
 
 let dict = new Set();
@@ -1316,6 +1492,9 @@ let path = [], foundWords = new Map();
 let timerInt, timeLeft, startTime;
 let currentScore = 0;
 let gameEnded = false;
+let allPossibleWords = new Set(); // All valid words on the current board
+let longestPossibleWord = ""; // The longest possible word on the board
+let longestWordFound = false; // Whether the longest word was found
 
 // Store word data with path information
 let wordData = new Map(); // word -> {score, path, multipliersUsed: []}
@@ -1351,12 +1530,15 @@ const UI = {
   comparisonAlltime: document.getElementById('comparison-alltime'),
   lengthBars: document.getElementById('length-bars'),
   reviewBoard: document.getElementById('review-board'),
-  missedMessage: document.getElementById('missed-message'),
-  longestWordHint: document.getElementById('longest-word-hint'),
-  longestWordText: document.getElementById('longest-word-text'),
-  longestWordScore: document.getElementById('longest-word-score'),
-  pathHint: document.getElementById('path-hint'),
-  celebrationOverlay: document.getElementById('celebration-overlay')
+  celebrationOverlay: document.getElementById('celebration-overlay'),
+  longestWordDisplay: document.getElementById('longest-word-display'),
+  longestWordStatus: document.getElementById('longest-word-status'),
+  longestWordLength: document.getElementById('longest-word-length'),
+  targetWordsUI: document.getElementById('target-words-ui'),
+  targetWordsDisplay: document.getElementById('target-words-display'),
+  efficiencyUI: document.getElementById('efficiency-ui'),
+  efficiencyDisplay: document.getElementById('efficiency-display'),
+  giveUpContainer: document.getElementById('give-up-container')
 };
 
 // Audio elements
@@ -1371,6 +1553,66 @@ let isCelebrationPlaying = false;
 let audioInitialized = false;
 let beatInterval = null;
 let tempoController = null;
+
+/* ================= FIND ALL POSSIBLE WORDS ================= */
+function findAllPossibleWords() {
+  allPossibleWords.clear();
+  longestPossibleWord = "";
+  
+  const size = config.gridSize;
+  const visited = new Array(size * size).fill(false);
+  
+  // DFS function to find all words
+  function dfs(row, col, currentWord, visited, path) {
+    const index = row * size + col;
+    visited[index] = true;
+    
+    // Add current letter to word
+    const newWord = currentWord + board[index];
+    
+    // Check if word is valid and long enough
+    if (newWord.length >= config.minLen && dict.has(newWord.toUpperCase())) {
+      allPossibleWords.add(newWord.toUpperCase());
+      
+      // Update longest word if found
+      if (newWord.length > longestPossibleWord.length) {
+        longestPossibleWord = newWord.toUpperCase();
+      }
+    }
+    
+    // Continue DFS if word could still be valid (check dictionary prefix)
+    if (newWord.length < 10) { // Limit depth for performance
+      // Check all 8 directions
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          
+          const newRow = row + dr;
+          const newCol = col + dc;
+          
+          if (newRow >= 0 && newRow < size && newCol >= 0 && newCol < size) {
+            const newIndex = newRow * size + newCol;
+            if (!visited[newIndex]) {
+              dfs(newRow, newCol, newWord, [...visited], [...path, newIndex]);
+            }
+          }
+        }
+      }
+    }
+    
+    visited[index] = false;
+  }
+  
+  // Start DFS from every tile
+  for (let row = 0; row < size; row++) {
+    for (let col = 0; col < size; col++) {
+      dfs(row, col, "", [...visited], []);
+    }
+  }
+  
+  console.log(`Found ${allPossibleWords.size} possible words on board`);
+  console.log(`Longest possible word: ${longestPossibleWord} (${longestPossibleWord.length} letters)`);
+}
 
 /* ================= PARTICLE SYSTEM ================= */
 class Particle {
@@ -2114,6 +2356,13 @@ function playSound(type) {
       waveType = 'sine';
       vibrate(50);
       break;
+    case 'longest':
+      // Fun sound for longest word found
+      frequency = 800;
+      duration = 0.5;
+      waveType = 'sawtooth';
+      vibrate([100, 50, 100, 50, 100]);
+      break;
     default:
       frequency = 800;
       duration = 0.1;
@@ -2144,6 +2393,7 @@ function startGame() {
   // Reset game state
   gameEnded = false;
   wordData.clear();
+  longestWordFound = false;
   
   // Initialize audio if needed
   if (!audioInitialized) {
@@ -2166,12 +2416,26 @@ function startGame() {
   
   generateSpecialTiles();
   
+  // Find all possible words on the board
+  findAllPossibleWords();
+  
   // Save board for review
   saveBoardForReview();
   
   // Reset game state
   foundWords.clear();
-  timeLeft = config.time;
+  
+  // Set time based on game mode
+  if (config.gameMode === "find-x") {
+    timeLeft = 120; // 2 minutes for find-x mode
+    config.time = 120;
+  } else if (config.gameMode === "endless") {
+    timeLeft = 999; // Large number for endless mode
+    config.time = 999;
+  } else {
+    timeLeft = config.time; // Classic mode uses configured time
+  }
+  
   startTime = Date.now();
   path = [];
   currentScore = 0;
@@ -2185,6 +2449,9 @@ function startGame() {
   UI.time.style.color = '';
   UI.currentWord.textContent = "";
   
+  // Show/hide mode-specific UI
+  updateModeUI();
+  
   // Show game screen
   showScreen('game-ui');
   
@@ -2192,26 +2459,99 @@ function startGame() {
   UI.canvas.width = UI.board.clientWidth;
   UI.canvas.height = UI.board.clientHeight;
 
-  // Start timer
-  if(timerInt) clearInterval(timerInt);
-  timerInt = setInterval(() => {
-    timeLeft--;
-    UI.time.textContent = timeLeft;
-    
-    if (timeLeft <= 10) {
-      UI.time.style.color = '#ef4444';
-      if (timeLeft <= 5 && timeLeft > 0) {
-        playSound('warning');
+  // Start timer (only for classic and find-x modes)
+  if (timerInt) clearInterval(timerInt);
+  
+  if (config.gameMode !== "endless") {
+    timerInt = setInterval(() => {
+      timeLeft--;
+      UI.time.textContent = timeLeft;
+      
+      if (timeLeft <= 10) {
+        UI.time.style.color = '#ef4444';
+        if (timeLeft <= 5 && timeLeft > 0) {
+          playSound('warning');
+        }
       }
+      
+      // Update music tempo based on time left
+      if (tempoController && timeLeft < config.time) {
+        updateGameTempo();
+      }
+      
+      if (timeLeft <= 0) endGame();
+    }, 1000);
+  } else {
+    // For endless mode, update efficiency display every second
+    timerInt = setInterval(() => {
+      updateEfficiencyDisplay();
+    }, 1000);
+  }
+}
+
+function updateModeUI() {
+  // Show/hide time setting based on game mode
+  const timeSetting = document.getElementById('time-setting');
+  if (config.gameMode === "classic") {
+    timeSetting.style.display = 'flex';
+  } else {
+    timeSetting.style.display = 'none';
+  }
+  
+  // Show/hide mode-specific UI in game
+  UI.targetWordsUI.style.display = 'none';
+  UI.efficiencyUI.style.display = 'none';
+  UI.giveUpContainer.style.display = 'none';
+  
+  if (config.gameMode === "find-x") {
+    // Calculate target words based on difficulty
+    let percentage;
+    switch(config.difficulty) {
+      case 'easy': percentage = 0.2; break;
+      case 'moderate': percentage = 0.4; break;
+      case 'hard': percentage = 0.6; break;
+      default: percentage = 0.4;
     }
     
-    // Update music tempo based on time left
-    if (tempoController && timeLeft < config.time) {
-      updateGameTempo();
-    }
+    const targetWords = Math.max(1, Math.floor(allPossibleWords.size * percentage));
+    UI.targetWordsUI.style.display = 'block';
+    UI.targetWordsDisplay.textContent = `0/${targetWords}`;
     
-    if(timeLeft <= 0) endGame();
-  }, 1000);
+    // Store target for checking
+    window.targetWordsNeeded = targetWords;
+  } else if (config.gameMode === "endless") {
+    UI.efficiencyUI.style.display = 'block';
+    UI.giveUpContainer.style.display = 'block';
+    updateEfficiencyDisplay();
+  }
+}
+
+function updateEfficiencyDisplay() {
+  if (config.gameMode !== "endless" || gameEnded) return;
+  
+  const foundCount = foundWords.size;
+  const totalPossible = allPossibleWords.size;
+  const efficiency = totalPossible > 0 ? Math.round((foundCount / totalPossible) * 100) : 0;
+  
+  UI.efficiencyDisplay.textContent = `${efficiency}%`;
+  
+  // Change color based on efficiency
+  if (efficiency >= 100) {
+    UI.efficiencyDisplay.style.color = '#22c55e';
+    // End game when 100% efficiency is reached
+    endGame();
+  } else if (efficiency >= 75) {
+    UI.efficiencyDisplay.style.color = '#fbbf24';
+  } else if (efficiency >= 50) {
+    UI.efficiencyDisplay.style.color = '#0ea5e9';
+  } else {
+    UI.efficiencyDisplay.style.color = '#8b5cf6';
+  }
+  
+  // Check for find-x mode completion
+  if (config.gameMode === "find-x" && window.targetWordsNeeded && foundCount >= window.targetWordsNeeded) {
+    endGame();
+  }
 }
 
 function saveBoardForReview() {
@@ -2409,6 +2749,17 @@ function submitWord() {
     }
   }
   
+  // Check if this is the longest word
+  if (!longestWordFound && w === longestPossibleWord) {
+    longestWordFound = true;
+    // Flash rainbow animation on the tiles
+    flashRainbow();
+    // Play special sound
+    playSound('longest');
+    // Show celebration
+    showCelebration();
+  }
+  
   if(foundWords.has(w)) {
     // Word already found - check if this path scores higher
     let oldScore = foundWords.get(w);
@@ -2463,6 +2814,14 @@ function submitWord() {
     // Update Score
     currentScore += newScore;
     UI.score.textContent = currentScore;
+    
+    // Update mode-specific displays
+    if (config.gameMode === "find-x") {
+      const foundCount = foundWords.size;
+      const targetWords = window.targetWordsNeeded || 0;
+      UI.targetWordsDisplay.textContent = `${foundCount}/${targetWords}`;
+    }
+    updateEfficiencyDisplay();
     
     // Visual feedback
     flash('good');
@@ -2553,6 +2912,16 @@ function flash(cls) {
   });
 }
 
+function flashRainbow() {
+  path.forEach(i => {
+    let t = document.querySelector(`.tile[data-i="${i}"]`);
+    t.classList.add('rainbow');
+    setTimeout(() => {
+      t.classList.remove('rainbow');
+    }, 1500);
+  });
+}
+
 /* ================= LIFETIME WORD COUNT ================= */
 function getWordLifetimeCount(word) {
   const key = `boggle_wordcount_${word.toLowerCase()}`;
@@ -2603,13 +2972,18 @@ function endGame() {
   setTodayHighScore(currentScore);
   
   // Calculate time used
-  const timeUsed = config.time - timeLeft;
+  const timeUsed = config.gameMode === "endless" ? 
+    Math.floor((Date.now() - startTime) / 1000) : 
+    config.time - timeLeft;
   
   // Update game over screen
   UI.finalScore.textContent = currentScore;
   UI.statWords.textContent = foundWords.size;
   UI.statTime.textContent = timeUsed + 's';
   UI.statAvg.textContent = (foundWords.size > 0 ? (currentScore / foundWords.size).toFixed(1) : '0.0');
+  
+  // Update longest word info
+  updateLongestWordInfo();
   
   // Update score comparisons
   const todayHigh = getTodayHighScore();
@@ -2643,11 +3017,30 @@ function endGame() {
   generatePerformanceRating();
   generateWordLengthDistribution();
   generateBoardReview();
-  generateMissedOpportunities();
   generateWordList();
   
   // Show game over screen
   showScreen('game-over');
+}
+
+function updateLongestWordInfo() {
+  if (!longestPossibleWord) {
+    UI.longestWordDisplay.textContent = "N/A";
+    UI.longestWordStatus.textContent = "";
+    UI.longestWordLength.textContent = "";
+    return;
+  }
+  
+  UI.longestWordDisplay.textContent = longestPossibleWord;
+  UI.longestWordLength.textContent = `${longestPossibleWord.length} letters`;
+  
+  if (longestWordFound) {
+    UI.longestWordStatus.textContent = "🎉 You found the longest word! 🎉";
+    UI.longestWordStatus.className = "longest-word-status found";
+  } else {
+    UI.longestWordStatus.textContent = "You did not find the longest word";
+    UI.longestWordStatus.className = "longest-word-status missed";
+  }
 }
 
 function generatePerformanceRating() {
@@ -2761,86 +3154,6 @@ function generateBoardReview() {
   });
 }
 
-function generateMissedOpportunities() {
-  // Find the longest word found
-  let longestFound = '';
-  let longestLength = 0;
-  
-  for (const word of foundWords.keys()) {
-    if (word.length > longestLength) {
-      longestLength = word.length;
-      longestFound = word;
-    }
-  }
-  
-  // Check if longest word is >= 8 letters
-  if (longestLength >= 8) {
-    UI.missedMessage.innerHTML = `
-      Great job finding long words! Your longest word was 
-      <span style="color:#fbbf24; font-weight:700;">${longestFound.toUpperCase()}</span> 
-      (${longestLength} letters).
-    `;
-    UI.longestWordHint.style.display = 'none';
-  } else {
-    // Suggest looking for longer words
-    UI.missedMessage.innerHTML = `
-      Try finding longer words next time! Your longest word was 
-      <span style="color:#fbbf24; font-weight:700;">${longestFound.toUpperCase() || 'none'}</span> 
-      (${longestLength} letters). Words with 8+ letters score big points!
-    `;
-    
-    // Generate a fake long word for demonstration (in a real game, you'd analyze the board)
-    if (foundWords.size > 0) {
-      // Pick a random word and extend it
-      const words = Array.from(foundWords.keys());
-      const randomWord = words[Math.floor(Math.random() * words.length)];
-      const fakeLongWord = randomWord + 'ING'; // Simple extension
-      
-      if (fakeLongWord.length >= 8 && dict.has(fakeLongWord)) {
-        UI.longestWordText.textContent = fakeLongWord.toUpperCase();
-        UI.longestWordScore.textContent = calcScore(fakeLongWord, [0,1,2,3,4,5,6,7]); // Fake path
-        
-        // Generate a fake path visualization
-        generatePathHint(fakeLongWord);
-        
-        UI.longestWordHint.style.display = 'block';
-      } else {
-        UI.longestWordHint.style.display = 'none';
-      }
-    } else {
-      UI.longestWordHint.style.display = 'none';
-    }
-  }
-}
-
-function generatePathHint(word) {
-  // Create a simple grid visualization
-  const size = config.gridSize;
-  UI.pathHint.innerHTML = '';
-  
-  // Create rows
-  for (let row = 0; row < size; row++) {
-    const rowDiv = document.createElement('div');
-    rowDiv.className = 'path-row';
-    
-    for (let col = 0; col < size; col++) {
-      const tileDiv = document.createElement('div');
-      tileDiv.className = 'path-tile';
-      
-      // Place letters from the word on the path
-      const index = row * size + col;
-      if (index < word.length) {
-        tileDiv.textContent = word[index].toUpperCase();
-        tileDiv.classList.add('highlight');
-      }
-      
-      rowDiv.appendChild(tileDiv);
-    }
-    
-    UI.pathHint.appendChild(rowDiv);
-  }
-}
-
 function generateWordList() {
   // Sort words by score (highest first)
   const sortedWords = Array.from(wordData.entries())
@@ -2884,10 +3197,17 @@ function quitGame() {
   }
 }
 
+function giveUpGame() {
+  if (confirm("Give up and see your results?")) {
+    endGame();
+  }
+}
+
 function playAgain() {
   // Reset game state
   gameEnded = false;
   wordData.clear();
+  longestWordFound = false;
   
   // Restart game music with faster tempo
   if (config.musicVolume > 0) {
@@ -2900,12 +3220,12 @@ function playAgain() {
 
 /* ================= HIGH SCORE MANAGEMENT ================= */
 function getAllTimeHighScore() {
-  const key = `boggle_highscore_${config.gridSize}x${config.gridSize}`;
+  const key = `boggle_highscore_${config.gridSize}x${config.gridSize}_${config.gameMode}`;
   return parseInt(localStorage.getItem(key) || 0);
 }
 
 function setAllTimeHighScore(score) {
-  const key = `boggle_highscore_${config.gridSize}x${config.gridSize}`;
+  const key = `boggle_highscore_${config.gridSize}x${config.gridSize}_${config.gameMode}`;
   localStorage.setItem(key, score);
 }
 
@@ -2951,6 +3271,48 @@ function updateVolumeSliders() {
 
 /* ================= SETTINGS MANAGEMENT ================= */
 function updateSettingsUI() {
+  // Update game mode buttons
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    if (btn.dataset.mode === config.gameMode) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+  
+  // Update difficulty buttons
+  const difficultySetting = document.getElementById('difficulty-setting');
+  if (config.gameMode === "find-x") {
+    difficultySetting.style.display = 'flex';
+    document.querySelectorAll('.difficulty-btn').forEach(btn => {
+      if (btn.dataset.difficulty === config.difficulty) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  } else {
+    difficultySetting.style.display = 'none';
+  }
+  
+  // Update mode info display
+  document.querySelectorAll('#mode-info-display > div').forEach(div => {
+    div.style.display = 'none';
+  });
+  document.getElementById(`${config.gameMode}-info`).style.display = 'block';
+  
+  // Update percentage in find-x info
+  if (config.gameMode === "find-x") {
+    let percentage;
+    switch(config.difficulty) {
+      case 'easy': percentage = "20%"; break;
+      case 'moderate': percentage = "40%"; break;
+      case 'hard': percentage = "60%"; break;
+      default: percentage = "40%";
+    }
+    document.getElementById('target-percentage').textContent = percentage;
+  }
+  
   // Update grid size buttons
   document.querySelectorAll('.size-btn').forEach(btn => {
     if (parseInt(btn.dataset.size) === config.gridSize) {
@@ -3008,6 +3370,24 @@ async function loadDictionary() {
 }
 
 function setupEventListeners() {
+  // Game mode buttons
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      config.gameMode = this.dataset.mode;
+      updateSettingsUI();
+      saveSettings();
+    });
+  });
+  
+  // Difficulty buttons
+  document.querySelectorAll('.difficulty-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      config.difficulty = this.dataset.difficulty;
+      updateSettingsUI();
+      saveSettings();
+    });
+  });
+  
   // Grid size buttons
   document.querySelectorAll('.size-btn').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -3123,6 +3503,8 @@ function loadSettings() {
   config.uiVolume = Math.max(0, Math.min(1, config.uiVolume || 0.7));
   config.musicVolume = Math.max(0, Math.min(1, config.musicVolume || 0.5));
   config.musicType = config.musicType || "synth";
+  config.gameMode = config.gameMode || "classic";
+  config.difficulty = config.difficulty || "moderate";
   
   updateSettingsUI();
 }
@@ -3155,9 +3537,9 @@ window.testMusic = function() {
 window.addEventListener('load', function() {
   console.log("Boggle Party loaded with enhanced game summary!");
   console.log("New features:");
+  console.log("- 3 Game Modes: Classic, Find X Words, Endless");
+  console.log("- Longest word tracking with rainbow animation");
   console.log("- Board review section to study the board");
-  console.log("- Multiplier badges (DW, TW, DL, TL) next to words that used them");
-  console.log("- Celebration music and overlay on game end");
   console.log("- All previous enhancements maintained");
 });
 </script>
