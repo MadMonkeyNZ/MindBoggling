@@ -1,63 +1,3165 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>MindBoggling</title>
-  <style>
-    :root { --active: #0ea5e9; }
+<meta charset="UTF-8">
+<title>Boggle Party – Premium Edition</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+/* ================= THEME & RESET ================= */
+:root {
+  --bg-dark: #0f172a;
+  --bg-mid: #1e293b;
+  --tile-bg: #f8fafc;
+  --active: #0ea5e9;
+  --good: #22c55e;
+  --bad: #ef4444;
+  --repeat: #fbbf24;
+  --better: #8b5cf6; /* Purple for better score */
+  --text: #f1f5f9;
+  --glass: rgba(15, 23, 42, 0.85);
+  --dw-color: #f59e0b;
+  --tw-color: #8b5cf6;
+  --dl-color: #3b82f6;
+  --tl-color: #ec4899;
+}
 
-    /* Update tile hover effect */
-    .tile:hover {
-      transform: translateY(-2px) scale(1.02);
-      box-shadow: 0 8px 0 rgba(0,0,0,0.2), 0 0 20px rgba(14, 165, 233, 0.3);
-      z-index: 5;
-    }
+* { 
+  box-sizing: border-box; 
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
-    /* Update active tile for better visibility */
-    .tile.active {
-      background: var(--active);
-      color: white;
-      transform: scale(1.08) translateZ(30px);
-      z-index: 10;
-      box-shadow: 0 0 40px var(--active), 0 10px 30px rgba(14, 165, 233, 0.4);
-      animation: breathe 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-    }
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, var(--bg-mid), var(--bg-dark));
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: var(--text);
+  display: flex; justify-content: center; align-items: center;
+  min-height: 100vh; overflow: hidden;
+}
 
-    .tile.active .letter-score {
-      background: rgba(255, 255, 255, 1);
-      color: #0f172a;
-      font-weight: 900;
-    }
+#app { 
+  width: 100%; 
+  max-width: 440px; 
+  height: 100vh; 
+  display: flex; 
+  flex-direction: column; 
+  position: relative;
+  opacity: 0;
+  animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards;
+}
 
-    @keyframes breathe {
-      0%, 100% { transform: scale(1.08) translateZ(30px); }
-      50%      { transform: scale(1.12) translateZ(30px); }
-    }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-    /* small demo styles */
-    .tile {
-      display: inline-block;
-      padding: 1rem;
-      border-radius: 8px;
-      background: #f1f5f9;
-      transition: transform .18s ease, box-shadow .18s ease;
-      margin: 0.5rem;
-    }
-    .letter-score {
-      display: inline-block;
-      padding: 0.25rem 0.5rem;
-      border-radius: 6px;
-      margin-left: 0.5rem;
-      background: rgba(0,0,0,0.06);
-    }
-  </style>
+/* ================= SCREENS ================= */
+.screen {
+  position: absolute; 
+  inset: 0; 
+  padding: 20px;
+  display: flex; 
+  flex-direction: column; 
+  background: radial-gradient(circle at top, var(--bg-mid), var(--bg-dark));
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none; 
+  opacity: 0; 
+  z-index: 0;
+  transform: translateY(10px);
+}
+.screen.active { 
+  pointer-events: auto; 
+  opacity: 1; 
+  z-index: 10;
+  transform: translateY(0);
+}
+
+/* ================= MAIN MENU ================= */
+#main-menu { 
+  justify-content: center; 
+  align-items: center; 
+  text-align: center; 
+}
+.title { 
+  font-size: 3rem; 
+  font-weight: 800; 
+  margin-bottom: 10px; 
+  background: linear-gradient(to right, #60a5fa, #34d399); 
+  -webkit-background-clip: text; 
+  color: transparent;
+  animation: titleGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes titleGlow {
+  from { filter: drop-shadow(0 0 10px rgba(96, 165, 250, 0.3)); }
+  to { filter: drop-shadow(0 0 20px rgba(96, 165, 250, 0.6)); }
+}
+
+.subtitle { 
+  color: #94a3b8; 
+  margin-bottom: 10px; 
+  font-size: 1.1rem;
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.3s both;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.menu-btn {
+  width: 100%; 
+  max-width: 280px; 
+  padding: 18px; 
+  margin: 8px 0;
+  border: none; 
+  border-radius: 16px; 
+  font-size: 1.1rem; 
+  font-weight: 700;
+  background: rgba(255,255,255,0.08); 
+  color: white; 
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.4s both;
+}
+.menu-btn.primary { 
+  background: linear-gradient(135deg, #0ea5e9, #2563eb); 
+  box-shadow: 0 6px 25px rgba(37, 99, 235, 0.3); 
+}
+.menu-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+}
+.menu-btn:active { 
+  transform: scale(0.98); 
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Settings Panel */
+.settings-panel {
+  width: 100%;
+  max-width: 280px;
+  margin: 20px 0;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.5s both;
+  backdrop-filter: blur(10px);
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 15px 0;
+}
+
+.setting-label {
+  font-size: 0.95rem;
+  color: #cbd5e1;
+}
+
+.setting-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.size-toggle {
+  display: flex;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.size-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.size-btn.active {
+  background: rgba(14, 165, 233, 0.2);
+  color: #0ea5e9;
+}
+
+.value-display {
+  min-width: 40px;
+  text-align: center;
+  font-weight: 700;
+  color: #0ea5e9;
+}
+
+/* Range Input */
+input[type=range] { 
+  width: 100px; 
+  height: 6px;
+  -webkit-appearance: none;
+  background: linear-gradient(to right, rgba(14, 165, 233, 0.2), var(--active));
+  border-radius: 3px;
+  outline: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  border: 3px solid var(--active);
+  box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+input[type=range]::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative; 
+  display: inline-block; 
+  width: 52px; 
+  height: 26px;
+}
+.toggle-switch input { 
+  opacity: 0; 
+  width: 0; 
+  height: 0; 
+}
+.toggle-slider {
+  position: absolute; 
+  cursor: pointer; 
+  top: 0; 
+  left: 0; 
+  right: 0; 
+  bottom: 0;
+  background: linear-gradient(135deg, #475569, #64748b);
+  transition: .4s cubic-bezier(0.4, 0, 0.2, 1); 
+  border-radius: 34px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+.toggle-slider:before {
+  position: absolute; 
+  content: ""; 
+  height: 18px; 
+  width: 18px; 
+  left: 4px; 
+  bottom: 4px;
+  background: linear-gradient(135deg, white, #f1f5f9);
+  transition: .4s cubic-bezier(0.4, 0, 0.2, 1); 
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+.toggle-switch input:checked + .toggle-slider {
+  background: linear-gradient(135deg, #0ea5e9, #2563eb);
+}
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(26px);
+}
+
+/* High Score Display */
+.high-score {
+  margin-top: 10px;
+  padding: 15px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.7s both;
+  backdrop-filter: blur(10px);
+}
+.high-score .hud-lbl { 
+  font-size: 0.9rem; 
+  color: #fbbf24; 
+  text-transform: uppercase; 
+  letter-spacing: 1px; 
+  margin-bottom: 5px; 
+}
+.high-score .hud-val { 
+  font-size: 2rem; 
+  font-weight: 700; 
+  color: #22c55e;
+  text-shadow: 0 2px 10px rgba(34, 197, 94, 0.3);
+}
+
+/* ================= GAME UI ================= */
+#top-bar {
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center;
+  margin-bottom: 15px; 
+  padding: 15px; 
+  background: rgba(255,255,255,0.05);
+  border-radius: 16px; 
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: slideDown 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hud-box { 
+  text-align: center; 
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.2s both;
+}
+.hud-lbl { 
+  font-size: 0.7rem; 
+  color: #94a3b8; 
+  text-transform: uppercase; 
+  letter-spacing: 1px; 
+}
+.hud-val { 
+  font-size: 1.5rem; 
+  font-weight: 700; 
+  font-variant-numeric: tabular-nums;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#quit-btn { 
+  background: linear-gradient(135deg, #ef4444, #dc2626); 
+  color: white; 
+  border: none; 
+  padding: 10px 20px; 
+  border-radius: 12px; 
+  font-weight: 700; 
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.4s both;
+}
+#quit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+}
+
+#board-wrap { 
+  position: relative; 
+  aspect-ratio: 1; 
+  margin: 10px 0; 
+  touch-action: none;
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.3s both;
+}
+#board { 
+  display: grid; 
+  gap: 8px; 
+  height: 100%; 
+  position: relative; 
+  z-index: 2;
+}
+
+.tile {
+  background: var(--tile-bg); 
+  color: #0f172a; 
+  border-radius: 14px;
+  font-size: 1.8rem; 
+  font-weight: 800; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  position: relative; 
+  user-select: none; 
+  box-shadow: 0 6px 0 rgba(0,0,0,0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+.tile.active { 
+  background: var(--active) !important; 
+  color: white !important; 
+  transform: scale(1.08); 
+  z-index: 15 !important; 
+  box-shadow: 0 0 40px var(--active), 0 10px 30px rgba(14, 165, 233, 0.4) !important;
+}
+.tile.good { 
+  background: var(--good) !important; 
+  color: white !important; 
+  z-index: 15 !important;
+  animation: pop 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.tile.bad { 
+  background: var(--bad) !important; 
+  color: white !important; 
+  z-index: 15 !important;
+  animation: shake 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.tile.repeat { 
+  background: var(--repeat) !important; 
+  color: white !important; 
+  z-index: 15 !important;
+  animation: pulseOnce 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.tile.better { 
+  background: var(--better) !important; 
+  color: white !important; 
+  z-index: 15 !important;
+  animation: glowPulse 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
+
+@keyframes pulseOnce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { 
+    transform: scale(1); 
+    box-shadow: 0 0 20px var(--better);
+  }
+  50% { 
+    transform: scale(1.1); 
+    box-shadow: 0 0 40px var(--better);
+  }
+}
+
+/* Special Tile Backgrounds */
+.tile.DW { 
+  background: linear-gradient(135deg, #f59e0b, #d97706, #fbbf24); 
+  color: white; 
+  box-shadow: 0 6px 0 rgba(180, 83, 9, 0.3);
+}
+.tile.TW { 
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed, #a78bfa); 
+  color: white; 
+  box-shadow: 0 6px 0 rgba(109, 40, 217, 0.3);
+}
+.tile.DL { 
+  background: linear-gradient(135deg, #3b82f6, #2563eb, #60a5fa); 
+  color: white; 
+  box-shadow: 0 6px 0 rgba(29, 78, 216, 0.3);
+}
+.tile.TL { 
+  background: linear-gradient(135deg, #ec4899, #db2777, #f472b6); 
+  color: white; 
+  box-shadow: 0 6px 0 rgba(219, 39, 119, 0.3);
+}
+
+.mult {
+  position: absolute; 
+  bottom: 6px; 
+  right: 6px; 
+  font-size: 0.6rem;
+  font-weight: 900; 
+  padding: 3px 8px; 
+  border-radius: 6px;
+  background: rgba(0,0,0,0.9); 
+  color: #fff; 
+  pointer-events: none;
+  z-index: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.mult.DL { 
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(37, 99, 235, 0.9));
+}
+.mult.TL { 
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.9), rgba(219, 39, 119, 0.9));
+}
+.mult.DW { 
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.9), rgba(217, 119, 6, 0.9));
+}
+.mult.TW { 
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.9), rgba(124, 58, 237, 0.9));
+}
+
+#lineCanvas { 
+  position: absolute; 
+  inset: 0; 
+  width: 100%; 
+  height: 100%; 
+  pointer-events: none; 
+  z-index: 5;
+}
+
+/* Volume Controls in Settings */
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.volume-label {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  min-width: 100px;
+  text-align: left;
+}
+
+.volume-slider {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.1), #0ea5e9);
+  border-radius: 3px;
+  outline: none;
+}
+
+.volume-value {
+  min-width: 35px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #0ea5e9;
+}
+
+/* Music Type Toggle - Grid Layout */
+.music-type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+  margin-top: 5px;
+}
+
+.music-type-btn {
+  padding: 12px 8px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.music-type-btn.active {
+  background: rgba(139, 92, 246, 0.2);
+  color: #8b5cf6;
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+}
+
+.music-type-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Game Over Screen - Enhanced */
+#game-over {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.game-over-content {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  padding: 30px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  max-width: 380px;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: scaleIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.game-over-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 20px;
+  background: linear-gradient(to right, #60a5fa, #34d399);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.final-score {
+  font-size: 4rem;
+  font-weight: 900;
+  margin: 20px 0;
+  color: #22c55e;
+  text-shadow: 0 4px 20px rgba(34, 197, 94, 0.4);
+  animation: pulseScore 2s infinite alternate;
+}
+
+@keyframes pulseScore {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.05); }
+}
+
+.stats {
+  display: flex;
+  justify-content: space-around;
+  margin: 25px 0;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.stat-box {
+  text-align: center;
+  min-width: 80px;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #0ea5e9;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  margin-top: 5px;
+}
+
+/* Performance Rating */
+.performance-rating {
+  margin: 20px 0;
+  padding: 15px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rating-letter {
+  font-size: 3.5rem;
+  font-weight: 900;
+  margin: 10px 0;
+}
+
+.rating-desc {
+  font-size: 1rem;
+  color: #94a3b8;
+  margin-top: 5px;
+}
+
+/* Score Comparison */
+.score-comparison {
+  margin: 20px 0;
+  padding: 15px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.comparison-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+}
+
+.comparison-label {
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
+
+.comparison-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+/* Word Length Distribution */
+.word-length-distribution {
+  margin: 20px 0;
+  padding: 15px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.length-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 100px;
+  margin-top: 15px;
+}
+
+.length-bar {
+  flex: 1;
+  background: linear-gradient(to top, #0ea5e9, #3b82f6);
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  min-height: 5px;
+}
+
+.length-label {
+  position: absolute;
+  bottom: -25px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.length-count {
+  position: absolute;
+  top: -25px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #0ea5e9;
+}
+
+/* Board Review */
+.board-review {
+  margin: 20px 0;
+  padding: 15px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.review-board {
+  display: grid;
+  gap: 4px;
+  margin: 15px auto;
+  max-width: 200px;
+}
+
+.review-tile {
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: #f1f5f9;
+  position: relative;
+  overflow: hidden;
+}
+
+.review-tile.DW { 
+  background: linear-gradient(135deg, #f59e0b, #d97706, #fbbf24); 
+}
+.review-tile.TW { 
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed, #a78bfa); 
+}
+.review-tile.DL { 
+  background: linear-gradient(135deg, #3b82f6, #2563eb, #60a5fa); 
+}
+.review-tile.TL { 
+  background: linear-gradient(135deg, #ec4899, #db2777, #f472b6); 
+}
+
+.review-mult {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  font-size: 0.5rem;
+  font-weight: 900;
+  padding: 1px 3px;
+  border-radius: 3px;
+  background: rgba(0,0,0,0.8);
+  color: #fff;
+  text-transform: uppercase;
+}
+
+/* Word List */
+.word-list-container {
+  margin: 20px 0;
+  padding: 15px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.word-list-header {
+  font-size: 1.1rem;
+  color: #94a3b8;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.word-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  margin: 8px 0;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  border-left: 4px solid #0ea5e9;
+  animation: slideInFromLeft 0.3s ease-out both;
+}
+
+.word-item:nth-child(even) {
+  border-left-color: #8b5cf6;
+  animation: slideInFromRight 0.3s ease-out both;
+}
+
+@keyframes slideInFromLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInFromRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.word-text {
+  font-weight: 600;
+  color: #f1f5f9;
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+}
+
+.word-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.word-score {
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: #22c55e;
+}
+
+.word-count {
+  background: rgba(139, 92, 246, 0.2);
+  color: #8b5cf6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+/* Multiplier Badges */
+.multiplier-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: white;
+}
+
+.multiplier-badge.DW {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  box-shadow: 0 2px 4px rgba(180, 83, 9, 0.3);
+}
+
+.multiplier-badge.TW {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  box-shadow: 0 2px 4px rgba(109, 40, 217, 0.3);
+}
+
+.multiplier-badge.DL {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  box-shadow: 0 2px 4px rgba(29, 78, 216, 0.3);
+}
+
+.multiplier-badge.TL {
+  background: linear-gradient(135deg, #ec4899, #db2777);
+  box-shadow: 0 2px 4px rgba(219, 39, 119, 0.3);
+}
+
+/* Missed Opportunities */
+.missed-opportunities {
+  margin: 20px 0;
+  padding: 15px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05));
+  border-radius: 16px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.missed-header {
+  font-size: 1.1rem;
+  color: #ef4444;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.missed-word {
+  text-align: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #fbbf24;
+  margin: 10px 0;
+}
+
+.path-hint {
+  display: grid;
+  gap: 4px;
+  margin: 15px 0;
+}
+
+.path-row {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.path-tile {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(34, 197, 94, 0.2);
+  border-radius: 8px;
+  font-weight: 700;
+  color: #22c55e;
+  border: 2px solid rgba(34, 197, 94, 0.4);
+}
+
+.path-tile.highlight {
+  background: rgba(34, 197, 94, 0.4);
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+}
+
+/* Particle Canvas */
+#particleCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Utility */
+.center-txt { 
+  text-align: center; 
+  margin-top: 10px; 
+  color: #64748b; 
+  font-size: 0.8rem;
+}
+
+/* Scrollbar Styling */
+.word-list-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.word-list-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.word-list-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #0ea5e9, #8b5cf6);
+  border-radius: 10px;
+}
+
+.game-over-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.game-over-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.game-over-content::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #0ea5e9, #8b5cf6);
+  border-radius: 10px;
+}
+
+/* Celebration Overlay */
+.celebration-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, transparent, rgba(0,0,0,0.7));
+  z-index: 100;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.celebration-text {
+  font-size: 4rem;
+  font-weight: 900;
+  color: #fbbf24;
+  text-shadow: 0 0 20px rgba(251, 191, 36, 0.8);
+  animation: pulseScore 1s infinite alternate;
+}
+
+/* Special Multiplier Icons */
+.special-multiplier {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-left: 5px;
+  border-radius: 4px;
+  font-size: 0.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: white;
+}
+
+.special-multiplier.DW {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.special-multiplier.TW {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.special-multiplier.DL {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.special-multiplier.TL {
+  background: linear-gradient(135deg, #ec4899, #db2777);
+}
+</style>
 </head>
 <body>
-  <main>
-    <h1>MindBoggling — Demo</h1>
-    <div class="tile active">A<span class="letter-score">5</span></div>
-    <div class="tile">B<span class="letter-score">3</span></div>
-  </main>
+
+<div id="app">
+  <!-- Particle Canvas -->
+  <canvas id="particleCanvas"></canvas>
+
+  <!-- Celebration Overlay -->
+  <div id="celebration-overlay" class="celebration-overlay">
+    <div class="celebration-text">🎉 WELL PLAYED! 🎉</div>
+  </div>
+
+  <div id="main-menu" class="screen active">
+    <div class="title">Boggle<br>Party</div>
+    <div class="subtitle">Word Search Challenge</div>
+    
+    <button class="menu-btn primary" onclick="startGame()">Start Game</button>
+    
+    <!-- Settings Panel -->
+    <div class="settings-panel">
+      <!-- Grid Size -->
+      <div class="setting-row">
+        <div class="setting-label">Grid Size</div>
+        <div class="setting-controls">
+          <div class="size-toggle">
+            <button class="size-btn active" data-size="4">4×4</button>
+            <button class="size-btn" data-size="5">5×5</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Time Limit -->
+      <div class="setting-row">
+        <div class="setting-label">Time Limit</div>
+        <div class="setting-controls">
+          <input type="range" id="time-slider" min="30" max="300" step="30" value="30">
+          <div class="value-display" id="time-value">30s</div>
+        </div>
+      </div>
+      
+      <!-- Min Word Length -->
+      <div class="setting-row">
+        <div class="setting-label">Min Word Length</div>
+        <div class="setting-controls">
+          <input type="range" id="length-slider" min="3" max="5" step="1" value="3">
+          <div class="value-display" id="length-value">3</div>
+        </div>
+      </div>
+      
+      <!-- Scoring System -->
+      <div class="setting-row">
+        <div class="setting-label">Scoring System</div>
+        <div class="setting-controls">
+          <span style="font-size:0.85rem; color:#94a3b8">Traditional</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="scoring-toggle">
+            <span class="toggle-slider"></span>
+          </label>
+          <span style="font-size:0.85rem; color:#94a3b8">Modern</span>
+        </div>
+      </div>
+      
+      <!-- UI Sound Volume -->
+      <div class="setting-row">
+        <div class="setting-label">UI Sound Volume</div>
+        <div class="setting-controls">
+          <div class="volume-control">
+            <input type="range" id="ui-volume-slider" min="0" max="100" value="70" class="volume-slider">
+            <div class="volume-value" id="ui-volume-value">70%</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Background Music Volume -->
+      <div class="setting-row">
+        <div class="setting-label">Music Volume</div>
+        <div class="setting-controls">
+          <div class="volume-control">
+            <input type="range" id="music-volume-slider" min="0" max="100" value="50" class="volume-slider">
+            <div class="volume-value" id="music-volume-value">50%</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Music Type Selection -->
+      <div class="setting-row" style="flex-direction: column; align-items: flex-start;">
+        <div class="setting-label" style="margin-bottom: 8px;">Music Style</div>
+        <div class="music-type-grid">
+          <button class="music-type-btn active" data-type="synth">Synth</button>
+          <button class="music-type-btn" data-type="retro">Retro Arcade</button>
+          <button class="music-type-btn" data-type="chill">Chill Vibes</button>
+          <button class="music-type-btn" data-type="epic">Epic Adventure</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- High Score Display -->
+    <div class="high-score">
+      <div class="hud-lbl">High Score</div>
+      <div class="hud-val" id="high-score-display">0</div>
+    </div>
+    
+    <div id="dict-status" class="center-txt">Loading Dictionary...</div>
+  </div>
+
+  <div id="game-ui" class="screen">
+    <div id="top-bar">
+      <div class="hud-box">
+        <div class="hud-lbl">Score</div>
+        <div class="hud-val" id="score">0</div>
+      </div>
+      <div class="hud-box">
+        <div class="hud-lbl">Time</div>
+        <div class="hud-val" id="time">30</div>
+      </div>
+      <button id="quit-btn" onclick="quitGame()">Quit</button>
+    </div>
+
+    <div id="board-wrap">
+      <div id="board"></div>
+      <canvas id="lineCanvas"></canvas>
+    </div>
+
+    <div style="text-align:center; min-height:40px; margin-top:10px;">
+      <div id="current-word" style="font-size:1.8rem; font-weight:800; letter-spacing:2px; text-transform:uppercase;"></div>
+    </div>
+  </div>
+  
+  <!-- Game Over Screen - Enhanced -->
+  <div id="game-over" class="screen">
+    <div class="game-over-content">
+      <div class="game-over-title">Game Over</div>
+      <div class="final-score" id="final-score">0</div>
+      
+      <!-- Performance Rating -->
+      <div id="performance-rating" class="performance-rating">
+        <div style="font-size:0.9rem; color:#94a3b8; margin-bottom:5px;">Performance</div>
+        <div id="rating-letter" class="rating-letter">B</div>
+        <div id="rating-desc" class="rating-desc">Solid Performance</div>
+      </div>
+      
+      <!-- Score Comparison -->
+      <div id="score-comparison" class="score-comparison">
+        <div style="font-size:0.9rem; color:#94a3b8; margin-bottom:10px;">Score Comparison</div>
+        <div class="comparison-item">
+          <div class="comparison-label">This Game</div>
+          <div id="comparison-current" class="comparison-value" style="color:#22c55e">0</div>
+        </div>
+        <div class="comparison-item">
+          <div class="comparison-label">Today's Best</div>
+          <div id="comparison-today" class="comparison-value" style="color:#fbbf24">0</div>
+        </div>
+        <div class="comparison-item">
+          <div class="comparison-label">All-Time Best</div>
+          <div id="comparison-alltime" class="comparison-value" style="color:#0ea5e9">0</div>
+        </div>
+      </div>
+      
+      <!-- Word Length Distribution -->
+      <div id="word-length-distribution" class="word-length-distribution">
+        <div style="font-size:0.9rem; color:#94a3b8; margin-bottom:10px;">Word Length Distribution</div>
+        <div id="length-bars" class="length-bars"></div>
+      </div>
+      
+      <!-- Board Review -->
+      <div id="board-review" class="board-review">
+        <div style="font-size:0.9rem; color:#94a3b8; margin-bottom:10px;">Board Review</div>
+        <div id="review-board" class="review-board"></div>
+        <div style="font-size:0.8rem; color:#64748b; margin-top:10px;">Study the board to find words you missed</div>
+      </div>
+      
+      <!-- Stats -->
+      <div class="stats">
+        <div class="stat-box">
+          <div class="stat-value" id="stat-words">0</div>
+          <div class="stat-label">Words</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="stat-time">0s</div>
+          <div class="stat-label">Time Used</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="stat-avg">0.0</div>
+          <div class="stat-label">Avg Points</div>
+        </div>
+      </div>
+      
+      <!-- Missed Opportunities -->
+      <div id="missed-opportunities" class="missed-opportunities">
+        <div class="missed-header">Improvement Tip</div>
+        <div id="missed-message"></div>
+        <div id="longest-word-hint" style="display:none;">
+          <div class="missed-word" id="longest-word-text"></div>
+          <div style="font-size:0.9rem; color:#94a3b8; margin:10px 0;">Could have scored <span id="longest-word-score" style="color:#22c55e; font-weight:700;">0</span> points!</div>
+          <div id="path-hint" class="path-hint"></div>
+        </div>
+      </div>
+      
+      <!-- Word List -->
+      <div id="word-list-container" class="word-list-container">
+        <div class="word-list-header">Words Found (Ranked)</div>
+        <div id="word-list"></div>
+      </div>
+      
+      <button class="menu-btn primary" onclick="playAgain()" style="margin-top: 20px;">
+        Play Again
+      </button>
+      <button class="menu-btn" onclick="showScreen('main-menu')" style="margin-top: 10px;">
+        Main Menu
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= CONFIG & STATE ================= */
+const DICT_URL = "https://raw.githubusercontent.com/redbo/scrabble/master/dictionary.txt";
+
+// Official Boggle 4x4 dice distribution
+const DICE_4x4 = [
+  "AAEEGN",    // 1
+  "ABBJOO",    // 2
+  "ACHOPS",    // 3
+  "AFFKPS",    // 4
+  "AOOTTW",    // 5
+  "CIMOTU",    // 6
+  "DEILRX",    // 7
+  "DELRVY",    // 8
+  "DISTTY",    // 9
+  "EEGHNW",    // 10
+  "EEINSU",    // 11
+  "EHRTVW",    // 12
+  "EIOSST",    // 13
+  "ELRTTY",    // 14
+  "HIMNQU",    // 15 (Qu on one face)
+  "HLNNRZ"     // 16
+];
+
+// Official Boggle 5x5 dice distribution (Big Boggle)
+const DICE_5x5 = [
+  "AAAFRS", "AAEEEE", "AAFIRS", "ADENNN", "AEEEEM",
+  "AEEGMU", "AEGMNN", "AFIRSY", "BJKQXZ", "CCNSTW",
+  "CEIILT", "CEILPT", "CEIPST", "DDLNOR", "DHHLOR",
+  "DHHNOT", "DHLNOR", "EIIITT", "EMOTTT", "ENSSSU",
+  "FIPRSY", "GORRVW", "HIPRRY", "NOOTUW", "OOOTTU"
+];
+
+const MULTS = ["DL","TL","DW","TW"];
+
+let config = { 
+  gridSize: 4,  // 4 or 5
+  time: 30, 
+  minLen: 3, 
+  scoring: "traditional",
+  uiVolume: 0.7,  // UI sound volume (0-1)
+  musicVolume: 0.5,  // Music volume (0-1)
+  musicType: "synth"  // synth, retro, chill, epic
+};
+
+let dict = new Set();
+let board = [], mults = [];
+let path = [], foundWords = new Map();
+let timerInt, timeLeft, startTime;
+let currentScore = 0;
+let gameEnded = false;
+
+// Store word data with path information
+let wordData = new Map(); // word -> {score, path, multipliersUsed: []}
+
+// Modern scoring letter values
+const LETTER_VALUES = {
+  'A': 1, 'B': 3, 'C': 3, 'D': 2, 'E': 1, 'F': 4, 'G': 2, 'H': 4, 'I': 1,
+  'J': 8, 'K': 5, 'L': 1, 'M': 3, 'N': 1, 'O': 1, 'P': 3, 'Q': 10, 'R': 1,
+  'S': 1, 'T': 1, 'U': 1, 'V': 4, 'W': 4, 'X': 8, 'Y': 4, 'Z': 10, 'QU': 10
+};
+
+// DOM Cache
+const UI = {
+  menu: document.getElementById('main-menu'),
+  game: document.getElementById('game-ui'),
+  gameOver: document.getElementById('game-over'),
+  board: document.getElementById('board'),
+  canvas: document.getElementById('lineCanvas'),
+  particleCanvas: document.getElementById('particleCanvas'),
+  currentWord: document.getElementById('current-word'),
+  score: document.getElementById('score'),
+  time: document.getElementById('time'),
+  highScoreDisplay: document.getElementById('high-score-display'),
+  finalScore: document.getElementById('final-score'),
+  statWords: document.getElementById('stat-words'),
+  statTime: document.getElementById('stat-time'),
+  statAvg: document.getElementById('stat-avg'),
+  wordList: document.getElementById('word-list'),
+  ratingLetter: document.getElementById('rating-letter'),
+  ratingDesc: document.getElementById('rating-desc'),
+  comparisonCurrent: document.getElementById('comparison-current'),
+  comparisonToday: document.getElementById('comparison-today'),
+  comparisonAlltime: document.getElementById('comparison-alltime'),
+  lengthBars: document.getElementById('length-bars'),
+  reviewBoard: document.getElementById('review-board'),
+  missedMessage: document.getElementById('missed-message'),
+  longestWordHint: document.getElementById('longest-word-hint'),
+  longestWordText: document.getElementById('longest-word-text'),
+  longestWordScore: document.getElementById('longest-word-score'),
+  pathHint: document.getElementById('path-hint'),
+  celebrationOverlay: document.getElementById('celebration-overlay')
+};
+
+// Audio elements
+let audioContext;
+let currentOscillator = null;
+let backgroundMusicOscillators = [];
+let backgroundMusicGains = [];
+let celebrationOscillators = [];
+let celebrationGains = [];
+let isMusicPlaying = false;
+let isCelebrationPlaying = false;
+let audioInitialized = false;
+let beatInterval = null;
+let tempoController = null;
+
+/* ================= PARTICLE SYSTEM ================= */
+class Particle {
+  constructor(x, y, color, score) {
+    this.x = x;
+    this.y = y;
+    this.color = color;
+    this.size = Math.random() * 8 + 2;
+    this.speedX = Math.random() * 6 - 3;
+    this.speedY = Math.random() * -8 - 2;
+    this.life = 1;
+    this.decay = Math.random() * 0.02 + 0.005;
+    this.score = score || 0;
+  }
+  
+  update() {
+    this.x += this.speedX;
+    this.y += this.speedY;
+    this.life -= this.decay;
+    this.speedY += 0.15; // gravity
+    return this.life > 0;
+  }
+  
+  draw(ctx) {
+    ctx.globalAlpha = this.life;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw score if it exists
+    if (this.score > 0) {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12px Arial';
+      ctx.textAlign = 'center';
+      ctx.globalAlpha = this.life * 0.8;
+      ctx.fillText(`+${this.score}`, this.x, this.y - 15);
+    }
+  }
+}
+
+let particles = [];
+
+function createParticles(x, y, color, score) {
+  const particleCount = score ? 15 : 8;
+  for (let i = 0; i < particleCount; i++) {
+    particles.push(new Particle(x, y, color, score));
+  }
+}
+
+function updateParticles() {
+  const ctx = UI.particleCanvas.getContext('2d');
+  ctx.clearRect(0, 0, UI.particleCanvas.width, UI.particleCanvas.height);
+  
+  for (let i = particles.length - 1; i >= 0; i--) {
+    if (!particles[i].update()) {
+      particles.splice(i, 1);
+    } else {
+      particles[i].draw(ctx);
+    }
+  }
+}
+
+function initParticleCanvas() {
+  UI.particleCanvas.width = window.innerWidth;
+  UI.particleCanvas.height = window.innerHeight;
+  
+  function animateParticles() {
+    updateParticles();
+    requestAnimationFrame(animateParticles);
+  }
+  animateParticles();
+}
+
+/* ================= CELEBRATION SYSTEM ================= */
+function showCelebration() {
+  // Show celebration overlay
+  UI.celebrationOverlay.style.display = 'flex';
+  
+  // Play celebration music
+  playCelebrationMusic();
+  
+  // Create massive particle burst
+  const screenWidth = window.innerWidth;
+  const screenHeight = window.innerHeight;
+  
+  for (let i = 0; i < 30; i++) {
+    const x = Math.random() * screenWidth;
+    const y = Math.random() * screenHeight;
+    const colors = ['#0ea5e9', '#22c55e', '#8b5cf6', '#fbbf24', '#ec4899', '#ef4444'];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    createParticles(x, y, color, 0);
+  }
+  
+  // Hide after 3 seconds
+  setTimeout(() => {
+    UI.celebrationOverlay.style.display = 'none';
+    stopCelebrationMusic();
+  }, 3000);
+}
+
+/* ================= CELEBRATION MUSIC ================= */
+function playCelebrationMusic() {
+  if (!audioContext || config.musicVolume === 0 || isCelebrationPlaying) return;
+  
+  isCelebrationPlaying = true;
+  
+  // Clear any existing celebration oscillators
+  stopCelebrationMusic();
+  
+  // Create a victory fanfare
+  const victoryNotes = [
+    { freq: 523.25, duration: 0.2, type: 'sine' }, // C5
+    { freq: 659.25, duration: 0.2, type: 'sine' }, // E5
+    { freq: 783.99, duration: 0.2, type: 'sine' }, // G5
+    { freq: 1046.50, duration: 0.4, type: 'sine' }, // C6
+    { freq: 880.00, duration: 0.3, type: 'sine' }, // A5
+    { freq: 698.46, duration: 0.3, type: 'sine' }, // F5
+    { freq: 523.25, duration: 0.5, type: 'sine' }, // C5
+  ];
+  
+  const volume = config.musicVolume * 0.8;
+  
+  victoryNotes.forEach((note, index) => {
+    setTimeout(() => {
+      if (!audioContext) return;
+      
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(note.freq, audioContext.currentTime);
+      oscillator.type = note.type;
+      
+      gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+      gainNode.gain.linearRampToValueAtTime(volume, audioContext.currentTime + 0.05);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + note.duration);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + note.duration);
+      
+      celebrationOscillators.push(oscillator);
+      celebrationGains.push(gainNode);
+    }, index * 200);
+  });
+  
+  // Add some percussion
+  setTimeout(() => {
+    if (!audioContext) return;
+    
+    // Kick drum
+    const kickOsc = audioContext.createOscillator();
+    const kickGain = audioContext.createGain();
+    kickOsc.connect(kickGain);
+    kickGain.connect(audioContext.destination);
+    kickOsc.frequency.setValueAtTime(100, audioContext.currentTime);
+    kickOsc.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.1);
+    kickOsc.type = 'sine';
+    kickGain.gain.setValueAtTime(volume * 0.5, audioContext.currentTime);
+    kickGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+    kickOsc.start(audioContext.currentTime);
+    kickOsc.stop(audioContext.currentTime + 0.3);
+    
+    celebrationOscillators.push(kickOsc);
+    celebrationGains.push(kickGain);
+  }, 300);
+  
+  setTimeout(() => {
+    if (!audioContext) return;
+    
+    // Snare drum
+    const noise = audioContext.createBufferSource();
+    const bufferSize = audioContext.sampleRate;
+    const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+    const output = buffer.getChannelData(0);
+    
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1;
+    }
+    
+    noise.buffer = buffer;
+    const noiseGain = audioContext.createGain();
+    noise.connect(noiseGain);
+    noiseGain.connect(audioContext.destination);
+    noiseGain.gain.setValueAtTime(volume * 0.3, audioContext.currentTime);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.2);
+    noise.start(audioContext.currentTime);
+    noise.stop(audioContext.currentTime + 0.2);
+    
+    celebrationOscillators.push(noise);
+    celebrationGains.push(noiseGain);
+  }, 500);
+}
+
+function stopCelebrationMusic() {
+  celebrationOscillators.forEach(osc => {
+    try {
+      osc.stop();
+    } catch(e) {
+      // Already stopped
+    }
+  });
+  
+  celebrationOscillators = [];
+  celebrationGains = [];
+  isCelebrationPlaying = false;
+}
+
+/* ================= VIBRATION FEEDBACK ================= */
+function vibrate(pattern) {
+  if ('vibrate' in navigator) {
+    try {
+      if (Array.isArray(pattern)) {
+        navigator.vibrate(pattern);
+      } else {
+        navigator.vibrate(pattern);
+      }
+    } catch (e) {
+      // Vibration not supported or failed
+    }
+  }
+}
+
+/* ================= MUSIC SYSTEM WITH 4 STYLES ================= */
+const MUSIC_STYLES = {
+  synth: {
+    name: "Synth",
+    melodyWave: 'sine',
+    bassWave: 'sine',
+    padWave: 'triangle',
+    percussionTypes: ['kick', 'snare', 'hat'],
+    melodyPattern: [
+      { freq: 220.00, duration: 0.5 },    // A3
+      { freq: 246.94, duration: 0.5 },    // B3
+      { freq: 261.63, duration: 1.0 },    // C4
+      { freq: 293.66, duration: 0.5 },    // D4
+      { freq: 329.63, duration: 0.5 },    // E4
+      { freq: 349.23, duration: 0.75 },   // F4
+      { freq: 392.00, duration: 0.5 },    // G4
+      { freq: 440.00, duration: 1.0 }     // A4
+    ],
+    bassPattern: [
+      { freq: 65.41, duration: 0.3 },     // C2
+      { freq: 82.41, duration: 0.2 },     // E2
+      { freq: 65.41, duration: 0.3 },
+      { freq: 98.00, duration: 0.2 }      // G2
+    ]
+  },
+  retro: {
+    name: "Retro Arcade",
+    melodyWave: 'square',
+    bassWave: 'square',
+    padWave: 'sawtooth',
+    percussionTypes: ['beep', 'blip', 'zap'],
+    melodyPattern: [
+      { freq: 196.00, duration: 0.3 },    // G3
+      { freq: 220.00, duration: 0.3 },    // A3
+      { freq: 261.63, duration: 0.6 },    // C4
+      { freq: 293.66, duration: 0.3 },    // D4
+      { freq: 329.63, duration: 0.3 },    // E4
+      { freq: 392.00, duration: 0.4 },    // G4
+      { freq: 440.00, duration: 0.3 },    // A4
+      { freq: 523.25, duration: 0.6 }     // C5
+    ],
+    bassPattern: [
+      { freq: 65.41, duration: 0.2 },     // C2
+      { freq: 73.42, duration: 0.15 },    // D2
+      { freq: 82.41, duration: 0.2 },     // E2
+      { freq: 98.00, duration: 0.15 }     // G2
+    ]
+  },
+  chill: {
+    name: "Chill Vibes",
+    melodyWave: 'sine',
+    bassWave: 'triangle',
+    padWave: 'sine',
+    percussionTypes: ['softKick', 'chillSnare', 'shaker'],
+    melodyPattern: [
+      { freq: 164.81, duration: 0.8 },    // E3
+      { freq: 196.00, duration: 0.5 },    // G3
+      { freq: 220.00, duration: 1.2 },    // A3
+      { freq: 261.63, duration: 0.5 },    // C4
+      { freq: 293.66, duration: 0.5 },    // D4
+      { freq: 329.63, duration: 0.9 },    // E4
+      { freq: 392.00, duration: 0.5 },    // G4
+      { freq: 440.00, duration: 1.2 }     // A4
+    ],
+    bassPattern: [
+      { freq: 82.41, duration: 0.4 },     // E2
+      { freq: 98.00, duration: 0.3 },     // G2
+      { freq: 110.00, duration: 0.4 },    // A2
+      { freq: 130.81, duration: 0.3 }     // C3
+    ]
+  },
+  epic: {
+    name: "Epic Adventure",
+    melodyWave: 'sawtooth',
+    bassWave: 'sawtooth',
+    padWave: 'sine',
+    percussionTypes: ['epicKick', 'epicSnare', 'cymbal'],
+    melodyPattern: [
+      { freq: 130.81, duration: 0.4 },    // C3
+      { freq: 164.81, duration: 0.4 },    // E3
+      { freq: 196.00, duration: 0.8 },    // G3
+      { freq: 220.00, duration: 0.4 },    // A3
+      { freq: 261.63, duration: 0.4 },    // C4
+      { freq: 329.63, duration: 0.6 },    // E4
+      { freq: 392.00, duration: 0.4 },    // G4
+      { freq: 523.25, duration: 0.8 }     // C5
+    ],
+    bassPattern: [
+      { freq: 55.00, duration: 0.3 },     // A1
+      { freq: 65.41, duration: 0.25 },    // C2
+      { freq: 73.42, duration: 0.3 },     // D2
+      { freq: 87.31, duration: 0.25 }     // F2
+    ]
+  }
+};
+
+function createBackgroundMusic(screen = 'menu') {
+  if (!audioContext || config.musicVolume === 0) return;
+  
+  // Clean up any existing music
+  stopBackgroundMusic();
+  
+  console.log(`Creating ${config.musicType} music for ${screen} screen...`);
+  
+  // Set base BPM based on screen
+  let baseBPM = 120; // Slower for menu
+  let noteInterval = 500; // Default interval (500ms = 120 BPM)
+  
+  if (screen === 'game') {
+    baseBPM = 180; // Faster for game
+    noteInterval = 333; // 333ms ≈ 180 BPM (60000 / 180)
+  }
+  
+  // Variables to control tempo
+  let currentNoteInterval = noteInterval;
+  let beatCount = 0;
+  
+  // Get current music style
+  const style = MUSIC_STYLES[config.musicType];
+  const melodyPattern = style.melodyPattern;
+  const bassPattern = style.bassPattern;
+  
+  // Main melody oscillator (continuous background pad)
+  const padOscillator = audioContext.createOscillator();
+  const padGain = audioContext.createGain();
+  padOscillator.connect(padGain);
+  padGain.connect(audioContext.destination);
+  padOscillator.type = style.padWave;
+  padOscillator.frequency.setValueAtTime(220, audioContext.currentTime); // A3
+  
+  const masterVolume = config.musicVolume * 0.6; // TWICE AS LOUD (was 0.3)
+  
+  padGain.gain.setValueAtTime(masterVolume * 0.1, audioContext.currentTime);
+  
+  // Start the pad
+  padOscillator.start();
+  backgroundMusicOscillators.push(padOscillator);
+  backgroundMusicGains.push(padGain);
+  
+  // Function to play a melodic note
+  function playMelodyNote(noteIndex) {
+    if (config.musicVolume === 0) return;
+    
+    const note = melodyPattern[noteIndex % melodyPattern.length];
+    const time = audioContext.currentTime;
+    
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.setValueAtTime(note.freq, time);
+    oscillator.type = style.melodyWave;
+    
+    const noteVolume = masterVolume * 0.25;
+    gainNode.gain.setValueAtTime(0, time);
+    gainNode.gain.linearRampToValueAtTime(noteVolume, time + 0.05);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, time + note.duration);
+    
+    oscillator.start(time);
+    oscillator.stop(time + note.duration);
+    
+    // Gently change the pad frequency based on melody
+    if (noteIndex % 4 === 0) {
+      padOscillator.frequency.linearRampToValueAtTime(
+        note.freq * 0.5, // One octave lower
+        time + 0.1
+      );
+    }
+  }
+  
+  // Function to play bass note
+  function playBassNote(bassIndex) {
+    if (config.musicVolume === 0) return;
+    
+    const bass = bassPattern[bassIndex % bassPattern.length];
+    const time = audioContext.currentTime;
+    
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.setValueAtTime(bass.freq, time);
+    oscillator.frequency.exponentialRampToValueAtTime(bass.freq * 0.8, time + 0.05);
+    oscillator.type = style.bassWave;
+    
+    const bassVolume = masterVolume * 0.35;
+    gainNode.gain.setValueAtTime(bassVolume, time);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, time + bass.duration);
+    
+    oscillator.start(time);
+    oscillator.stop(time + bass.duration);
+  }
+  
+  // Function to play percussion based on style
+  function playPercussion(percIndex) {
+    if (config.musicVolume === 0) return;
+    
+    const time = audioContext.currentTime;
+    const percType = style.percussionTypes[percIndex % style.percussionTypes.length];
+    
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    let freq, duration, waveType, volume;
+    
+    switch(percType) {
+      case 'kick':
+        freq = 80;
+        duration = 0.1;
+        waveType = 'sine';
+        volume = masterVolume * 0.4;
+        oscillator.frequency.exponentialRampToValueAtTime(freq * 0.5, time + 0.1);
+        break;
+      case 'snare':
+        freq = 200;
+        duration = 0.15;
+        waveType = 'triangle';
+        volume = masterVolume * 0.2;
+        break;
+      case 'hat':
+        freq = 800;
+        duration = 0.05;
+        waveType = 'square';
+        volume = masterVolume * 0.15;
+        break;
+      case 'beep': // Retro style
+        freq = 1000;
+        duration = 0.08;
+        waveType = 'square';
+        volume = masterVolume * 0.2;
+        break;
+      case 'blip': // Retro style
+        freq = 1200;
+        duration = 0.05;
+        waveType = 'sawtooth';
+        volume = masterVolume * 0.15;
+        break;
+      case 'zap': // Retro style
+        freq = 600;
+        duration = 0.12;
+        waveType = 'square';
+        volume = masterVolume * 0.25;
+        oscillator.frequency.exponentialRampToValueAtTime(300, time + 0.1);
+        break;
+      case 'softKick': // Chill style
+        freq = 60;
+        duration = 0.15;
+        waveType = 'sine';
+        volume = masterVolume * 0.3;
+        break;
+      case 'chillSnare': // Chill style
+        freq = 150;
+        duration = 0.2;
+        waveType = 'triangle';
+        volume = masterVolume * 0.15;
+        break;
+      case 'shaker': // Chill style
+        freq = 500;
+        duration = 0.1;
+        waveType = 'sine';
+        volume = masterVolume * 0.1;
+        break;
+      case 'epicKick': // Epic style
+        freq = 50;
+        duration = 0.2;
+        waveType = 'sine';
+        volume = masterVolume * 0.5;
+        oscillator.frequency.exponentialRampToValueAtTime(30, time + 0.15);
+        break;
+      case 'epicSnare': // Epic style
+        freq = 180;
+        duration = 0.25;
+        waveType = 'sawtooth';
+        volume = masterVolume * 0.3;
+        break;
+      case 'cymbal': // Epic style
+        freq = 1200;
+        duration = 0.3;
+        waveType = 'sine';
+        volume = masterVolume * 0.2;
+        gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.5);
+        duration = 0.5;
+        break;
+    }
+    
+    oscillator.frequency.setValueAtTime(freq, time);
+    oscillator.type = waveType;
+    
+    gainNode.gain.setValueAtTime(volume, time);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, time + duration);
+    
+    oscillator.start(time);
+    oscillator.stop(time + duration);
+  }
+  
+  // Function to play a full musical beat
+  function playBeat() {
+    const beatIndex = beatCount % 8; // 8-beat pattern
+    
+    // Play percussion on every beat
+    playPercussion(beatCount % style.percussionTypes.length);
+    
+    // Play bass on beats 0, 2, 4, 6
+    if (beatIndex % 2 === 0) {
+      playBassNote(Math.floor(beatCount / 2) % bassPattern.length);
+    }
+    
+    // Play melody on beats 0, 3, 5, 7 (creating a nice pattern)
+    if (beatIndex === 0 || beatIndex === 3 || beatIndex === 5 || beatIndex === 7) {
+      playMelodyNote(Math.floor(beatCount / 2) % melodyPattern.length);
+    }
+    
+    beatCount++;
+  }
+  
+  // Start the beat interval
+  beatInterval = setInterval(playBeat, currentNoteInterval);
+  
+  // Play initial beat
+  setTimeout(() => {
+    playBeat();
+  }, 100);
+  
+  isMusicPlaying = true;
+  console.log(`${style.name} music started at ${baseBPM} BPM`);
+  
+  // Return function to update tempo (for game screen)
+  return {
+    updateTempo: function(newBPM) {
+      if (newBPM < 120) newBPM = 120;
+      if (newBPM > 300) newBPM = 300;
+      
+      const newInterval = 60000 / newBPM;
+      
+      if (Math.abs(newInterval - currentNoteInterval) > 10) { // Only update if significant change
+        currentNoteInterval = newInterval;
+        
+        if (beatInterval) {
+          clearInterval(beatInterval);
+          beatInterval = setInterval(playBeat, currentNoteInterval);
+        }
+        
+        console.log(`Tempo updated to ${newBPM} BPM`);
+      }
+    },
+    getCurrentBPM: function() {
+      return Math.round(60000 / currentNoteInterval);
+    },
+    getMusicType: function() {
+      return config.musicType;
+    }
+  };
+}
+
+function updateGameTempo() {
+  if (!tempoController || gameEnded) return;
+  
+  // Calculate tempo based on time left
+  const timeLeftPercentage = timeLeft / config.time;
+  let targetBPM;
+  
+  if (timeLeftPercentage > 0.5) {
+    // First half: 180-200 BPM
+    targetBPM = 180 + (20 * (1 - timeLeftPercentage) * 2);
+  } else if (timeLeftPercentage > 0.2) {
+    // Middle: 200-240 BPM
+    targetBPM = 200 + (40 * (0.5 - timeLeftPercentage) * 1.666);
+  } else {
+    // Last 20%: 240-280 BPM (getting faster as time runs out)
+    targetBPM = 240 + (40 * (0.2 - timeLeftPercentage) * 5);
+  }
+  
+  // Ensure BPM stays in reasonable range
+  targetBPM = Math.min(Math.max(targetBPM, 120), 280);
+  
+  tempoController.updateTempo(targetBPM);
+}
+
+function stopBackgroundMusic() {
+  // Stop all oscillators
+  backgroundMusicOscillators.forEach(osc => {
+    try {
+      osc.stop();
+    } catch(e) {
+      // Already stopped
+    }
+  });
+  
+  // Clear intervals
+  if (beatInterval) {
+    clearInterval(beatInterval);
+    beatInterval = null;
+  }
+  
+  // Reset arrays
+  backgroundMusicOscillators = [];
+  backgroundMusicGains = [];
+  
+  // Reset tempo controller
+  tempoController = null;
+  
+  isMusicPlaying = false;
+  console.log("Background music stopped");
+}
+
+function updateMusicVolume() {
+  if (backgroundMusicGains.length > 0 && audioContext) {
+    const masterVolume = config.musicVolume * 0.6; // TWICE AS LOUD (was 0.3)
+    
+    // Update gain nodes
+    backgroundMusicGains.forEach(gainNode => {
+      if (gainNode) {
+        gainNode.gain.setValueAtTime(masterVolume * 0.1, audioContext.currentTime);
+      }
+    });
+    
+    console.log("Music volume updated to:", config.musicVolume, "Style:", config.musicType);
+  }
+}
+
+/* ================= SOUND FUNCTIONS ================= */
+function initAudio() {
+  console.log("Initializing audio...");
+  
+  if (audioInitialized) {
+    console.log("Audio already initialized");
+    return;
+  }
+  
+  try {
+    // Initialize AudioContext for sound effects
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    audioInitialized = true;
+    console.log("Audio initialized successfully");
+  } catch (error) {
+    console.error("Audio initialization error:", error);
+  }
+}
+
+function playLinkSound(pathLength) {
+  if (config.uiVolume === 0 || !audioContext) return;
+  
+  // Stop any existing sound
+  if (currentOscillator) {
+    currentOscillator.stop();
+  }
+  
+  // Calculate frequency based on path length (increases with longer words)
+  const baseFreq = 300;
+  const freqIncrement = 50;
+  const frequency = baseFreq + (pathLength * freqIncrement);
+  
+  // Create oscillator and gain node
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+  
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  
+  // Configure the sound
+  oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+  oscillator.type = 'sine';
+  
+  // Apply volume from config
+  const volume = config.uiVolume * 0.15; // Scale down for linking sound
+  
+  // Quick attack, short sustain, quick release
+  gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+  gainNode.gain.linearRampToValueAtTime(volume, audioContext.currentTime + 0.02);
+  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+  
+  oscillator.start(audioContext.currentTime);
+  oscillator.stop(audioContext.currentTime + 0.12);
+  
+  currentOscillator = oscillator;
+}
+
+function playSound(type) {
+  if (config.uiVolume === 0 || !audioContext) return;
+  
+  let frequency, duration, waveType;
+  
+  switch(type) {
+    case 'good':
+      frequency = 1200;
+      duration = 0.3;
+      waveType = 'sine';
+      vibrate([100, 50, 100]);
+      break;
+    case 'bad':
+      // Lower pitched thud sound for incorrect words
+      frequency = 120;  // Much lower frequency for thud
+      duration = 0.4;   // Slightly longer
+      waveType = 'sine'; // Pure sine for thud
+      vibrate(200);
+      break;
+    case 'better':
+      frequency = 800;
+      duration = 0.4;
+      waveType = 'sine';
+      vibrate([50, 100, 50, 100]);
+      break;
+    case 'warning':
+      frequency = 600;
+      duration = 0.2;
+      waveType = 'square';
+      vibrate(100);
+      break;
+    case 'score':
+      frequency = 1500;
+      duration = 0.2;
+      waveType = 'sine';
+      vibrate(50);
+      break;
+    default:
+      frequency = 800;
+      duration = 0.1;
+      waveType = 'sine';
+  }
+  
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+  
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  
+  oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+  oscillator.type = waveType;
+  
+  // Apply volume from config
+  const volume = config.uiVolume * 0.3;
+  
+  gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+  
+  oscillator.start(audioContext.currentTime);
+  oscillator.stop(audioContext.currentTime + duration);
+}
+
+/* ================= GAME LOGIC ================= */
+function startGame() {
+  // Reset game state
+  gameEnded = false;
+  wordData.clear();
+  
+  // Initialize audio if needed
+  if (!audioInitialized) {
+    initAudio();
+  }
+  
+  // Start game music with faster tempo
+  if (config.musicVolume > 0) {
+    tempoController = createBackgroundMusic('game');
+  }
+  
+  // Generate board based on grid size
+  const dice = config.gridSize === 4 ? DICE_4x4 : DICE_5x5;
+  const totalTiles = config.gridSize * config.gridSize;
+  
+  board = [...dice].sort(()=>Math.random()-.5).map(x => {
+    let c = x[Math.floor(Math.random()*x.length)];
+    return c==="Q"?"Qu":c;
+  }).slice(0, totalTiles);
+  
+  generateSpecialTiles();
+  
+  // Save board for review
+  saveBoardForReview();
+  
+  // Reset game state
+  foundWords.clear();
+  timeLeft = config.time;
+  startTime = Date.now();
+  path = [];
+  currentScore = 0;
+  
+  // Render board
+  renderBoard(UI.board);
+  
+  // Reset UI
+  UI.score.textContent = "0";
+  UI.time.textContent = timeLeft;
+  UI.time.style.color = '';
+  UI.currentWord.textContent = "";
+  
+  // Show game screen
+  showScreen('game-ui');
+  
+  // Setup canvas
+  UI.canvas.width = UI.board.clientWidth;
+  UI.canvas.height = UI.board.clientHeight;
+
+  // Start timer
+  if(timerInt) clearInterval(timerInt);
+  timerInt = setInterval(() => {
+    timeLeft--;
+    UI.time.textContent = timeLeft;
+    
+    if (timeLeft <= 10) {
+      UI.time.style.color = '#ef4444';
+      if (timeLeft <= 5 && timeLeft > 0) {
+        playSound('warning');
+      }
+    }
+    
+    // Update music tempo based on time left
+    if (tempoController && timeLeft < config.time) {
+      updateGameTempo();
+    }
+    
+    if(timeLeft <= 0) endGame();
+  }, 1000);
+}
+
+function saveBoardForReview() {
+  // Save board and multipliers for review
+  localStorage.setItem('boggle_review_board', JSON.stringify(board));
+  localStorage.setItem('boggle_review_mults', JSON.stringify(mults));
+}
+
+function generateSpecialTiles() {
+  const totalTiles = config.gridSize * config.gridSize;
+  mults = new Array(totalTiles).fill("");
+  
+  const numSpecial = Math.floor(Math.random() * 3) + (config.gridSize === 4 ? 2 : 4);
+  const specialIndices = [];
+  
+  while (specialIndices.length < numSpecial) {
+    const idx = Math.floor(Math.random() * totalTiles);
+    if (!specialIndices.includes(idx)) {
+      specialIndices.push(idx);
+    }
+  }
+  
+  for (let i = 0; i < specialIndices.length; i++) {
+    const mult = MULTS[Math.floor(Math.random() * MULTS.length)];
+    mults[specialIndices[i]] = mult;
+  }
+}
+
+function renderBoard(target) {
+  target.innerHTML = "";
+  target.style.gridTemplateColumns = `repeat(${config.gridSize}, 1fr)`;
+  
+  board.forEach((l, i) => {
+    let t = document.createElement('div');
+    t.className = 'tile';
+    
+    if (mults[i]) {
+      t.classList.add(mults[i]);
+    }
+    
+    t.textContent = l;
+    t.dataset.i = i;
+    
+    if(mults[i]) {
+      let m = document.createElement('div');
+      m.className = `mult ${mults[i]}`;
+      m.textContent = mults[i];
+      t.appendChild(m);
+    }
+    
+    target.appendChild(t);
+  });
+}
+
+/* ================= INPUT HANDLING ================= */
+let swiping = false;
+
+function tileAt(x, y) {
+  for(let t of document.querySelectorAll('#board .tile')) {
+    let r = t.getBoundingClientRect();
+    let cx = r.left + r.width/2;
+    let cy = r.top + r.height/2;
+    let radius = (r.width/2) * 0.7; 
+    
+    let dist = Math.hypot(x - cx, y - cy);
+    if(dist < radius) return +t.dataset.i;
+  }
+  return null;
+}
+
+const handleStart = (e) => {
+  e.preventDefault();
+  swiping = true;
+  path = [];
+  const x = e.clientX || e.touches[0].clientX;
+  const y = e.clientY || e.touches[0].clientY;
+  let i = tileAt(x, y);
+  if(i!==null) {
+    addToPath(i);
+  }
+};
+
+const handleMove = (e) => {
+  if(!swiping) return;
+  e.preventDefault();
+  const x = e.clientX || e.touches[0].clientX;
+  const y = e.clientY || e.touches[0].clientY;
+  
+  let i = tileAt(x, y);
+  
+  if(i!==null) {
+    let last = path[path.length-1];
+    if(i !== last) {
+      let size = config.gridSize;
+      let r1=Math.floor(last/size), c1=last%size, r2=Math.floor(i/size), c2=i%size;
+      if(Math.abs(r1-r2)<=1 && Math.abs(c1-c2)<=1) {
+        if(!path.includes(i)) {
+          addToPath(i);
+          // Play linking sound with increasing pitch based on word length
+          playLinkSound(path.length);
+          // Gentle vibration for tile connection
+          vibrate(10);
+        }
+        else if(path.length>1 && i === path[path.length-2]) popPath();
+      }
+    }
+  }
+};
+
+const handleEnd = () => {
+  if(!swiping) return;
+  swiping = false;
+  submitWord();
+  clearPath();
+};
+
+function addToPath(i) {
+  path.push(i);
+  const tile = document.querySelector(`.tile[data-i="${i}"]`);
+  tile.classList.add('active');
+  drawPath();
+  UI.currentWord.textContent = path.map(k=>board[k]).join("").toUpperCase();
+}
+
+function popPath() {
+  let i = path.pop();
+  const tile = document.querySelector(`.tile[data-i="${i}"]`);
+  tile.classList.remove('active');
+  drawPath();
+  UI.currentWord.textContent = path.map(k=>board[k]).join("").toUpperCase();
+}
+
+function clearPath() {
+  path.forEach(i => {
+    const tile = document.querySelector(`.tile[data-i="${i}"]`);
+    if (tile) {
+      tile.classList.remove('active');
+    }
+  });
+  path = [];
+  drawPath();
+  UI.currentWord.textContent = "";
+}
+
+function drawPath() {
+  const ctx = UI.canvas.getContext('2d');
+  UI.canvas.width = UI.board.clientWidth; 
+  UI.canvas.height = UI.board.clientHeight;
+  ctx.clearRect(0, 0, UI.canvas.width, UI.canvas.height);
+  
+  if (path.length < 2) return;
+  
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  
+  for (let n = 0; n < path.length; n++) {
+    const idx = path[n];
+    const t = document.querySelector(`.tile[data-i="${idx}"]`);
+    if (!t) continue;
+    const tr = t.getBoundingClientRect();
+    const br = UI.board.getBoundingClientRect();
+    const x = tr.left - br.left + tr.width / 2;
+    const y = tr.top - br.top + tr.height / 2;
+    
+    if (n === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  }
+  
+  ctx.stroke();
+}
+
+/* ================= SCORING LOGIC ================= */
+function submitWord() {
+  let w = path.map(i=>board[i]).join("").toUpperCase();
+  if(w.length < config.minLen) return;
+  
+  // Calculate score for this specific path
+  let newScore = calcScore(w, path);
+  
+  // Check which multipliers were used in this path
+  let multipliersUsed = [];
+  for (let i = 0; i < path.length; i++) {
+    const tileIndex = path[i];
+    if (mults[tileIndex]) {
+      multipliersUsed.push({
+        type: mults[tileIndex],
+        position: tileIndex
+      });
+    }
+  }
+  
+  if(foundWords.has(w)) {
+    // Word already found - check if this path scores higher
+    let oldScore = foundWords.get(w);
+    
+    if (newScore > oldScore) {
+      // Higher score found! Update the score
+      foundWords.set(w, newScore);
+      wordData.set(w, {score: newScore, path: [...path], multipliersUsed: multipliersUsed});
+      
+      // Update total score
+      currentScore = currentScore - oldScore + newScore;
+      UI.score.textContent = currentScore;
+      
+      // Visual feedback with purple flash
+      flash('better');
+      playSound('better');
+      
+      // Create particles from the center of the board
+      const boardRect = UI.board.getBoundingClientRect();
+      const centerX = boardRect.left + boardRect.width / 2;
+      const centerY = boardRect.top + boardRect.height / 2;
+      createParticles(centerX, centerY, '#8b5cf6', newScore);
+      
+      // Update high score if needed
+      if (currentScore > getAllTimeHighScore()) {
+        setAllTimeHighScore(currentScore);
+        UI.highScoreDisplay.textContent = currentScore;
+      }
+      
+      // Score animation
+      UI.score.style.transform = 'scale(1.2)';
+      UI.score.style.color = '#8b5cf6';
+      setTimeout(() => {
+        UI.score.style.transform = 'scale(1)';
+        UI.score.style.color = '';
+      }, 200);
+      
+      console.log(`Better path found for "${w}": ${oldScore} → ${newScore} points`);
+    } else {
+      // Same word with same or lower score
+      flash('repeat');
+      playSound('bad'); // Uses the new thud sound
+    }
+  } else if(dict.has(w)) {
+    // New valid word
+    foundWords.set(w, newScore);
+    wordData.set(w, {score: newScore, path: [...path], multipliersUsed: multipliersUsed});
+    
+    // Update word count in lifetime stats
+    updateWordLifetimeCount(w);
+    
+    // Update Score
+    currentScore += newScore;
+    UI.score.textContent = currentScore;
+    
+    // Visual feedback
+    flash('good');
+    playSound('good');
+    
+    // Create particles from the tiles
+    path.forEach(i => {
+      const tile = document.querySelector(`.tile[data-i="${i}"]`);
+      if (tile) {
+        const rect = tile.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        createParticles(centerX, rect.top + 20, '#22c55e', newScore);
+      }
+    });
+    
+    // Score animation
+    UI.score.style.transform = 'scale(1.2)';
+    UI.score.style.color = '#22c55e';
+    setTimeout(() => {
+      UI.score.style.transform = 'scale(1)';
+      UI.score.style.color = '';
+    }, 200);
+    
+    // Update high score if needed
+    if (currentScore > getAllTimeHighScore()) {
+      setAllTimeHighScore(currentScore);
+      UI.highScoreDisplay.textContent = currentScore;
+    }
+  } else {
+    // Invalid word
+    flash('bad');
+    playSound('bad'); // Uses the new thud sound
+  }
+}
+
+function calcScore(w, idxs) {
+  if (config.scoring === "traditional") {
+    let len = w.length;
+    let pts = len<=4?1 : len===5?2 : len===6?3 : len===7?5 : 11;
+    
+    idxs.forEach(i => {
+      if(mults[i]==="DL") pts+=1;
+      if(mults[i]==="TL") pts+=2;
+      if(mults[i]==="DW") pts*=2;
+      if(mults[i]==="TW") pts*=3;
+    });
+    return pts;
+  } else {
+    let pts = 0;
+    let wordMultiplier = 1;
+    
+    for (let j = 0; j < idxs.length; j++) {
+      const i = idxs[j];
+      let letter = board[i].toUpperCase();
+      let letterValue = LETTER_VALUES[letter] || 1;
+      
+      if (mults[i] === "DL") {
+        letterValue *= 2;
+      } else if (mults[i] === "TL") {
+        letterValue *= 3;
+      }
+      
+      if (mults[i] === "DW") {
+        wordMultiplier *= 2;
+      } else if (mults[i] === "TW") {
+        wordMultiplier *= 3;
+      }
+      
+      pts += letterValue;
+    }
+    
+    pts *= wordMultiplier;
+    
+    if (w.length >= 8) pts += 10;
+    
+    return Math.max(pts, 1);
+  }
+}
+
+function flash(cls) {
+  path.forEach(i => {
+    let t = document.querySelector(`.tile[data-i="${i}"]`);
+    t.classList.add(cls);
+    setTimeout(() => {
+      t.classList.remove(cls);
+    }, 400);
+  });
+}
+
+/* ================= LIFETIME WORD COUNT ================= */
+function getWordLifetimeCount(word) {
+  const key = `boggle_wordcount_${word.toLowerCase()}`;
+  return parseInt(localStorage.getItem(key) || 0);
+}
+
+function updateWordLifetimeCount(word) {
+  const key = `boggle_wordcount_${word.toLowerCase()}`;
+  const currentCount = getWordLifetimeCount(word);
+  localStorage.setItem(key, currentCount + 1);
+}
+
+/* ================= DAILY HIGH SCORE ================= */
+function getTodayDateString() {
+  const today = new Date();
+  return `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+}
+
+function getTodayHighScore() {
+  const today = getTodayDateString();
+  const key = `boggle_daily_high_${today}`;
+  return parseInt(localStorage.getItem(key) || 0);
+}
+
+function setTodayHighScore(score) {
+  const today = getTodayDateString();
+  const key = `boggle_daily_high_${today}`;
+  const currentHigh = getTodayHighScore();
+  if (score > currentHigh) {
+    localStorage.setItem(key, score);
+  }
+}
+
+/* ================= ENHANCED END GAME ================= */
+function endGame() {
+  if (gameEnded) return; // Prevent multiple calls
+  gameEnded = true;
+  
+  clearInterval(timerInt);
+  
+  // Show celebration
+  showCelebration();
+  
+  // Stop background music
+  stopBackgroundMusic();
+  
+  // Set today's high score
+  setTodayHighScore(currentScore);
+  
+  // Calculate time used
+  const timeUsed = config.time - timeLeft;
+  
+  // Update game over screen
+  UI.finalScore.textContent = currentScore;
+  UI.statWords.textContent = foundWords.size;
+  UI.statTime.textContent = timeUsed + 's';
+  UI.statAvg.textContent = (foundWords.size > 0 ? (currentScore / foundWords.size).toFixed(1) : '0.0');
+  
+  // Update score comparisons
+  const todayHigh = getTodayHighScore();
+  const allTimeHigh = getAllTimeHighScore();
+  
+  UI.comparisonCurrent.textContent = currentScore;
+  UI.comparisonToday.textContent = todayHigh;
+  UI.comparisonAlltime.textContent = allTimeHigh;
+  
+  // Create celebration particles
+  const screenWidth = window.innerWidth;
+  const screenHeight = window.innerHeight;
+  
+  // Create multiple particle bursts
+  for (let i = 0; i < 5; i++) {
+    const x = Math.random() * screenWidth;
+    const y = Math.random() * screenHeight;
+    const colors = ['#0ea5e9', '#22c55e', '#8b5cf6', '#fbbf24', '#ec4899'];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    createParticles(x, y, color, 0);
+  }
+  
+  // Special particles for final score
+  const centerX = screenWidth / 2;
+  const centerY = screenHeight / 2;
+  createParticles(centerX, centerY, '#22c55e', currentScore);
+  
+  vibrate([100, 50, 100, 50, 100]);
+  
+  // Generate enhanced end-game summary
+  generatePerformanceRating();
+  generateWordLengthDistribution();
+  generateBoardReview();
+  generateMissedOpportunities();
+  generateWordList();
+  
+  // Show game over screen
+  showScreen('game-over');
+}
+
+function generatePerformanceRating() {
+  // Calculate performance based on score relative to board size and time
+  const maxPossible = config.gridSize * config.gridSize * 25; // Rough estimate
+  const scoreRatio = currentScore / maxPossible;
+  
+  let rating, desc, color;
+  
+  if (scoreRatio > 0.7) {
+    rating = "A+";
+    desc = "Exceptional!";
+    color = "#fbbf24";
+  } else if (scoreRatio > 0.5) {
+    rating = "A";
+    desc = "Excellent!";
+    color = "#22c55e";
+  } else if (scoreRatio > 0.35) {
+    rating = "B";
+    desc = "Great Job!";
+    color = "#0ea5e9";
+  } else if (scoreRatio > 0.2) {
+    rating = "C";
+    desc = "Good Effort";
+    color = "#8b5cf6";
+  } else if (scoreRatio > 0.1) {
+    rating = "D";
+    desc = "Keep Practicing";
+    color = "#ec4899";
+  } else {
+    rating = "F";
+    desc = "Try Again";
+    color = "#ef4444";
+  }
+  
+  UI.ratingLetter.textContent = rating;
+  UI.ratingLetter.style.color = color;
+  UI.ratingDesc.textContent = desc;
+  UI.ratingDesc.style.color = color;
+}
+
+function generateWordLengthDistribution() {
+  // Count words by length
+  const lengthCounts = {};
+  
+  for (const word of foundWords.keys()) {
+    const length = word.length;
+    lengthCounts[length] = (lengthCounts[length] || 0) + 1;
+  }
+  
+  // Find max count for scaling
+  const maxCount = Math.max(...Object.values(lengthCounts), 1);
+  
+  // Clear previous bars
+  UI.lengthBars.innerHTML = '';
+  
+  // Create bars for lengths 3-10+
+  for (let len = 3; len <= 10; len++) {
+    const count = lengthCounts[len] || 0;
+    const height = (count / maxCount) * 80; // 80px max height
+    
+    const bar = document.createElement('div');
+    bar.className = 'length-bar';
+    bar.style.height = `${height}px`;
+    
+    const countEl = document.createElement('div');
+    countEl.className = 'length-count';
+    countEl.textContent = count;
+    
+    const labelEl = document.createElement('div');
+    labelEl.className = 'length-label';
+    labelEl.textContent = len === 10 ? '10+' : len;
+    
+    bar.appendChild(countEl);
+    bar.appendChild(labelEl);
+    UI.lengthBars.appendChild(bar);
+  }
+}
+
+function generateBoardReview() {
+  // Get saved board data
+  const savedBoard = JSON.parse(localStorage.getItem('boggle_review_board') || '[]');
+  const savedMults = JSON.parse(localStorage.getItem('boggle_review_mults') || '[]');
+  
+  if (savedBoard.length === 0) return;
+  
+  // Clear previous board
+  UI.reviewBoard.innerHTML = '';
+  UI.reviewBoard.style.gridTemplateColumns = `repeat(${config.gridSize}, 1fr)`;
+  
+  // Create review tiles
+  savedBoard.forEach((letter, index) => {
+    const tile = document.createElement('div');
+    tile.className = 'review-tile';
+    
+    if (savedMults[index]) {
+      tile.classList.add(savedMults[index]);
+    }
+    
+    tile.textContent = letter;
+    
+    // Add multiplier badge if exists
+    if (savedMults[index]) {
+      const multBadge = document.createElement('div');
+      multBadge.className = 'review-mult';
+      multBadge.textContent = savedMults[index];
+      tile.appendChild(multBadge);
+    }
+    
+    UI.reviewBoard.appendChild(tile);
+  });
+}
+
+function generateMissedOpportunities() {
+  // Find the longest word found
+  let longestFound = '';
+  let longestLength = 0;
+  
+  for (const word of foundWords.keys()) {
+    if (word.length > longestLength) {
+      longestLength = word.length;
+      longestFound = word;
+    }
+  }
+  
+  // Check if longest word is >= 8 letters
+  if (longestLength >= 8) {
+    UI.missedMessage.innerHTML = `
+      Great job finding long words! Your longest word was 
+      <span style="color:#fbbf24; font-weight:700;">${longestFound.toUpperCase()}</span> 
+      (${longestLength} letters).
+    `;
+    UI.longestWordHint.style.display = 'none';
+  } else {
+    // Suggest looking for longer words
+    UI.missedMessage.innerHTML = `
+      Try finding longer words next time! Your longest word was 
+      <span style="color:#fbbf24; font-weight:700;">${longestFound.toUpperCase() || 'none'}</span> 
+      (${longestLength} letters). Words with 8+ letters score big points!
+    `;
+    
+    // Generate a fake long word for demonstration (in a real game, you'd analyze the board)
+    if (foundWords.size > 0) {
+      // Pick a random word and extend it
+      const words = Array.from(foundWords.keys());
+      const randomWord = words[Math.floor(Math.random() * words.length)];
+      const fakeLongWord = randomWord + 'ING'; // Simple extension
+      
+      if (fakeLongWord.length >= 8 && dict.has(fakeLongWord)) {
+        UI.longestWordText.textContent = fakeLongWord.toUpperCase();
+        UI.longestWordScore.textContent = calcScore(fakeLongWord, [0,1,2,3,4,5,6,7]); // Fake path
+        
+        // Generate a fake path visualization
+        generatePathHint(fakeLongWord);
+        
+        UI.longestWordHint.style.display = 'block';
+      } else {
+        UI.longestWordHint.style.display = 'none';
+      }
+    } else {
+      UI.longestWordHint.style.display = 'none';
+    }
+  }
+}
+
+function generatePathHint(word) {
+  // Create a simple grid visualization
+  const size = config.gridSize;
+  UI.pathHint.innerHTML = '';
+  
+  // Create rows
+  for (let row = 0; row < size; row++) {
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'path-row';
+    
+    for (let col = 0; col < size; col++) {
+      const tileDiv = document.createElement('div');
+      tileDiv.className = 'path-tile';
+      
+      // Place letters from the word on the path
+      const index = row * size + col;
+      if (index < word.length) {
+        tileDiv.textContent = word[index].toUpperCase();
+        tileDiv.classList.add('highlight');
+      }
+      
+      rowDiv.appendChild(tileDiv);
+    }
+    
+    UI.pathHint.appendChild(rowDiv);
+  }
+}
+
+function generateWordList() {
+  // Sort words by score (highest first)
+  const sortedWords = Array.from(wordData.entries())
+    .sort((a, b) => b[1].score - a[1].score);
+  
+  UI.wordList.innerHTML = '';
+  
+  sortedWords.forEach(([word, data], index) => {
+    const lifetimeCount = getWordLifetimeCount(word);
+    
+    const wordItem = document.createElement('div');
+    wordItem.className = 'word-item';
+    wordItem.style.animationDelay = `${index * 0.05}s`;
+    
+    // Create multiplier badges for each multiplier used
+    let multiplierBadges = '';
+    if (data.multipliersUsed && data.multipliersUsed.length > 0) {
+      // Get unique multiplier types
+      const uniqueMultipliers = [...new Set(data.multipliersUsed.map(m => m.type))];
+      multiplierBadges = uniqueMultipliers.map(mult => 
+        `<span class="special-multiplier ${mult}" title="${mult} multiplier used">${mult}</span>`
+      ).join('');
+    }
+    
+    wordItem.innerHTML = `
+      <div class="word-text">${word.toUpperCase()}</div>
+      <div class="word-stats">
+        ${multiplierBadges}
+        ${lifetimeCount > 1 ? `<div class="word-count">×${lifetimeCount}</div>` : ''}
+        <div class="word-score">${data.score}</div>
+      </div>
+    `;
+    
+    UI.wordList.appendChild(wordItem);
+  });
+}
+
+function quitGame() {
+  if (confirm("End current game and see your results?")) {
+    endGame();
+  }
+}
+
+function playAgain() {
+  // Reset game state
+  gameEnded = false;
+  wordData.clear();
+  
+  // Restart game music with faster tempo
+  if (config.musicVolume > 0) {
+    tempoController = createBackgroundMusic('game');
+  }
+  
+  // Start new game with same settings
+  startGame();
+}
+
+/* ================= HIGH SCORE MANAGEMENT ================= */
+function getAllTimeHighScore() {
+  const key = `boggle_highscore_${config.gridSize}x${config.gridSize}`;
+  return parseInt(localStorage.getItem(key) || 0);
+}
+
+function setAllTimeHighScore(score) {
+  const key = `boggle_highscore_${config.gridSize}x${config.gridSize}`;
+  localStorage.setItem(key, score);
+}
+
+/* ================= NAVIGATION ================= */
+function showScreen(id) {
+  const currentActive = document.querySelector('.screen.active');
+  if (currentActive) {
+    currentActive.style.opacity = '0';
+    setTimeout(() => {
+      currentActive.classList.remove('active');
+      currentActive.style.opacity = '';
+    }, 400);
+  }
+  
+  setTimeout(() => {
+    const screen = document.getElementById(id);
+    screen.classList.add('active');
+    
+    // Handle music based on screen
+    if (id === 'main-menu' && config.musicVolume > 0) {
+      // Start menu music (slower tempo)
+      tempoController = createBackgroundMusic('menu');
+    } else if (id === 'game-over' || id === 'game-ui') {
+      // Game over screen doesn't need special music handling
+      // Game UI music is already handled in startGame()
+    }
+  }, 100);
+}
+
+/* ================= VOLUME CONTROLS ================= */
+function updateVolumeSliders() {
+  const uiVolumeSlider = document.getElementById('ui-volume-slider');
+  const uiVolumeValue = document.getElementById('ui-volume-value');
+  const musicVolumeSlider = document.getElementById('music-volume-slider');
+  const musicVolumeValue = document.getElementById('music-volume-value');
+  
+  uiVolumeSlider.value = config.uiVolume * 100;
+  uiVolumeValue.textContent = Math.round(config.uiVolume * 100) + '%';
+  
+  musicVolumeSlider.value = config.musicVolume * 100;
+  musicVolumeValue.textContent = Math.round(config.musicVolume * 100) + '%';
+}
+
+/* ================= SETTINGS MANAGEMENT ================= */
+function updateSettingsUI() {
+  // Update grid size buttons
+  document.querySelectorAll('.size-btn').forEach(btn => {
+    if (parseInt(btn.dataset.size) === config.gridSize) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+  
+  // Update sliders
+  document.getElementById('time-slider').value = config.time;
+  document.getElementById('length-slider').value = config.minLen;
+  document.getElementById('scoring-toggle').checked = config.scoring === "modern";
+  
+  // Update displays
+  document.getElementById('time-value').textContent = config.time + 's';
+  document.getElementById('length-value').textContent = config.minLen;
+  
+  // Update volume sliders
+  updateVolumeSliders();
+  
+  // Update music type buttons
+  document.querySelectorAll('.music-type-btn').forEach(btn => {
+    if (btn.dataset.type === config.musicType) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+  
+  // Update high score display
+  UI.highScoreDisplay.textContent = getAllTimeHighScore();
+}
+
+function saveSettings() {
+  localStorage.setItem('boggle_cfg', JSON.stringify(config));
+}
+
+/* ================= INITIALIZATION ================= */
+async function loadDictionary() {
+  try {
+    const r = await fetch(DICT_URL);
+    const t = await r.text();
+    t.toUpperCase().split(/\s+/).forEach(w => {
+      if(w.length < 3) return;
+      dict.add(w);
+    });
+    document.getElementById('dict-status').textContent = "Dictionary Ready";
+  } catch(e) {
+    document.getElementById('dict-status').textContent = "Offline Dictionary Loaded";
+    // Add some fallback words
+    ["APPLE","PEAR","BEAR","GAME","PLAY","TIME","WORD","LETTER","BOARD","TILE",
+     "SCORE","GRID","FIND","SEARCH","PUZZLE","BRAIN","FUN","CHALLENGE"].forEach(w=>dict.add(w));
+  }
+}
+
+function setupEventListeners() {
+  // Grid size buttons
+  document.querySelectorAll('.size-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      config.gridSize = parseInt(this.dataset.size);
+      updateSettingsUI();
+      saveSettings();
+    });
+  });
+  
+  // Time slider
+  document.getElementById('time-slider').addEventListener('input', function() {
+    config.time = parseInt(this.value);
+    document.getElementById('time-value').textContent = config.time + 's';
+    saveSettings();
+  });
+  
+  // Length slider
+  document.getElementById('length-slider').addEventListener('input', function() {
+    config.minLen = parseInt(this.value);
+    document.getElementById('length-value').textContent = config.minLen;
+    saveSettings();
+  });
+  
+  // Scoring toggle
+  document.getElementById('scoring-toggle').addEventListener('change', function() {
+    config.scoring = this.checked ? "modern" : "traditional";
+    saveSettings();
+  });
+  
+  // UI Volume slider
+  document.getElementById('ui-volume-slider').addEventListener('input', function() {
+    config.uiVolume = parseInt(this.value) / 100;
+    document.getElementById('ui-volume-value').textContent = this.value + '%';
+    saveSettings();
+  });
+  
+  // Music Volume slider
+  document.getElementById('music-volume-slider').addEventListener('input', function() {
+    config.musicVolume = parseInt(this.value) / 100;
+    document.getElementById('music-volume-value').textContent = this.value + '%';
+    
+    // Update the music volume immediately
+    updateMusicVolume();
+    
+    // Handle music playback based on volume
+    const currentScreen = document.querySelector('.screen.active').id;
+    
+    if (config.musicVolume > 0) {
+      if (!isMusicPlaying) {
+        if (currentScreen === 'main-menu') {
+          tempoController = createBackgroundMusic('menu');
+        } else if (currentScreen === 'game-ui') {
+          tempoController = createBackgroundMusic('game');
+        }
+      }
+    } else if (config.musicVolume === 0 && isMusicPlaying) {
+      stopBackgroundMusic();
+    }
+    
+    saveSettings();
+  });
+  
+  // Music Type buttons
+  document.querySelectorAll('.music-type-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const musicType = this.dataset.type;
+      config.musicType = musicType;
+      
+      // Update UI
+      document.querySelectorAll('.music-type-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      
+      // Restart music if it's currently playing
+      const currentScreen = document.querySelector('.screen.active').id;
+      if (isMusicPlaying && config.musicVolume > 0) {
+        if (currentScreen === 'main-menu') {
+          tempoController = createBackgroundMusic('menu');
+        } else if (currentScreen === 'game-ui') {
+          tempoController = createBackgroundMusic('game');
+        }
+      }
+      
+      saveSettings();
+      console.log(`Music style changed to: ${MUSIC_STYLES[musicType].name}`);
+    });
+  });
+  
+  // Game board events
+  UI.board.addEventListener('mousedown', handleStart);
+  UI.board.addEventListener('touchstart', handleStart);
+  window.addEventListener('mousemove', handleMove);
+  window.addEventListener('touchmove', handleMove);
+  window.addEventListener('mouseup', handleEnd);
+  window.addEventListener('touchend', handleEnd);
+  
+  // Initialize audio on first user interaction
+  document.addEventListener('click', function initAudioOnInteraction() {
+    if (!audioInitialized) {
+      initAudio();
+    }
+    document.removeEventListener('click', initAudioOnInteraction);
+  }, { once: true });
+}
+
+function loadSettings() {
+  const saved = localStorage.getItem('boggle_cfg');
+  if(saved) {
+    const savedConfig = JSON.parse(saved);
+    config = { ...config, ...savedConfig };
+  }
+  
+  // Ensure volume values are within range
+  config.uiVolume = Math.max(0, Math.min(1, config.uiVolume || 0.7));
+  config.musicVolume = Math.max(0, Math.min(1, config.musicVolume || 0.5));
+  config.musicType = config.musicType || "synth";
+  
+  updateSettingsUI();
+}
+
+// Initialize
+loadSettings();
+loadDictionary();
+setupEventListeners();
+initParticleCanvas();
+
+// Test music function
+window.testMusic = function() {
+  console.log("Testing music system...");
+  console.log("Audio initialized:", audioInitialized);
+  console.log("Music volume:", config.musicVolume);
+  console.log("Music style:", MUSIC_STYLES[config.musicType].name);
+  console.log("Is music playing:", isMusicPlaying);
+  
+  if (audioContext) {
+    if (!isMusicPlaying) {
+      tempoController = createBackgroundMusic('menu');
+      console.log(`${MUSIC_STYLES[config.musicType].name} music started`);
+    } else {
+      stopBackgroundMusic();
+      console.log("Music stopped");
+    }
+  }
+};
+
+window.addEventListener('load', function() {
+  console.log("Boggle Party loaded with enhanced game summary!");
+  console.log("New features:");
+  console.log("- Board review section to study the board");
+  console.log("- Multiplier badges (DW, TW, DL, TL) next to words that used them");
+  console.log("- Celebration music and overlay on game end");
+  console.log("- All previous enhancements maintained");
+});
+</script>
 </body>
 </html>
