@@ -21,6 +21,7 @@
   --tw-color: #8b5cf6;
   --dl-color: #3b82f6;
   --tl-color: #ec4899;
+  --wordhunt-color: #8b5cf6;
 }
 
 * { 
@@ -61,6 +62,7 @@ body {
   padding: 20px;
   display: flex; 
   flex-direction: column; 
+ 
   background: radial-gradient(circle at top, var(--bg-mid), var(--bg-dark));
   transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none; 
@@ -126,6 +128,14 @@ body {
 .menu-btn.primary { 
   background: linear-gradient(135deg, #0ea5e9, #2563eb); 
   box-shadow: 0 6px 25px rgba(37, 99, 235, 0.3); 
+}
+.menu-btn.secondary {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  box-shadow: 0 6px 25px rgba(139, 92, 246, 0.3);
+}
+.menu-btn.wordhunt {
+  background: linear-gradient(135deg, #ec4899, #db2777);
+  box-shadow: 0 6px 25px rgba(236, 72, 153, 0.3);
 }
 .menu-btn:hover {
   transform: translateY(-2px);
@@ -290,6 +300,284 @@ input[type=range]::-webkit-slider-thumb:hover {
   font-weight: 700; 
   color: #22c55e;
   text-shadow: 0 2px 10px rgba(34, 197, 94, 0.3);
+}
+
+/* ================= STATISTICS SCREEN ================= */
+#statistics-screen {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.stats-container {
+  width: 100%;
+  max-width: 360px;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: scaleIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stats-header {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 20px;
+  background: linear-gradient(to right, #fbbf24, #f59e0b);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.stats-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.stats-section-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+}
+
+.stat-item-large {
+  grid-column: span 2;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #0ea5e9;
+}
+
+.stat-value-highlight {
+  color: #22c55e;
+  font-size: 2.5rem;
+}
+
+.stat-value-secondary {
+  color: #fbbf24;
+}
+
+/* Common Words List */
+.common-words-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 15px;
+}
+
+.common-word-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  margin: 8px 0;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  border-left: 4px solid #8b5cf6;
+}
+
+.common-word-text {
+  font-weight: 600;
+  color: #f1f5f9;
+  font-size: 1rem;
+}
+
+.common-word-count {
+  background: rgba(139, 92, 246, 0.2);
+  color: #8b5cf6;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+/* Game Mode Cards */
+.game-mode-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.game-mode-card {
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.game-mode-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: 0 8px 25px rgba(139, 92, 246, 0.2);
+}
+
+.game-mode-card.selected {
+  border-color: #8b5cf6;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.05));
+}
+
+.game-mode-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin-bottom: 8px;
+}
+
+.game-mode-description {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  line-height: 1.4;
+  margin-bottom: 15px;
+}
+
+.game-mode-details {
+  display: flex;
+  gap: 15px;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.game-mode-detail {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.game-mode-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.game-mode-icon.time {
+  background: #0ea5e9;
+}
+
+.game-mode-icon.grid {
+  background: #22c55e;
+}
+
+.game-mode-icon.words {
+  background: #8b5cf6;
+}
+
+/* Game Mode Info Panel */
+.game-mode-info {
+  padding: 15px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 20px;
+}
+
+.game-mode-info-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.game-mode-info-content {
+  font-size: 0.9rem;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+/* Word Hunt Progress Bar */
+.wordhunt-progress-container {
+  margin: 15px 0;
+}
+
+.wordhunt-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.wordhunt-progress-label {
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
+
+.wordhunt-progress-percentage {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #8b5cf6;
+}
+
+.wordhunt-progress-bar {
+  height: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.wordhunt-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+  border-radius: 6px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Achievement Badges */
+.achievement-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.achievement-badge {
+  padding: 8px 12px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.05));
+  border-radius: 20px;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.achievement-icon {
+  color: #f59e0b;
+  font-size: 1rem;
+}
+
+.achievement-text {
+  font-size: 0.8rem;
+  color: #fbbf24;
+  font-weight: 600;
 }
 
 /* ================= GAME UI ================= */
@@ -634,8 +922,143 @@ input[type=range]::-webkit-slider-thumb:hover {
   margin-top: 5px;
 }
 
-/* Performance Rating */
-.performance-rating {
+/* Game Board Display in Game Over */
+.game-board-section {
+  margin: 20px 0;
+  padding: 15px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+}
+
+.game-board-header {
+  font-size: 1.1rem;
+  color: #94a3b8;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+#game-over-board-wrap {
+  position: relative;
+  aspect-ratio: 1;
+  margin: 0 auto;
+  max-width: 280px;
+}
+
+#game-over-board {
+  display: grid;
+  gap: 6px;
+  height: 100%;
+  position: relative;
+  z-index: 2;
+}
+
+.game-over-tile {
+  background: var(--tile-bg);
+  color: #0f172a;
+  border-radius: 12px;
+  font-size: 1.4rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  user-select: none;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.game-over-tile.longest-path {
+  background: #8b5cf6 !important;
+  color: white !important;
+  z-index: 15 !important;
+  box-shadow: 0 0 20px #8b5cf6, 0 6px 15px rgba(139, 92, 246, 0.4) !important;
+}
+
+.game-over-tile.longest-path-start {
+  background: #22c55e !important;
+  color: white !important;
+  z-index: 15 !important;
+  box-shadow: 0 0 20px #22c55e, 0 6px 15px rgba(34, 197, 94, 0.4) !important;
+}
+
+.game-over-tile.longest-path-end {
+  background: #ef4444 !important;
+  color: white !important;
+  z-index: 15 !important;
+  box-shadow: 0 0 20px #ef4444, 0 6px 15px rgba(239, 68, 68, 0.4) !important;
+}
+
+.game-over-mult {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  font-size: 0.5rem;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.9);
+  color: #fff;
+  pointer-events: none;
+  z-index: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+#game-over-lineCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Word Hunt Specific Styles */
+.wordhunt-progress-game {
+  margin: 10px 0;
+  padding: 15px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border-radius: 16px;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.wordhunt-progress-game .progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.wordhunt-progress-game .progress-label {
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
+
+.wordhunt-progress-game .progress-stats {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #8b5cf6;
+}
+
+.wordhunt-progress-game .progress-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.wordhunt-progress-game .progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Longest Word Section */
+.longest-word-section {
   margin: 20px 0;
   padding: 15px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
@@ -643,16 +1066,41 @@ input[type=range]::-webkit-slider-thumb:hover {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.rating-letter {
-  font-size: 3.5rem;
-  font-weight: 900;
-  margin: 10px 0;
+.longest-word-header {
+  font-size: 1.1rem;
+  color: #94a3b8;
+  margin-bottom: 15px;
+  text-align: center;
 }
 
-.rating-desc {
+.longest-word-result {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin: 10px 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.longest-word-found {
+  color: #22c55e;
+}
+
+.longest-word-missed {
+  color: #ef4444;
+}
+
+.longest-word-info {
   font-size: 1rem;
   color: #94a3b8;
+  margin-top: 10px;
+  line-height: 1.4;
+}
+
+.longest-word-count {
+  font-size: 0.9rem;
+  color: #64748b;
   margin-top: 5px;
+  font-style: italic;
 }
 
 /* Score Comparison */
@@ -785,7 +1233,7 @@ input[type=range]::-webkit-slider-thumb:hover {
 .word-stats {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .word-score {
@@ -794,13 +1242,42 @@ input[type=range]::-webkit-slider-thumb:hover {
   color: #22c55e;
 }
 
-.word-multiplier {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
-  padding: 2px 6px;
+.word-multipliers {
+  display: flex;
+  gap: 4px;
+}
+
+.multiplier-badge {
+  padding: 3px 6px;
   border-radius: 4px;
   font-size: 0.7rem;
   font-weight: 700;
+  min-width: 20px;
+  text-align: center;
+}
+
+.multiplier-badge.DL {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+.multiplier-badge.TL {
+  background: rgba(236, 72, 153, 0.2);
+  color: #ec4899;
+  border: 1px solid rgba(236, 72, 153, 0.4);
+}
+
+.multiplier-badge.DW {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.multiplier-badge.TW {
+  background: rgba(139, 92, 246, 0.2);
+  color: #8b5cf6;
+  border: 1px solid rgba(139, 92, 246, 0.4);
 }
 
 .word-count {
@@ -810,61 +1287,6 @@ input[type=range]::-webkit-slider-thumb:hover {
   border-radius: 4px;
   font-size: 0.7rem;
   font-weight: 700;
-}
-
-/* Missed Opportunities */
-.missed-opportunities {
-  margin: 20px 0;
-  padding: 15px;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05));
-  border-radius: 16px;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-.missed-header {
-  font-size: 1.1rem;
-  color: #ef4444;
-  margin-bottom: 10px;
-  text-align: center;
-}
-
-.missed-word {
-  text-align: center;
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #fbbf24;
-  margin: 10px 0;
-}
-
-.path-hint {
-  display: grid;
-  gap: 4px;
-  margin: 15px 0;
-}
-
-.path-row {
-  display: flex;
-  justify-content: center;
-  gap: 4px;
-}
-
-.path-tile {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(34, 197, 94, 0.2);
-  border-radius: 8px;
-  font-weight: 700;
-  color: #22c55e;
-  border: 2px solid rgba(34, 197, 94, 0.4);
-}
-
-.path-tile.highlight {
-  background: rgba(34, 197, 94, 0.4);
-  transform: scale(1.1);
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
 }
 
 /* Particle Canvas */
@@ -887,16 +1309,22 @@ input[type=range]::-webkit-slider-thumb:hover {
 }
 
 /* Scrollbar Styling */
-.word-list-container::-webkit-scrollbar {
+.word-list-container::-webkit-scrollbar,
+.common-words-list::-webkit-scrollbar,
+.stats-container::-webkit-scrollbar {
   width: 6px;
 }
 
-.word-list-container::-webkit-scrollbar-track {
+.word-list-container::-webkit-scrollbar-track,
+.common-words-list::-webkit-scrollbar-track,
+.stats-container::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 10px;
 }
 
-.word-list-container::-webkit-scrollbar-thumb {
+.word-list-container::-webkit-scrollbar-thumb,
+.common-words-list::-webkit-scrollbar-thumb,
+.stats-container::-webkit-scrollbar-thumb {
   background: linear-gradient(to bottom, #0ea5e9, #8b5cf6);
   border-radius: 10px;
 }
@@ -914,6 +1342,110 @@ input[type=range]::-webkit-slider-thumb:hover {
   background: linear-gradient(to bottom, #0ea5e9, #8b5cf6);
   border-radius: 10px;
 }
+
+/* ================= LOADING SCREEN ================= */
+#loading-screen {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  z-index: 100;
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.loading-content {
+  max-width: 320px;
+  width: 100%;
+  padding: 30px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.loading-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+  background: linear-gradient(to right, #60a5fa, #34d399);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.loading-subtitle {
+  color: #94a3b8;
+  margin-bottom: 25px;
+  font-size: 1rem;
+}
+
+.loading-bar-container {
+  height: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 15px;
+}
+
+.loading-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #0ea5e9, #3b82f6, #8b5cf6);
+  border-radius: 6px;
+  width: 0%;
+  transition: width 0.3s ease;
+  position: relative;
+}
+
+.loading-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.3), 
+    transparent);
+  animation: loadingShine 1.5s infinite;
+}
+
+@keyframes loadingShine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.loading-percentage {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #0ea5e9;
+}
+
+.loading-status {
+  margin-top: 15px;
+  font-size: 0.9rem;
+  color: #94a3b8;
+  min-height: 20px;
+}
+
+/* Mobile optimizations */
+@media (max-width: 480px) {
+  .title {
+    font-size: 2.5rem;
+  }
+  
+  .settings-panel {
+    max-width: 100%;
+    padding: 15px;
+  }
+  
+  .game-over-content {
+    padding: 20px;
+  }
+  
+  .loading-content {
+    padding: 20px;
+    margin: 0 15px;
+  }
+}
 </style>
 </head>
 <body>
@@ -922,11 +1454,26 @@ input[type=range]::-webkit-slider-thumb:hover {
   <!-- Particle Canvas -->
   <canvas id="particleCanvas"></canvas>
 
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="screen">
+    <div class="loading-content">
+      <div class="loading-title">Preparing Game</div>
+      <div class="loading-subtitle">Finding word combinations...</div>
+      <div class="loading-bar-container">
+        <div class="loading-bar" id="loading-bar"></div>
+      </div>
+      <div class="loading-percentage" id="loading-percentage">0%</div>
+      <div class="loading-status" id="loading-status">Initializing board...</div>
+    </div>
+  </div>
+
   <div id="main-menu" class="screen active">
     <div class="title">Boggle<br>Party</div>
     <div class="subtitle">Word Search Challenge</div>
     
     <button class="menu-btn primary" onclick="startGame()">Start Game</button>
+    <button class="menu-btn" onclick="showScreen('game-modes')">Other Game Modes</button>
+    <button class="menu-btn" onclick="showScreen('statistics-screen')">Statistics</button>
     
     <!-- Settings Panel -->
     <div class="settings-panel">
@@ -1015,10 +1562,138 @@ input[type=range]::-webkit-slider-thumb:hover {
     <div id="dict-status" class="center-txt">Loading Dictionary...</div>
   </div>
 
+  <!-- Statistics Screen -->
+  <div id="statistics-screen" class="screen">
+    <div class="stats-container">
+      <div class="stats-header">Statistics</div>
+      
+      <!-- Personal Bests -->
+      <div class="stats-section">
+        <div class="stats-section-title">Personal Bests</div>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-label">All-Time High</div>
+            <div class="stat-value" id="stat-alltime-high">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Today's Best</div>
+            <div class="stat-value" id="stat-today-best">0</div>
+          </div>
+          <div class="stat-item stat-item-large">
+            <div class="stat-label">Total Games Played</div>
+            <div class="stat-value-highlight" id="stat-total-games">0</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Game Stats -->
+      <div class="stats-section">
+        <div class="stats-section-title">Game Statistics</div>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-label">Total Words Found</div>
+            <div class="stat-value" id="stat-total-words">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Avg Words/Game</div>
+            <div class="stat-value" id="stat-avg-words">0.0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Total Score</div>
+            <div class="stat-value-secondary" id="stat-total-score">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Avg Score/Game</div>
+            <div class="stat-value" id="stat-avg-score">0.0</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Common Words -->
+      <div class="stats-section">
+        <div class="stats-section-title">Most Common Words</div>
+        <div class="common-words-list" id="common-words-list">
+          <!-- Will be populated by JavaScript -->
+        </div>
+      </div>
+      
+      <!-- Achievements -->
+      <div class="stats-section">
+        <div class="stats-section-title">Achievements</div>
+        <div class="achievement-badges" id="achievement-badges">
+          <!-- Will be populated by JavaScript -->
+        </div>
+      </div>
+      
+      <button class="menu-btn" onclick="showScreen('main-menu')" style="margin-top: 20px;">
+        Back to Main Menu
+      </button>
+    </div>
+  </div>
+
+  <!-- Game Modes Screen -->
+  <div id="game-modes" class="screen">
+    <div class="stats-container">
+      <div class="stats-header">Game Modes</div>
+      
+      <div class="game-mode-info">
+        <div class="game-mode-info-title">🎮 Select a Game Mode</div>
+        <div class="game-mode-info-content">
+          Choose from different Boggle challenges. Each mode offers a unique twist on the classic word search game!
+        </div>
+      </div>
+      
+      <div class="game-mode-cards">
+        <!-- Word Hunt -->
+        <div class="game-mode-card selected" onclick="selectGameMode('wordhunt')">
+          <div class="game-mode-title">Word Hunt</div>
+          <div class="game-mode-description">
+            Find as many words as possible in 2 minutes! Your goal is to find all available words on the board. Minimum word length is 4 letters. Compete for the highest word count!
+          </div>
+          <div class="game-mode-details">
+            <div class="game-mode-detail">
+              <div class="game-mode-icon time"></div>
+              <span>Time: 2 minutes</span>
+            </div>
+            <div class="game-mode-detail">
+              <div class="game-mode-icon grid"></div>
+              <span>Grid: 4×4 only</span>
+            </div>
+            <div class="game-mode-detail">
+              <div class="game-mode-icon words"></div>
+              <span>Min Length: 4+</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Coming Soon -->
+        <div class="game-mode-card" style="opacity: 0.7; cursor: default;">
+          <div class="game-mode-title">More Modes Coming Soon!</div>
+          <div class="game-mode-description">
+            We're working on exciting new game modes. Check back for updates with fresh challenges and gameplay variations.
+          </div>
+          <div class="game-mode-details">
+            <div class="game-mode-detail">
+              <div class="game-mode-icon time"></div>
+              <span>Stay tuned!</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <button class="menu-btn primary" onclick="startSelectedGameMode()" style="margin-top: 20px;">
+        Start Word Hunt
+      </button>
+      <button class="menu-btn" onclick="showScreen('main-menu')" style="margin-top: 10px;">
+        Back to Main Menu
+      </button>
+    </div>
+  </div>
+
   <div id="game-ui" class="screen">
     <div id="top-bar">
       <div class="hud-box">
-        <div class="hud-lbl">Score</div>
+        <div class="hud-lbl" id="score-label">Score</div>
         <div class="hud-val" id="score">0</div>
       </div>
       <div class="hud-box">
@@ -1026,6 +1701,17 @@ input[type=range]::-webkit-slider-thumb:hover {
         <div class="hud-val" id="time">30</div>
       </div>
       <button id="quit-btn" onclick="quitGame()">Quit</button>
+    </div>
+
+    <!-- Word Hunt Progress -->
+    <div id="wordhunt-progress" class="wordhunt-progress-game" style="display: none;">
+      <div class="progress-header">
+        <div class="progress-label">Words Found</div>
+        <div class="progress-stats" id="wordhunt-stats">0/0</div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="wordhunt-progress-fill" style="width: 0%"></div>
+      </div>
     </div>
 
     <div id="board-wrap">
@@ -1044,11 +1730,61 @@ input[type=range]::-webkit-slider-thumb:hover {
       <div class="game-over-title">Game Over</div>
       <div class="final-score" id="final-score">0</div>
       
-      <!-- Performance Rating -->
-      <div id="performance-rating" class="performance-rating">
-        <div style="font-size:0.9rem; color:#94a3b8; margin-bottom:5px;">Performance</div>
-        <div id="rating-letter" class="rating-letter">B</div>
-        <div id="rating-desc" class="rating-desc">Solid Performance</div>
+      <!-- Word Hunt Results -->
+      <div id="wordhunt-results" class="stats-section" style="display: none;">
+        <div class="stats-section-title" id="wordhunt-result-title">Word Hunt Results</div>
+        <div class="wordhunt-progress-container">
+          <div class="wordhunt-progress-header">
+            <div class="wordhunt-progress-label">Completion</div>
+            <div class="wordhunt-progress-percentage" id="wordhunt-percentage">0%</div>
+          </div>
+          <div class="wordhunt-progress-bar">
+            <div class="wordhunt-progress-fill" id="wordhunt-result-progress" style="width: 0%"></div>
+          </div>
+        </div>
+        <div class="stats-grid" style="margin-top: 15px;">
+          <div class="stat-item">
+            <div class="stat-label">Words Found</div>
+            <div class="stat-value" id="wordhunt-found">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Total Available</div>
+            <div class="stat-value" id="wordhunt-total">0</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Game Board Display -->
+      <div id="game-board-section" class="game-board-section">
+        <div class="game-board-header">Game Board</div>
+        <div id="game-over-board-wrap">
+          <div id="game-over-board"></div>
+          <canvas id="game-over-lineCanvas"></canvas>
+        </div>
+        <div id="board-legend" style="font-size:0.8rem; color:#94a3b8; margin-top:10px;">
+          <div style="display:flex; justify-content:center; gap:15px; margin-top:8px;">
+            <div style="display:flex; align-items:center; gap:5px;">
+              <div style="width:12px; height:12px; background:#22c55e; border-radius:2px;"></div>
+              <span>Start</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:5px;">
+              <div style="width:12px; height:12px; background:#8b5cf6; border-radius:2px;"></div>
+              <span>Path</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:5px;">
+              <div style="width:12px; height:12px; background:#ef4444; border-radius:2px;"></div>
+              <span>End</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Longest Word Section -->
+      <div id="longest-word-section" class="longest-word-section">
+        <div class="longest-word-header">Longest Possible Word</div>
+        <div id="longest-word-result" class="longest-word-result">Loading...</div>
+        <div id="longest-word-info" class="longest-word-info"></div>
+        <div id="longest-word-count" class="longest-word-count"></div>
       </div>
       
       <!-- Score Comparison -->
@@ -1087,17 +1823,6 @@ input[type=range]::-webkit-slider-thumb:hover {
         <div class="stat-box">
           <div class="stat-value" id="stat-avg">0.0</div>
           <div class="stat-label">Avg Points</div>
-        </div>
-      </div>
-      
-      <!-- Missed Opportunities -->
-      <div id="missed-opportunities" class="missed-opportunities">
-        <div class="missed-header">Improvement Tip</div>
-        <div id="missed-message"></div>
-        <div id="longest-word-hint" style="display:none;">
-          <div class="missed-word" id="longest-word-text"></div>
-          <div style="font-size:0.9rem; color:#94a3b8; margin:10px 0;">Could have scored <span id="longest-word-score" style="color:#22c55e; font-weight:700;">0</span> points!</div>
-          <div id="path-hint" class="path-hint"></div>
         </div>
       </div>
       
@@ -1159,7 +1884,8 @@ let config = {
   scoring: "traditional",
   uiVolume: 0.7,  // UI sound volume (0-1)
   musicVolume: 0.5,  // Music volume (0-1)
-  musicType: "synth"  // synth, retro, chill, epic
+  musicType: "synth",  // synth, retro, chill, epic
+  gameMode: "classic"  // classic, wordhunt
 };
 
 let dict = new Set();
@@ -1169,8 +1895,12 @@ let timerInt, timeLeft, startTime;
 let currentScore = 0;
 let gameEnded = false;
 
-// Store word data with path information
-let wordData = new Map(); // word -> {score, path, multiplierUsed}
+// Word Hunt specific variables
+let totalWordsOnBoard = 0;
+let wordHuntWords = new Set();
+
+// Store word data with path and multiplier information
+let wordData = new Map(); // word -> {score, path, multiplierUsed, multipliers: []}
 
 // Modern scoring letter values
 const LETTER_VALUES = {
@@ -1196,17 +1926,29 @@ const UI = {
   statTime: document.getElementById('stat-time'),
   statAvg: document.getElementById('stat-avg'),
   wordList: document.getElementById('word-list'),
-  ratingLetter: document.getElementById('rating-letter'),
-  ratingDesc: document.getElementById('rating-desc'),
   comparisonCurrent: document.getElementById('comparison-current'),
   comparisonToday: document.getElementById('comparison-today'),
   comparisonAlltime: document.getElementById('comparison-alltime'),
   lengthBars: document.getElementById('length-bars'),
-  missedMessage: document.getElementById('missed-message'),
-  longestWordHint: document.getElementById('longest-word-hint'),
-  longestWordText: document.getElementById('longest-word-text'),
-  longestWordScore: document.getElementById('longest-word-score'),
-  pathHint: document.getElementById('path-hint')
+  longestWordResult: document.getElementById('longest-word-result'),
+  longestWordInfo: document.getElementById('longest-word-info'),
+  longestWordCount: document.getElementById('longest-word-count'),
+  gameOverBoard: document.getElementById('game-over-board'),
+  gameOverLineCanvas: document.getElementById('game-over-lineCanvas'),
+  scoreLabel: document.getElementById('score-label'),
+  wordhuntProgress: document.getElementById('wordhunt-progress'),
+  wordhuntStats: document.getElementById('wordhunt-stats'),
+  wordhuntProgressFill: document.getElementById('wordhunt-progress-fill'),
+  wordhuntResults: document.getElementById('wordhunt-results'),
+  wordhuntResultTitle: document.getElementById('wordhunt-result-title'),
+  wordhuntPercentage: document.getElementById('wordhunt-percentage'),
+  wordhuntResultProgress: document.getElementById('wordhunt-result-progress'),
+  wordhuntFound: document.getElementById('wordhunt-found'),
+  wordhuntTotal: document.getElementById('wordhunt-total'),
+  loadingScreen: document.getElementById('loading-screen'),
+  loadingBar: document.getElementById('loading-bar'),
+  loadingPercentage: document.getElementById('loading-percentage'),
+  loadingStatus: document.getElementById('loading-status')
 };
 
 // Audio elements
@@ -1218,6 +1960,728 @@ let isMusicPlaying = false;
 let audioInitialized = false;
 let beatInterval = null;
 let tempoController = null;
+
+// Navigation stack
+let screenHistory = [];
+
+/* ================= LOADING SCREEN FUNCTIONS ================= */
+function showLoadingScreen() {
+  UI.loadingScreen.classList.add('active');
+}
+
+function hideLoadingScreen() {
+  UI.loadingScreen.classList.remove('active');
+}
+
+function updateLoadingProgress(percentage, status = "") {
+  const percent = Math.min(100, Math.max(0, Math.round(percentage)));
+  UI.loadingBar.style.width = percent + '%';
+  UI.loadingPercentage.textContent = percent + '%';
+  if (status) {
+    UI.loadingStatus.textContent = status;
+  }
+}
+
+/* ================= NAVIGATION ================= */
+function showScreen(id) {
+  const currentActive = document.querySelector('.screen.active');
+  if (currentActive) {
+    screenHistory.push(currentActive.id);
+    currentActive.style.opacity = '0';
+    setTimeout(() => {
+      currentActive.classList.remove('active');
+      currentActive.style.opacity = '';
+    }, 400);
+  }
+  
+  setTimeout(() => {
+    const screen = document.getElementById(id);
+    screen.classList.add('active');
+    
+    // Handle music based on screen
+    if (id === 'main-menu' && config.musicVolume > 0) {
+      // Start menu music (slower tempo)
+      tempoController = createBackgroundMusic('menu');
+    } else if (id === 'game-over' || id === 'game-ui') {
+      // Game over screen doesn't need special music handling
+      // Game UI music is already handled in startGame()
+    } else if (id === 'statistics-screen') {
+      loadStatistics();
+    } else if (id === 'game-modes') {
+      // Ensure word hunt mode is selected by default
+      selectGameMode('wordhunt');
+    }
+  }, 100);
+}
+
+/* ================= STATISTICS FUNCTIONS ================= */
+function loadStatistics() {
+  // Load personal bests
+  const allTimeHigh = getAllTimeHighScore();
+  const todayHigh = getTodayHighScore();
+  
+  document.getElementById('stat-alltime-high').textContent = allTimeHigh;
+  document.getElementById('stat-today-best').textContent = todayHigh;
+  
+  // Load game statistics
+  const totalGames = parseInt(localStorage.getItem('boggle_total_games') || '0');
+  const totalWords = parseInt(localStorage.getItem('boggle_total_words') || '0');
+  const totalScore = parseInt(localStorage.getItem('boggle_total_score') || '0');
+  
+  document.getElementById('stat-total-games').textContent = totalGames;
+  document.getElementById('stat-total-words').textContent = totalWords;
+  document.getElementById('stat-total-score').textContent = totalScore;
+  
+  // Calculate averages
+  const avgWords = totalGames > 0 ? (totalWords / totalGames).toFixed(1) : '0.0';
+  const avgScore = totalGames > 0 ? (totalScore / totalGames).toFixed(1) : '0.0';
+  
+  document.getElementById('stat-avg-words').textContent = avgWords;
+  document.getElementById('stat-avg-score').textContent = avgScore;
+  
+  // Load common words
+  loadCommonWords();
+  
+  // Load achievements
+  loadAchievements();
+}
+
+function loadCommonWords() {
+  // Get all word count keys from localStorage
+  const wordCounts = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.startsWith('boggle_wordcount_')) {
+      const word = key.replace('boggle_wordcount_', '');
+      const count = parseInt(localStorage.getItem(key));
+      wordCounts.push({ word, count });
+    }
+  }
+  
+  // Sort by count (descending) and take top 10
+  wordCounts.sort((a, b) => b.count - a.count);
+  const topWords = wordCounts.slice(0, 10);
+  
+  const commonWordsList = document.getElementById('common-words-list');
+  commonWordsList.innerHTML = '';
+  
+  if (topWords.length === 0) {
+    commonWordsList.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px;">No word data yet. Play some games!</div>';
+    return;
+  }
+  
+  topWords.forEach((item, index) => {
+    const wordItem = document.createElement('div');
+    wordItem.className = 'common-word-item';
+    
+    wordItem.innerHTML = `
+      <div class="common-word-text">${item.word.toUpperCase()}</div>
+      <div class="common-word-count">${item.count} ${item.count === 1 ? 'time' : 'times'}</div>
+    `;
+    
+    commonWordsList.appendChild(wordItem);
+  });
+}
+
+function loadAchievements() {
+  const totalGames = parseInt(localStorage.getItem('boggle_total_games') || '0');
+  const totalWords = parseInt(localStorage.getItem('boggle_total_words') || '0');
+  const totalScore = parseInt(localStorage.getItem('boggle_total_score') || '0');
+  const allTimeHigh = getAllTimeHighScore();
+  
+  const achievements = [];
+  
+  // Game count achievements
+  if (totalGames >= 1) achievements.push({ icon: '🎮', text: 'First Game' });
+  if (totalGames >= 10) achievements.push({ icon: '🏆', text: '10 Games' });
+  if (totalGames >= 50) achievements.push({ icon: '👑', text: '50 Games' });
+  if (totalGames >= 100) achievements.push({ icon: '🌟', text: '100 Games' });
+  
+  // Word count achievements
+  if (totalWords >= 10) achievements.push({ icon: '📝', text: '10 Words' });
+  if (totalWords >= 100) achievements.push({ icon: '📚', text: '100 Words' });
+  if (totalWords >= 500) achievements.push({ icon: '📖', text: '500 Words' });
+  
+  // Score achievements
+  if (allTimeHigh >= 100) achievements.push({ icon: '⭐', text: '100 Points' });
+  if (allTimeHigh >= 500) achievements.push({ icon: '💫', text: '500 Points' });
+  if (allTimeHigh >= 1000) achievements.push({ icon: '🚀', text: '1000 Points' });
+  
+  const achievementBadges = document.getElementById('achievement-badges');
+  achievementBadges.innerHTML = '';
+  
+  if (achievements.length === 0) {
+    achievementBadges.innerHTML = '<div style="text-align: center; color: #64748b; padding: 10px;">No achievements yet. Keep playing!</div>';
+    return;
+  }
+  
+  achievements.forEach(achievement => {
+    const badge = document.createElement('div');
+    badge.className = 'achievement-badge';
+    
+    badge.innerHTML = `
+      <div class="achievement-icon">${achievement.icon}</div>
+      <div class="achievement-text">${achievement.text}</div>
+    `;
+    
+    achievementBadges.appendChild(badge);
+  });
+}
+
+function updateGameStatistics(wordsFound, score) {
+  // Update total games
+  const totalGames = parseInt(localStorage.getItem('boggle_total_games') || '0');
+  localStorage.setItem('boggle_total_games', totalGames + 1);
+  
+  // Update total words
+  const totalWords = parseInt(localStorage.getItem('boggle_total_words') || '0');
+  localStorage.setItem('boggle_total_words', totalWords + wordsFound);
+  
+  // Update total score
+  const totalScore = parseInt(localStorage.getItem('boggle_total_score') || '0');
+  localStorage.setItem('boggle_total_score', totalScore + score);
+}
+
+/* ================= GAME MODE SELECTION ================= */
+function selectGameMode(mode) {
+  config.gameMode = mode;
+  
+  // Update UI
+  document.querySelectorAll('.game-mode-card').forEach(card => {
+    card.classList.remove('selected');
+  });
+  
+  if (mode === 'wordhunt') {
+    document.querySelector('.game-mode-card:first-child').classList.add('selected');
+  }
+}
+
+function startSelectedGameMode() {
+  if (config.gameMode === 'wordhunt') {
+    startWordHuntGame();
+  }
+}
+
+/* ================= WORD HUNT GAME MODE ================= */
+function startWordHuntGame() {
+  // Set Word Hunt specific settings
+  config.gridSize = 4;
+  config.time = 120; // 2 minutes
+  config.minLen = 4;
+  config.scoring = "traditional"; // Word Hunt uses word count, not points
+  
+  // Start the game
+  startGame();
+  
+  // Find all possible words on the board
+  totalWordsOnBoard = findAllWordsOnBoard().size;
+  wordHuntWords = new Set();
+  
+  // Update UI for Word Hunt
+  UI.scoreLabel.textContent = "Words";
+  UI.wordhuntProgress.style.display = 'block';
+  updateWordHuntProgress();
+}
+
+function updateWordHuntProgress() {
+  const found = foundWords.size;
+  const percentage = totalWordsOnBoard > 0 ? Math.round((found / totalWordsOnBoard) * 100) : 0;
+  
+  UI.wordhuntStats.textContent = `${found}/${totalWordsOnBoard}`;
+  UI.wordhuntProgressFill.style.width = `${percentage}%`;
+  
+  // Update score display to show word count
+  UI.score.textContent = found;
+}
+
+function endWordHuntGame() {
+  const found = foundWords.size;
+  const percentage = totalWordsOnBoard > 0 ? Math.round((found / totalWordsOnBoard) * 100) : 0;
+  
+  // Show Word Hunt results
+  UI.wordhuntResults.style.display = 'block';
+  UI.wordhuntFound.textContent = found;
+  UI.wordhuntTotal.textContent = totalWordsOnBoard;
+  UI.wordhuntPercentage.textContent = `${percentage}%`;
+  UI.wordhuntResultProgress.style.width = `${percentage}%`;
+  
+  // Update title based on performance
+  let title = "Word Hunt Results";
+  if (percentage === 100) {
+    title = "Perfect! 🎯";
+    UI.wordhuntResultTitle.style.color = '#22c55e';
+  } else if (percentage >= 80) {
+    title = "Excellent! 🌟";
+    UI.wordhuntResultTitle.style.color = '#8b5cf6';
+  } else if (percentage >= 50) {
+    title = "Good Job! 👍";
+    UI.wordhuntResultTitle.style.color = '#0ea5e9';
+  }
+  UI.wordhuntResultTitle.textContent = title;
+  
+  // Save Word Hunt high score
+  const key = `wordhunt_best_${config.gridSize}x${config.gridSize}`;
+  const currentBest = parseInt(localStorage.getItem(key) || '0');
+  if (found > currentBest) {
+    localStorage.setItem(key, found);
+  }
+}
+
+/* ================= FIND ALL WORDS ON BOARD ================= */
+function findAllWordsOnBoard() {
+  const words = new Set();
+  const visited = new Array(board.length).fill(false);
+  const size = config.gridSize;
+  
+  // Directions: 8 adjacent cells (including diagonals)
+  const directions = [
+    [-1, -1], [-1, 0], [-1, 1],
+    [0, -1],           [0, 1],
+    [1, -1],  [1, 0],  [1, 1]
+  ];
+  
+  function dfs(row, col, currentWord, visited) {
+    const idx = row * size + col;
+    const letter = board[idx].toUpperCase();
+    
+    // Special handling for "Qu" tile
+    if (letter === "QU") {
+      currentWord += 'QU';
+    } else {
+      currentWord += letter;
+    }
+    
+    // If this forms a valid word of sufficient length, add it
+    if (currentWord.length >= config.minLen && dict.has(currentWord)) {
+      words.add(currentWord);
+    }
+    
+    // Mark as visited and continue search
+    visited[idx] = true;
+    
+    for (const [dx, dy] of directions) {
+      const newRow = row + dx;
+      const newCol = col + dy;
+      
+      if (newRow >= 0 && newRow < size && newCol >= 0 && newCol < size) {
+        const newIdx = newRow * size + newCol;
+        if (!visited[newIdx]) {
+          const newVisited = visited.slice();
+          dfs(newRow, newCol, currentWord, newVisited);
+        }
+      }
+    }
+  }
+  
+  // Start DFS from each cell
+  for (let i = 0; i < size; i++) {
+    for (let j = 0; j < size; j++) {
+      const newVisited = visited.slice();
+      dfs(i, j, '', newVisited);
+    }
+  }
+  
+  return words;
+}
+
+/* ================= TRIE DATA STRUCTURE FOR EFFICIENT WORD SEARCH ================= */
+class TrieNode {
+  constructor() {
+    this.children = new Map();
+    this.isEndOfWord = false;
+  }
+}
+
+class Trie {
+  constructor() {
+    this.root = new TrieNode();
+  }
+
+  insert(word) {
+    let node = this.root;
+    for (let char of word.toUpperCase()) {
+      if (!node.children.has(char)) {
+        node.children.set(char, new TrieNode());
+      }
+      node = node.children.get(char);
+    }
+    node.isEndOfWord = true;
+  }
+
+  search(word) {
+    let node = this.root;
+    for (let char of word.toUpperCase()) {
+      if (!node.children.has(char)) {
+        return false;
+      }
+      node = node.children.get(char);
+    }
+    return node.isEndOfWord;
+  }
+
+  startsWith(prefix) {
+    let node = this.root;
+    for (let char of prefix.toUpperCase()) {
+      if (!node.children.has(char)) {
+        return false;
+      }
+      node = node.children.get(char);
+    }
+    return true;
+  }
+}
+
+let trie = new Trie();
+let longestWordsOnBoard = [];
+let longestWordPath = [];
+
+/* ================= FIND ALL POSSIBLE WORDS ON BOARD ================= */
+function findAllPossibleWords() {
+  const words = new Map(); // word -> path
+  const visited = new Array(board.length).fill(false);
+  const size = config.gridSize;
+  
+  // Directions: 8 adjacent cells (including diagonals)
+  const directions = [
+    [-1, -1], [-1, 0], [-1, 1],
+    [0, -1],           [0, 1],
+    [1, -1],  [1, 0],  [1, 1]
+  ];
+  
+  function dfs(row, col, currentWord, currentNode, visited, currentPath) {
+    const idx = row * size + col;
+    const letter = board[idx].toUpperCase();
+    
+    // Special handling for "Qu" tile
+    if (letter === "QU") {
+      // Check if we can traverse "Q" then "U"
+      if (!currentNode.children.has('Q')) return;
+      let tempNode = currentNode.children.get('Q');
+      if (!tempNode.children.has('U')) return;
+      currentNode = tempNode.children.get('U');
+      currentWord += 'QU';
+      currentPath.push(idx);
+    } else {
+      if (!currentNode.children.has(letter)) return;
+      currentNode = currentNode.children.get(letter);
+      currentWord += letter;
+      currentPath.push(idx);
+    }
+    
+    // If this forms a valid word of sufficient length, add it with path
+    if (currentNode.isEndOfWord && currentWord.length >= config.minLen) {
+      words.set(currentWord, [...currentPath]);
+    }
+    
+    // Mark as visited and continue search
+    visited[idx] = true;
+    
+    for (const [dx, dy] of directions) {
+      const newRow = row + dx;
+      const newCol = col + dy;
+      
+      if (newRow >= 0 && newRow < size && newCol >= 0 && newCol < size) {
+        const newIdx = newRow * size + newCol;
+        if (!visited[newIdx]) {
+          dfs(newRow, newCol, currentWord, currentNode, visited.slice(), [...currentPath]);
+        }
+      }
+    }
+  }
+  
+  // Start DFS from each cell
+  for (let i = 0; i < size; i++) {
+    for (let j = 0; j < size; j++) {
+      const newVisited = visited.slice();
+      dfs(i, j, '', trie.root, newVisited, []);
+    }
+  }
+  
+  return words;
+}
+
+/* ================= FIND LONGEST WORDS ON BOARD WITH LOADING ================= */
+async function findLongestWordsOnBoardWithProgress() {
+  const words = new Map();
+  const visited = new Array(board.length).fill(false);
+  const size = config.gridSize;
+  const totalCells = size * size;
+  
+  // Directions: 8 adjacent cells (including diagonals)
+  const directions = [
+    [-1, -1], [-1, 0], [-1, 1],
+    [0, -1],           [0, 1],
+    [1, -1],  [1, 0],  [1, 1]
+  ];
+  
+  // We'll process cells one by one to show progress
+  let processedCells = 0;
+  
+  for (let i = 0; i < size; i++) {
+    for (let j = 0; j < size; j++) {
+      // Update progress
+      processedCells++;
+      const progress = (processedCells / totalCells) * 100;
+      updateLoadingProgress(progress, `Analyzing cell ${i + 1},${j + 1}...`);
+      
+      // Give UI time to update
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      const newVisited = visited.slice();
+      
+      // Use a stack-based DFS for this starting cell to avoid recursion issues
+      const stack = [[i, j, '', trie.root, newVisited, []]];
+      
+      while (stack.length > 0) {
+        const [row, col, currentWord, currentNode, currentVisited, currentPath] = stack.pop();
+        const idx = row * size + col;
+        const letter = board[idx].toUpperCase();
+        
+        // Special handling for "Qu" tile
+        if (letter === "QU") {
+          if (!currentNode.children.has('Q')) continue;
+          let tempNode = currentNode.children.get('Q');
+          if (!tempNode.children.has('U')) continue;
+          const newCurrentNode = tempNode.children.get('U');
+          const newCurrentWord = currentWord + 'QU';
+          const newCurrentPath = [...currentPath, idx];
+          const newCurrentVisited = currentVisited.slice();
+          newCurrentVisited[idx] = true;
+          
+          if (newCurrentNode.isEndOfWord && newCurrentWord.length >= config.minLen) {
+            words.set(newCurrentWord, newCurrentPath);
+          }
+          
+          // Continue search
+          for (const [dx, dy] of directions) {
+            const newRow = row + dx;
+            const newCol = col + dy;
+            
+            if (newRow >= 0 && newRow < size && newCol >= 0 && newCol < size) {
+              const newIdx = newRow * size + newCol;
+              if (!newCurrentVisited[newIdx]) {
+                stack.push([newRow, newCol, newCurrentWord, newCurrentNode, newCurrentVisited, newCurrentPath]);
+              }
+            }
+          }
+        } else {
+          if (!currentNode.children.has(letter)) continue;
+          const newCurrentNode = currentNode.children.get(letter);
+          const newCurrentWord = currentWord + letter;
+          const newCurrentPath = [...currentPath, idx];
+          const newCurrentVisited = currentVisited.slice();
+          newCurrentVisited[idx] = true;
+          
+          if (newCurrentNode.isEndOfWord && newCurrentWord.length >= config.minLen) {
+            words.set(newCurrentWord, newCurrentPath);
+          }
+          
+          // Continue search
+          for (const [dx, dy] of directions) {
+            const newRow = row + dx;
+            const newCol = col + dy;
+            
+            if (newRow >= 0 && newRow < size && newCol >= 0 && newCol < size) {
+              const newIdx = newRow * size + newCol;
+              if (!newCurrentVisited[newIdx]) {
+                stack.push([newRow, newCol, newCurrentWord, newCurrentNode, newCurrentVisited, newCurrentPath]);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  // Find the maximum length
+  let maxLength = 0;
+  for (const word of words.keys()) {
+    if (word.length > maxLength) {
+      maxLength = word.length;
+    }
+  }
+  
+  // Get all words with the maximum length
+  const longestWords = [];
+  const longestPaths = [];
+  
+  for (const [word, path] of words.entries()) {
+    if (word.length === maxLength) {
+      longestWords.push(word);
+      longestPaths.push(path);
+    }
+  }
+  
+  // Remove duplicates (in case same word found via different paths)
+  const uniqueWords = [...new Set(longestWords)];
+  const uniquePaths = [];
+  
+  for (let i = 0; i < longestWords.length; i++) {
+    if (uniqueWords.includes(longestWords[i]) && !uniquePaths.some(p => JSON.stringify(p) === JSON.stringify(longestPaths[i]))) {
+      uniquePaths.push(longestPaths[i]);
+    }
+  }
+  
+  longestWordsOnBoard = uniqueWords;
+  longestWordPath = uniquePaths[0] || []; // Take first path for visualization
+  
+  return words;
+}
+
+/* ================= RENDER GAME OVER BOARD ================= */
+function renderGameOverBoard() {
+  const target = UI.gameOverBoard;
+  target.innerHTML = "";
+  target.style.gridTemplateColumns = `repeat(${config.gridSize}, 1fr)`;
+  
+  // Clear previous canvas
+  const ctx = UI.gameOverLineCanvas.getContext('2d');
+  ctx.clearRect(0, 0, UI.gameOverLineCanvas.width, UI.gameOverLineCanvas.height);
+  
+  // Set canvas size
+  const boardWrap = document.getElementById('game-over-board-wrap');
+  UI.gameOverLineCanvas.width = boardWrap.clientWidth;
+  UI.gameOverLineCanvas.height = boardWrap.clientHeight;
+  
+  // Render tiles
+  board.forEach((l, i) => {
+    let t = document.createElement('div');
+    t.className = 'game-over-tile';
+    
+    // Check if this tile is in the longest word path
+    if (longestWordPath.includes(i)) {
+      if (i === longestWordPath[0]) {
+        t.classList.add('longest-path-start');
+      } else if (i === longestWordPath[longestWordPath.length - 1]) {
+        t.classList.add('longest-path-end');
+      } else {
+        t.classList.add('longest-path');
+      }
+    }
+    
+    // Apply multiplier styling
+    if (mults[i]) {
+      t.classList.add(mults[i]);
+    }
+    
+    t.textContent = l;
+    t.dataset.i = i;
+    
+    // Add multiplier badge
+    if(mults[i]) {
+      let m = document.createElement('div');
+      m.className = `game-over-mult ${mults[i]}`;
+      m.textContent = mults[i];
+      t.appendChild(m);
+    }
+    
+    target.appendChild(t);
+  });
+  
+  // Draw the path for the longest word if found by player
+  if (longestWordPath.length > 0) {
+    // Check if player found any of the longest words
+    let playerFoundLongest = false;
+    for (const word of longestWordsOnBoard) {
+      if (foundWords.has(word)) {
+        playerFoundLongest = true;
+        break;
+      }
+    }
+    
+    if (playerFoundLongest) {
+      drawLongestWordPath();
+    }
+  }
+}
+
+function drawLongestWordPath() {
+  const ctx = UI.gameOverLineCanvas.getContext('2d');
+  
+  if (longestWordPath.length < 2) return;
+  
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(139, 92, 246, 0.8)';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  
+  for (let n = 0; n < longestWordPath.length; n++) {
+    const idx = longestWordPath[n];
+    const t = document.querySelector(`#game-over-board .game-over-tile[data-i="${idx}"]`);
+    if (!t) continue;
+    const tr = t.getBoundingClientRect();
+    const br = UI.gameOverBoard.getBoundingClientRect();
+    const x = tr.left - br.left + tr.width / 2;
+    const y = tr.top - br.top + tr.height / 2;
+    
+    if (n === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  }
+  
+  ctx.stroke();
+  
+  // Draw circles at start and end
+  const startIdx = longestWordPath[0];
+  const endIdx = longestWordPath[longestWordPath.length - 1];
+  
+  const startTile = document.querySelector(`#game-over-board .game-over-tile[data-i="${startIdx}"]`);
+  const endTile = document.querySelector(`#game-over-board .game-over-tile[data-i="${endIdx}"]`);
+  
+  if (startTile && endTile) {
+    const startRect = startTile.getBoundingClientRect();
+    const endRect = endTile.getBoundingClientRect();
+    const boardRect = UI.gameOverBoard.getBoundingClientRect();
+    
+    const startX = startRect.left - boardRect.left + startRect.width / 2;
+    const startY = startRect.top - boardRect.top + startRect.height / 2;
+    
+    const endX = endRect.left - boardRect.left + endRect.width / 2;
+    const endY = endRect.top - boardRect.top + endRect.height / 2;
+    
+    // Draw start circle
+    ctx.beginPath();
+    ctx.arc(startX, startY, 8, 0, Math.PI * 2);
+    ctx.fillStyle = '#22c55e';
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Draw end circle
+    ctx.beginPath();
+    ctx.arc(endX, endY, 8, 0, Math.PI * 2);
+    ctx.fillStyle = '#ef4444';
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+}
+
+/* ================= GET MULTIPLIERS FOR WORD ================= */
+function getMultipliersForWord(path) {
+  const multiplierCounts = {
+    DL: 0,
+    TL: 0,
+    DW: 0,
+    TW: 0
+  };
+  
+  for (const idx of path) {
+    if (mults[idx]) {
+      if (mults[idx] === 'DL') multiplierCounts.DL++;
+      else if (mults[idx] === 'TL') multiplierCounts.TL++;
+      else if (mults[idx] === 'DW') multiplierCounts.DW++;
+      else if (mults[idx] === 'TW') multiplierCounts.TW++;
+    }
+  }
+  
+  return multiplierCounts;
+}
 
 /* ================= PARTICLE SYSTEM ================= */
 class Particle {
@@ -1308,7 +2772,6 @@ function vibrate(pattern) {
 }
 
 /* ================= MUSIC SYSTEM WITH 4 STYLES ================= */
-// LINE TO EDIT FOR VOLUME: Change 0.6 to any value for volume adjustment (line 849)
 const MUSIC_STYLES = {
   synth: {
     name: "Synth",
@@ -1410,8 +2873,6 @@ function createBackgroundMusic(screen = 'menu') {
   // Clean up any existing music
   stopBackgroundMusic();
   
-  console.log(`Creating ${config.musicType} music for ${screen} screen...`);
-  
   // Set base BPM based on screen
   let baseBPM = 120; // Slower for menu
   let noteInterval = 500; // Default interval (500ms = 120 BPM)
@@ -1438,8 +2899,7 @@ function createBackgroundMusic(screen = 'menu') {
   padOscillator.type = style.padWave;
   padOscillator.frequency.setValueAtTime(220, audioContext.currentTime); // A3
   
-  // LINE TO EDIT FOR VOLUME: Change 0.6 to any value for volume adjustment
-  const masterVolume = config.musicVolume * 0.6; // TWICE AS LOUD (was 0.3)
+  const masterVolume = config.musicVolume * 0.6;
   
   padGain.gain.setValueAtTime(masterVolume * 0.1, audioContext.currentTime);
   
@@ -1637,7 +3097,6 @@ function createBackgroundMusic(screen = 'menu') {
   }, 100);
   
   isMusicPlaying = true;
-  console.log(`${style.name} music started at ${baseBPM} BPM`);
   
   // Return function to update tempo (for game screen)
   return {
@@ -1654,8 +3113,6 @@ function createBackgroundMusic(screen = 'menu') {
           clearInterval(beatInterval);
           beatInterval = setInterval(playBeat, currentNoteInterval);
         }
-        
-        console.log(`Tempo updated to ${newBPM} BPM`);
       }
     },
     getCurrentBPM: function() {
@@ -1666,8 +3123,6 @@ function createBackgroundMusic(screen = 'menu') {
     }
   };
 }
-
-// Store tempo controller for game screen
 
 function updateGameTempo() {
   if (!tempoController || gameEnded) return;
@@ -1691,11 +3146,6 @@ function updateGameTempo() {
   targetBPM = Math.min(Math.max(targetBPM, 120), 280);
   
   tempoController.updateTempo(targetBPM);
-  
-  // Update UI to show tempo if desired
-  if (timeLeft % 5 === 0) { // Only log every 5 seconds to avoid spam
-    console.log(`Time left: ${timeLeft}s, BPM: ${tempoController.getCurrentBPM()}, Style: ${tempoController.getMusicType()}`);
-  }
 }
 
 function stopBackgroundMusic() {
@@ -1722,13 +3172,11 @@ function stopBackgroundMusic() {
   tempoController = null;
   
   isMusicPlaying = false;
-  console.log("Background music stopped");
 }
 
 function updateMusicVolume() {
   if (backgroundMusicGains.length > 0 && audioContext) {
-    // LINE TO EDIT FOR VOLUME: Change 0.6 to any value for volume adjustment (also here)
-    const masterVolume = config.musicVolume * 0.6; // TWICE AS LOUD (was 0.3)
+    const masterVolume = config.musicVolume * 0.6;
     
     // Update gain nodes
     backgroundMusicGains.forEach(gainNode => {
@@ -1736,17 +3184,12 @@ function updateMusicVolume() {
         gainNode.gain.setValueAtTime(masterVolume * 0.1, audioContext.currentTime);
       }
     });
-    
-    console.log("Music volume updated to:", config.musicVolume, "Style:", config.musicType);
   }
 }
 
 /* ================= SOUND FUNCTIONS ================= */
 function initAudio() {
-  console.log("Initializing audio...");
-  
   if (audioInitialized) {
-    console.log("Audio already initialized");
     return;
   }
   
@@ -1754,7 +3197,6 @@ function initAudio() {
     // Initialize AudioContext for sound effects
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     audioInitialized = true;
-    console.log("Audio initialized successfully");
   } catch (error) {
     console.error("Audio initialization error:", error);
   }
@@ -1861,20 +3303,23 @@ function playSound(type) {
 }
 
 /* ================= GAME LOGIC ================= */
-function startGame() {
+async function startGame() {
   // Reset game state
   gameEnded = false;
   wordData.clear();
+  screenHistory = []; // Clear navigation history
+  
+  // Show loading screen
+  showLoadingScreen();
+  updateLoadingProgress(10, "Initializing game...");
   
   // Initialize audio if needed
   if (!audioInitialized) {
     initAudio();
   }
   
-  // Start game music with faster tempo
-  if (config.musicVolume > 0) {
-    tempoController = createBackgroundMusic('game');
-  }
+  // Update loading
+  updateLoadingProgress(20, "Generating board...");
   
   // Generate board based on grid size
   const dice = config.gridSize === 4 ? DICE_4x4 : DICE_5x5;
@@ -1887,12 +3332,24 @@ function startGame() {
   
   generateSpecialTiles();
   
+  // Update loading
+  updateLoadingProgress(40, "Setting up game...");
+  
   // Reset game state
   foundWords.clear();
   timeLeft = config.time;
   startTime = Date.now();
   path = [];
   currentScore = 0;
+  
+  // Update loading
+  updateLoadingProgress(60, "Finding word combinations...");
+  
+  // Find longest words on the new board with progress updates
+  await findLongestWordsOnBoardWithProgress();
+  
+  // Update loading
+  updateLoadingProgress(90, "Finalizing setup...");
   
   // Render board
   renderBoard(UI.board);
@@ -1903,33 +3360,55 @@ function startGame() {
   UI.time.style.color = '';
   UI.currentWord.textContent = "";
   
-  // Show game screen
-  showScreen('game-ui');
+  // Reset Word Hunt UI if needed
+  if (config.gameMode === 'wordhunt') {
+    UI.scoreLabel.textContent = "Words";
+    UI.wordhuntProgress.style.display = 'block';
+  } else {
+    UI.scoreLabel.textContent = "Score";
+    UI.wordhuntProgress.style.display = 'none';
+  }
   
-  // Setup canvas
-  UI.canvas.width = UI.board.clientWidth;
-  UI.canvas.height = UI.board.clientHeight;
+  // Update loading
+  updateLoadingProgress(100, "Ready!");
+  
+  // Hide loading screen after a brief delay
+  setTimeout(() => {
+    hideLoadingScreen();
+    
+    // Show game screen
+    showScreen('game-ui');
+    
+    // Start game music with faster tempo
+    if (config.musicVolume > 0) {
+      tempoController = createBackgroundMusic('game');
+    }
+    
+    // Setup canvas
+    UI.canvas.width = UI.board.clientWidth;
+    UI.canvas.height = UI.board.clientHeight;
 
-  // Start timer
-  if(timerInt) clearInterval(timerInt);
-  timerInt = setInterval(() => {
-    timeLeft--;
-    UI.time.textContent = timeLeft;
-    
-    if (timeLeft <= 10) {
-      UI.time.style.color = '#ef4444';
-      if (timeLeft <= 5 && timeLeft > 0) {
-        playSound('warning');
+    // Start timer
+    if(timerInt) clearInterval(timerInt);
+    timerInt = setInterval(() => {
+      timeLeft--;
+      UI.time.textContent = timeLeft;
+      
+      if (timeLeft <= 10) {
+        UI.time.style.color = '#ef4444';
+        if (timeLeft <= 5 && timeLeft > 0) {
+          playSound('warning');
+        }
       }
-    }
-    
-    // Update music tempo based on time left
-    if (tempoController && timeLeft < config.time) {
-      updateGameTempo();
-    }
-    
-    if(timeLeft <= 0) endGame();
-  }, 1000);
+      
+      // Update music tempo based on time left
+      if (tempoController && timeLeft < config.time) {
+        updateGameTempo();
+      }
+      
+      if(timeLeft <= 0) endGame();
+    }, 1000);
+  }, 500);
 }
 
 function generateSpecialTiles() {
@@ -2106,8 +3585,16 @@ function submitWord() {
   let w = path.map(i=>board[i]).join("").toUpperCase();
   if(w.length < config.minLen) return;
   
+  // Get multipliers used in this path
+  const multipliers = getMultipliersForWord(path);
+  
   // Calculate score for this specific path
   let newScore = calcScore(w, path);
+  
+  // For Word Hunt mode, score is just 1 point per word
+  if (config.gameMode === 'wordhunt') {
+    newScore = 1;
+  }
   
   // Check if multiplier was used in this path
   let multiplierUsed = false;
@@ -2125,7 +3612,7 @@ function submitWord() {
     if (newScore > oldScore) {
       // Higher score found! Update the score
       foundWords.set(w, newScore);
-      wordData.set(w, {score: newScore, path: [...path], multiplierUsed: multiplierUsed});
+      wordData.set(w, {score: newScore, path: [...path], multiplierUsed: multiplierUsed, multipliers: multipliers});
       
       // Update total score
       currentScore = currentScore - oldScore + newScore;
@@ -2154,8 +3641,6 @@ function submitWord() {
         UI.score.style.transform = 'scale(1)';
         UI.score.style.color = '';
       }, 200);
-      
-      console.log(`Better path found for "${w}": ${oldScore} → ${newScore} points`);
     } else {
       // Same word with same or lower score
       flash('repeat');
@@ -2164,7 +3649,7 @@ function submitWord() {
   } else if(dict.has(w)) {
     // New valid word
     foundWords.set(w, newScore);
-    wordData.set(w, {score: newScore, path: [...path], multiplierUsed: multiplierUsed});
+    wordData.set(w, {score: newScore, path: [...path], multiplierUsed: multiplierUsed, multipliers: multipliers});
     
     // Update word count in lifetime stats
     updateWordLifetimeCount(w);
@@ -2200,6 +3685,11 @@ function submitWord() {
     if (currentScore > getAllTimeHighScore()) {
       setAllTimeHighScore(currentScore);
       UI.highScoreDisplay.textContent = currentScore;
+    }
+    
+    // Update Word Hunt progress
+    if (config.gameMode === 'wordhunt') {
+      updateWordHuntProgress();
     }
   } else {
     // Invalid word
@@ -2308,6 +3798,9 @@ function endGame() {
   // Set today's high score
   setTodayHighScore(currentScore);
   
+  // Update game statistics
+  updateGameStatistics(foundWords.size, currentScore);
+  
   // Calculate time used
   const timeUsed = config.time - timeLeft;
   
@@ -2324,6 +3817,15 @@ function endGame() {
   UI.comparisonCurrent.textContent = currentScore;
   UI.comparisonToday.textContent = todayHigh;
   UI.comparisonAlltime.textContent = allTimeHigh;
+  
+  // Render the game over board with highlighted longest word path
+  renderGameOverBoard();
+  
+  // Handle Word Hunt specific end game
+  if (config.gameMode === 'wordhunt') {
+    endWordHuntGame();
+    UI.finalScore.textContent = foundWords.size; // Show word count instead of score
+  }
   
   // Create celebration particles
   const screenWidth = window.innerWidth;
@@ -2346,52 +3848,49 @@ function endGame() {
   vibrate([100, 50, 100, 50, 100]);
   
   // Generate enhanced end-game summary
-  generatePerformanceRating();
+  generateLongestWordInfo();
   generateWordLengthDistribution();
-  generateMissedOpportunities();
   generateWordList();
   
   // Show game over screen
   showScreen('game-over');
 }
 
-function generatePerformanceRating() {
-  // Calculate performance based on score relative to board size and time
-  const maxPossible = config.gridSize * config.gridSize * 25; // Rough estimate
-  const scoreRatio = currentScore / maxPossible;
-  
-  let rating, desc, color;
-  
-  if (scoreRatio > 0.7) {
-    rating = "A+";
-    desc = "Exceptional!";
-    color = "#fbbf24";
-  } else if (scoreRatio > 0.5) {
-    rating = "A";
-    desc = "Excellent!";
-    color = "#22c55e";
-  } else if (scoreRatio > 0.35) {
-    rating = "B";
-    desc = "Great Job!";
-    color = "#0ea5e9";
-  } else if (scoreRatio > 0.2) {
-    rating = "C";
-    desc = "Good Effort";
-    color = "#8b5cf6";
-  } else if (scoreRatio > 0.1) {
-    rating = "D";
-    desc = "Keep Practicing";
-    color = "#ec4899";
-  } else {
-    rating = "F";
-    desc = "Try Again";
-    color = "#ef4444";
+/* ================= LONGEST WORD INFO - FACTUAL ================= */
+function generateLongestWordInfo() {
+  if (longestWordsOnBoard.length === 0) {
+    UI.longestWordResult.textContent = "No words found";
+    UI.longestWordResult.className = "longest-word-result";
+    UI.longestWordInfo.textContent = "No valid words could be formed from this board.";
+    UI.longestWordCount.textContent = "";
+    return;
   }
   
-  UI.ratingLetter.textContent = rating;
-  UI.ratingLetter.style.color = color;
-  UI.ratingDesc.textContent = desc;
-  UI.ratingDesc.style.color = color;
+  const longestWord = longestWordsOnBoard[0];
+  const wordLength = longestWord.length;
+  
+  // Check if player found the longest word
+  const playerFoundLongest = foundWords.has(longestWord);
+  
+  // Display the longest word
+  UI.longestWordResult.textContent = `${longestWord} (${wordLength} letters)`;
+  
+  // Set color based on whether found or not
+  if (playerFoundLongest) {
+    UI.longestWordResult.className = "longest-word-result longest-word-found";
+    UI.longestWordInfo.textContent = `Found! The path is highlighted on the board above.`;
+  } else {
+    UI.longestWordResult.className = "longest-word-result longest-word-missed";
+    UI.longestWordInfo.textContent = `Missed! See the highlighted path on the board.`;
+  }
+  
+  // Show additional information if multiple longest words
+  if (longestWordsOnBoard.length > 1) {
+    const otherWords = longestWordsOnBoard.slice(1).map(w => w.toUpperCase()).join(", ");
+    UI.longestWordCount.textContent = `Also ${longestWordsOnBoard.length - 1} other ${wordLength}-letter word${longestWordsOnBoard.length > 2 ? 's' : ''}: ${otherWords}`;
+  } else {
+    UI.longestWordCount.textContent = "";
+  }
 }
 
 function generateWordLengthDistribution() {
@@ -2432,86 +3931,6 @@ function generateWordLengthDistribution() {
   }
 }
 
-function generateMissedOpportunities() {
-  // Find the longest word found
-  let longestFound = '';
-  let longestLength = 0;
-  
-  for (const word of foundWords.keys()) {
-    if (word.length > longestLength) {
-      longestLength = word.length;
-      longestFound = word;
-    }
-  }
-  
-  // Check if longest word is >= 8 letters
-  if (longestLength >= 8) {
-    UI.missedMessage.innerHTML = `
-      Great job finding long words! Your longest word was 
-      <span style="color:#fbbf24; font-weight:700;">${longestFound.toUpperCase()}</span> 
-      (${longestLength} letters).
-    `;
-    UI.longestWordHint.style.display = 'none';
-  } else {
-    // Suggest looking for longer words
-    UI.missedMessage.innerHTML = `
-      Try finding longer words next time! Your longest word was 
-      <span style="color:#fbbf24; font-weight:700;">${longestFound.toUpperCase() || 'none'}</span> 
-      (${longestLength} letters). Words with 8+ letters score big points!
-    `;
-    
-    // Generate a fake long word for demonstration (in a real game, you'd analyze the board)
-    if (foundWords.size > 0) {
-      // Pick a random word and extend it
-      const words = Array.from(foundWords.keys());
-      const randomWord = words[Math.floor(Math.random() * words.length)];
-      const fakeLongWord = randomWord + 'ING'; // Simple extension
-      
-      if (fakeLongWord.length >= 8 && dict.has(fakeLongWord)) {
-        UI.longestWordText.textContent = fakeLongWord.toUpperCase();
-        UI.longestWordScore.textContent = calcScore(fakeLongWord, [0,1,2,3,4,5,6,7]); // Fake path
-        
-        // Generate a fake path visualization
-        generatePathHint(fakeLongWord);
-        
-        UI.longestWordHint.style.display = 'block';
-      } else {
-        UI.longestWordHint.style.display = 'none';
-      }
-    } else {
-      UI.longestWordHint.style.display = 'none';
-    }
-  }
-}
-
-function generatePathHint(word) {
-  // Create a simple grid visualization
-  const size = config.gridSize;
-  UI.pathHint.innerHTML = '';
-  
-  // Create rows
-  for (let row = 0; row < size; row++) {
-    const rowDiv = document.createElement('div');
-    rowDiv.className = 'path-row';
-    
-    for (let col = 0; col < size; col++) {
-      const tileDiv = document.createElement('div');
-      tileDiv.className = 'path-tile';
-      
-      // Place letters from the word on the path
-      const index = row * size + col;
-      if (index < word.length) {
-        tileDiv.textContent = word[index].toUpperCase();
-        tileDiv.classList.add('highlight');
-      }
-      
-      rowDiv.appendChild(tileDiv);
-    }
-    
-    UI.pathHint.appendChild(rowDiv);
-  }
-}
-
 function generateWordList() {
   // Sort words by score (highest first)
   const sortedWords = Array.from(wordData.entries())
@@ -2526,10 +3945,25 @@ function generateWordList() {
     wordItem.className = 'word-item';
     wordItem.style.animationDelay = `${index * 0.05}s`;
     
+    // Create multiplier badges
+    const multiplierBadges = [];
+    if (data.multipliers.DL > 0) {
+      multiplierBadges.push(`<div class="multiplier-badge DL">DL×${data.multipliers.DL}</div>`);
+    }
+    if (data.multipliers.TL > 0) {
+      multiplierBadges.push(`<div class="multiplier-badge TL">TL×${data.multipliers.TL}</div>`);
+    }
+    if (data.multipliers.DW > 0) {
+      multiplierBadges.push(`<div class="multiplier-badge DW">DW×${data.multipliers.DW}</div>`);
+    }
+    if (data.multipliers.TW > 0) {
+      multiplierBadges.push(`<div class="multiplier-badge TW">TW×${data.multipliers.TW}</div>`);
+    }
+    
     wordItem.innerHTML = `
       <div class="word-text">${word.toUpperCase()}</div>
       <div class="word-stats">
-        ${data.multiplierUsed ? '<div class="word-multiplier">✪</div>' : ''}
+        ${multiplierBadges.length > 0 ? `<div class="word-multipliers">${multiplierBadges.join('')}</div>` : ''}
         ${lifetimeCount > 1 ? `<div class="word-count">×${lifetimeCount}</div>` : ''}
         <div class="word-score">${data.score}</div>
       </div>
@@ -2550,13 +3984,12 @@ function playAgain() {
   gameEnded = false;
   wordData.clear();
   
-  // Restart game music with faster tempo
-  if (config.musicVolume > 0) {
-    tempoController = createBackgroundMusic('game');
-  }
-  
   // Start new game with same settings
-  startGame();
+  if (config.gameMode === 'wordhunt') {
+    startWordHuntGame();
+  } else {
+    startGame();
+  }
 }
 
 /* ================= HIGH SCORE MANAGEMENT ================= */
@@ -2568,32 +4001,6 @@ function getAllTimeHighScore() {
 function setAllTimeHighScore(score) {
   const key = `boggle_highscore_${config.gridSize}x${config.gridSize}`;
   localStorage.setItem(key, score);
-}
-
-/* ================= NAVIGATION ================= */
-function showScreen(id) {
-  const currentActive = document.querySelector('.screen.active');
-  if (currentActive) {
-    currentActive.style.opacity = '0';
-    setTimeout(() => {
-      currentActive.classList.remove('active');
-      currentActive.style.opacity = '';
-    }, 400);
-  }
-  
-  setTimeout(() => {
-    const screen = document.getElementById(id);
-    screen.classList.add('active');
-    
-    // Handle music based on screen
-    if (id === 'main-menu' && config.musicVolume > 0) {
-      // Start menu music (slower tempo)
-      tempoController = createBackgroundMusic('menu');
-    } else if (id === 'game-over' || id === 'game-ui') {
-      // Game over screen doesn't need special music handling
-      // Game UI music is already handled in startGame()
-    }
-  }, 100);
 }
 
 /* ================= VOLUME CONTROLS ================= */
@@ -2653,18 +4060,42 @@ function saveSettings() {
 /* ================= INITIALIZATION ================= */
 async function loadDictionary() {
   try {
+    updateLoadingProgress(0, "Loading dictionary...");
     const r = await fetch(DICT_URL);
     const t = await r.text();
-    t.toUpperCase().split(/\s+/).forEach(w => {
-      if(w.length < 3) return;
-      dict.add(w);
-    });
+    updateLoadingProgress(50, "Processing words...");
+    const words = t.toUpperCase().split(/\s+/);
+    const totalWords = words.length;
+    
+    // Process in chunks to avoid blocking
+    const chunkSize = 1000;
+    for (let i = 0; i < words.length; i += chunkSize) {
+      const chunk = words.slice(i, i + chunkSize);
+      chunk.forEach(w => {
+        if(w.length < 3) return;
+        dict.add(w);
+        trie.insert(w); // Add to trie for efficient search
+      });
+      
+      // Update progress
+      const progress = Math.min(90, 50 + ((i / words.length) * 40));
+      updateLoadingProgress(progress, `Loaded ${Math.min(i + chunkSize, totalWords)}/${totalWords} words...`);
+      
+      // Yield to UI
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    
     document.getElementById('dict-status').textContent = "Dictionary Ready";
   } catch(e) {
     document.getElementById('dict-status').textContent = "Offline Dictionary Loaded";
     // Add some fallback words
-    ["APPLE","PEAR","BEAR","GAME","PLAY","TIME","WORD","LETTER","BOARD","TILE",
-     "SCORE","GRID","FIND","SEARCH","PUZZLE","BRAIN","FUN","CHALLENGE"].forEach(w=>dict.add(w));
+    const fallbackWords = ["APPLE","PEAR","BEAR","GAME","PLAY","TIME","WORD","LETTER","BOARD","TILE",
+     "SCORE","GRID","FIND","SEARCH","PUZZLE","BRAIN","FUN","CHALLENGE"];
+    
+    fallbackWords.forEach(w => {
+      dict.add(w);
+      trie.insert(w);
+    });
   }
 }
 
@@ -2752,7 +4183,6 @@ function setupEventListeners() {
       }
       
       saveSettings();
-      console.log(`Music style changed to: ${MUSIC_STYLES[musicType].name}`);
     });
   });
   
@@ -2790,38 +4220,13 @@ function loadSettings() {
 
 // Initialize
 loadSettings();
-loadDictionary();
 setupEventListeners();
 initParticleCanvas();
 
-// Test music function
-window.testMusic = function() {
-  console.log("Testing music system...");
-  console.log("Audio initialized:", audioInitialized);
-  console.log("Music volume:", config.musicVolume);
-  console.log("Music style:", MUSIC_STYLES[config.musicType].name);
-  console.log("Is music playing:", isMusicPlaying);
-  
-  if (audioContext) {
-    if (!isMusicPlaying) {
-      tempoController = createBackgroundMusic('menu');
-      console.log(`${MUSIC_STYLES[config.musicType].name} music started`);
-    } else {
-      stopBackgroundMusic();
-      console.log("Music stopped");
-    }
-  }
-};
-
 window.addEventListener('load', function() {
-  console.log("Boggle Party loaded with enhanced game summary!");
-  console.log("New features:");
-  console.log("- Performance rating (A+ to F)");
-  console.log("- Score comparisons (Today's best vs All-time best)");
-  console.log("- Word length distribution visualization");
-  console.log("- Word list ranked by score with multiplier indicators");
-  console.log("- Lifetime word counts");
-  console.log("- Improvement tips for finding longer words");
+  console.log("Boggle Party loaded!");
+  // Load dictionary after page loads
+  loadDictionary();
 });
 </script>
 </body>
