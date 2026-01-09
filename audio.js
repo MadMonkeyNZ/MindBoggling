@@ -165,8 +165,17 @@ function playLinkSound(pathLength) {
 function playMusic(track) {
     console.log(`Playing music: ${track}`);
     
-    // Stop current music if playing
-    if (currentMusic) {
+    // Don't restart if the same track is already playing
+    if (currentMusic && 
+        currentMusic.id === 'music-' + track && 
+        !currentMusic.paused &&
+        Math.abs(currentMusic.currentTime) > 0.1) {
+        console.log(`Track ${track} is already playing, skipping restart.`);
+        return;
+    }
+    
+    // Stop current music if playing (and it's a different track)
+    if (currentMusic && currentMusic.id !== 'music-' + track) {
         currentMusic.pause();
         currentMusic.currentTime = 0;
     }
@@ -177,18 +186,24 @@ function playMusic(track) {
         audioElement.volume = musicVolume;
         audioElement.loop = track !== 'summary';
         
-        const playPromise = audioElement.play();
-        
-        if (playPromise !== undefined) {
-            playPromise.then(() => {
-                console.log(`Music playing: ${track} at ${Math.round(musicVolume * 100)}%`);
-                currentMusic = audioElement;
-            }).catch(error => {
-                console.error(`Music failed: ${track}`, error);
-                if (track !== 'game1') {
-                    playMusic('game1');
-                }
-            });
+        // Only play if not already playing or it's a different track
+        if (audioElement.paused || currentMusic?.id !== 'music-' + track) {
+            const playPromise = audioElement.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    console.log(`Music playing: ${track} at ${Math.round(musicVolume * 100)}%`);
+                    currentMusic = audioElement;
+                }).catch(error => {
+                    console.error(`Music failed: ${track}`, error);
+                    if (track !== 'game1') {
+                        playMusic('game1');
+                    }
+                });
+            }
+        } else {
+            console.log(`Track ${track} is already playing, keeping it running.`);
+            currentMusic = audioElement;
         }
     } else {
         console.error(`Music element not found: ${track}`);

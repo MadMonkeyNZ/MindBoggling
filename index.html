@@ -26,102 +26,104 @@
   </div>
 
   <div id="main-menu" class="screen active">
-    <div class="title">Boggle<br>Party</div>
-    <div class="subtitle">Word Search Challenge</div>
-    
-    <button class="menu-btn primary" onclick="startGame()">Start Game</button>
-    <button class="menu-btn" onclick="showScreen('game-modes')">Other Game Modes</button>
-    <button class="menu-btn" onclick="showScreen('statistics-screen')">Statistics</button>
-    
-    <!-- Settings Panel -->
-    <div class="settings-panel">
-      <!-- Grid Size -->
-      <div class="setting-row">
-        <div class="setting-label">Grid Size</div>
-        <div class="setting-controls">
-          <div class="size-toggle">
-            <button class="size-btn active" data-size="4">4×4</button>
-            <button class="size-btn" data-size="5">5×5</button>
+    <div class="main-menu-content">
+      <div class="title">Boggle<br>Party</div>
+      <div class="subtitle">Word Search Challenge</div>
+      
+      <button class="menu-btn primary" onclick="startGame()">Start Game</button>
+      <button class="menu-btn" onclick="showScreen('game-modes')">Other Game Modes</button>
+      <button class="menu-btn" onclick="showScreen('statistics-screen')">Statistics</button>
+      
+      <!-- Settings Panel -->
+      <div class="settings-panel">
+        <!-- Grid Size -->
+        <div class="setting-row">
+          <div class="setting-label">Grid Size</div>
+          <div class="setting-controls">
+            <div class="size-toggle">
+              <button class="size-btn active" data-size="4">4×4</button>
+              <button class="size-btn" data-size="5">5×5</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Time Limit -->
+        <div class="setting-row">
+          <div class="setting-label">Time Limit</div>
+          <div class="setting-controls">
+            <input type="range" id="time-slider" min="30" max="300" step="30" value="30">
+            <div class="value-display" id="time-value">30s</div>
+          </div>
+        </div>
+        
+        <!-- Min Word Length -->
+        <div class="setting-row">
+          <div class="setting-label">Min Word Length</div>
+          <div class="setting-controls">
+            <input type="range" id="length-slider" min="3" max="5" step="1" value="3">
+            <div class="value-display" id="length-value">3</div>
+          </div>
+        </div>
+        
+        <!-- Scoring System -->
+        <div class="setting-row">
+          <div class="setting-label">Scoring System</div>
+          <div class="setting-controls">
+            <span style="font-size:0.85rem; color:#94a3b8">Traditional</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="scoring-toggle">
+              <span class="toggle-slider"></span>
+            </label>
+            <span style="font-size:0.85rem; color:#94a3b8">Modern</span>
+          </div>
+        </div>
+        
+        <!-- UI Sound Volume -->
+        <div class="setting-row">
+          <div class="setting-label">UI Sound Volume</div>
+          <div class="setting-controls">
+            <div class="volume-control">
+              <input type="range" id="ui-volume-slider" min="0" max="100" value="70" class="volume-slider">
+              <div class="volume-value" id="ui-volume-value">70%</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Background Music Volume -->
+        <div class="setting-row">
+          <div class="setting-label">Music Volume</div>
+          <div class="setting-controls">
+            <div class="volume-control">
+              <input type="range" id="music-volume-slider" min="0" max="100" value="50" class="volume-slider">
+              <div class="volume-value" id="music-volume-value">50%</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Game Track Selection -->
+        <div class="setting-row" style="flex-direction: column; align-items: flex-start;">
+          <div class="setting-label" style="margin-bottom: 8px;">Game Music Track</div>
+          <div class="music-type-grid">
+            <button class="music-type-btn active" data-track="game1">
+              <div>🎮 Track 1</div>
+              <div style="font-size:0.7rem; opacity:0.8; margin-top:3px;">Upbeat</div>
+            </button>
+            <button class="music-type-btn" data-track="game2">
+              <div>🎵 Track 2</div>
+              <div style="font-size:0.7rem; opacity:0.8; margin-top:3px;">Chill</div>
+            </button>
           </div>
         </div>
       </div>
       
-      <!-- Time Limit -->
-      <div class="setting-row">
-        <div class="setting-label">Time Limit</div>
-        <div class="setting-controls">
-          <input type="range" id="time-slider" min="30" max="300" step="30" value="30">
-          <div class="value-display" id="time-value">30s</div>
-        </div>
+      <!-- High Score Display -->
+      <div class="high-score">
+        <div class="hud-lbl">High Score</div>
+        <div class="hud-val" id="high-score-display">0</div>
       </div>
       
-      <!-- Min Word Length -->
-      <div class="setting-row">
-        <div class="setting-label">Min Word Length</div>
-        <div class="setting-controls">
-          <input type="range" id="length-slider" min="3" max="5" step="1" value="3">
-          <div class="value-display" id="length-value">3</div>
-        </div>
-      </div>
-      
-      <!-- Scoring System -->
-      <div class="setting-row">
-        <div class="setting-label">Scoring System</div>
-        <div class="setting-controls">
-          <span style="font-size:0.85rem; color:#94a3b8">Traditional</span>
-          <label class="toggle-switch">
-            <input type="checkbox" id="scoring-toggle">
-            <span class="toggle-slider"></span>
-          </label>
-          <span style="font-size:0.85rem; color:#94a3b8">Modern</span>
-        </div>
-      </div>
-      
-      <!-- UI Sound Volume -->
-      <div class="setting-row">
-        <div class="setting-label">UI Sound Volume</div>
-        <div class="setting-controls">
-          <div class="volume-control">
-            <input type="range" id="ui-volume-slider" min="0" max="100" value="70" class="volume-slider">
-            <div class="volume-value" id="ui-volume-value">70%</div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Background Music Volume -->
-      <div class="setting-row">
-        <div class="setting-label">Music Volume</div>
-        <div class="setting-controls">
-          <div class="volume-control">
-            <input type="range" id="music-volume-slider" min="0" max="100" value="50" class="volume-slider">
-            <div class="volume-value" id="music-volume-value">50%</div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Game Track Selection -->
-      <div class="setting-row" style="flex-direction: column; align-items: flex-start;">
-        <div class="setting-label" style="margin-bottom: 8px;">Game Music Track</div>
-        <div class="music-type-grid">
-          <button class="music-type-btn active" data-track="game1">
-            <div>🎮 Track 1</div>
-            <div style="font-size:0.7rem; opacity:0.8; margin-top:3px;">Upbeat</div>
-          </button>
-          <button class="music-type-btn" data-track="game2">
-            <div>🎵 Track 2</div>
-            <div style="font-size:0.7rem; opacity:0.8; margin-top:3px;">Chill</div>
-          </button>
-        </div>
-      </div>
+      <div id="dict-status" class="center-txt">Loading Dictionary...</div>
     </div>
-    
-    <!-- High Score Display -->
-    <div class="high-score">
-      <div class="hud-lbl">High Score</div>
-      <div class="hud-val" id="high-score-display">0</div>
-    </div>
-    
-    <div id="dict-status" class="center-txt">Loading Dictionary...</div>
   </div>
 
   <!-- Statistics Screen -->

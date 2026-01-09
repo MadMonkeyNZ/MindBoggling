@@ -72,10 +72,24 @@ body {
 
 /* ================= MAIN MENU ================= */
 #main-menu { 
-  justify-content: center; 
+  overflow-y: auto;
+  justify-content: flex-start;
   align-items: center; 
   text-align: center; 
+  padding-top: 40px;
+  padding-bottom: 40px;
 }
+
+.main-menu-content {
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
 .title { 
   font-size: 3rem; 
   font-weight: 800; 
@@ -655,6 +669,36 @@ input[type=range]::-webkit-slider-thumb:hover {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
+
+/* Tile Score Indicators */
+.tile .tile-score {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 3;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Color adjustments for special tiles */
+.tile.DW .tile-score,
+.tile.TW .tile-score,
+.tile.DL .tile-score,
+.tile.TL .tile-score {
+  color: white;
+  background: rgba(0, 0, 0, 0.7);
+}
+
 .tile.active { 
   background: var(--active) !important; 
   color: white !important; 
@@ -961,6 +1005,26 @@ input[type=range]::-webkit-slider-thumb:hover {
   box-shadow: 0 4px 0 rgba(0,0,0,0.2);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+}
+
+/* Game over tile score */
+.game-over-tile .tile-score {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 0.6rem;
+  font-weight: 900;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 3;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .game-over-tile.longest-path {
@@ -1451,6 +1515,8 @@ input[type=range]::-webkit-slider-thumb:hover {
   .settings-panel {
     max-width: 100%;
     padding: 15px;
+    max-height: 40vh;
+    overflow-y: auto;
   }
   
   .game-over-content {
@@ -1460,5 +1526,10 @@ input[type=range]::-webkit-slider-thumb:hover {
   .loading-content {
     padding: 20px;
     margin: 0 15px;
+  }
+  
+  #main-menu {
+    padding-top: 20px;
+    padding-bottom: 20px;
   }
 }

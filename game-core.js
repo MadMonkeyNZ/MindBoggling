@@ -216,6 +216,19 @@ function initParticleCanvas() {
   animateParticles();
 }
 
+/* ================= TILE SCORE FUNCTIONS ================= */
+function getTileScore(letter, multiplier) {
+    let letterValue = LETTER_VALUES[letter.toUpperCase()] || 1;
+    
+    if (multiplier === "DL") {
+        letterValue *= 2;
+    } else if (multiplier === "TL") {
+        letterValue *= 3;
+    }
+    
+    return letterValue;
+}
+
 /* ================= CORE GAME FUNCTIONS ================= */
 function startGame() {
   // Reset game state
@@ -360,6 +373,13 @@ function renderBoard(target) {
     
     t.textContent = l;
     t.dataset.i = i;
+    
+    // Add tile score indicator
+    const tileScore = getTileScore(l, mults[i]);
+    const scoreIndicator = document.createElement('div');
+    scoreIndicator.className = 'tile-score';
+    scoreIndicator.textContent = tileScore;
+    t.appendChild(scoreIndicator);
     
     if(mults[i]) {
       let m = document.createElement('div');
@@ -950,6 +970,13 @@ function renderGameOverBoard() {
     
     t.textContent = l;
     t.dataset.i = i;
+    
+    // Add tile score indicator
+    const tileScore = getTileScore(l, mults[i]);
+    const scoreIndicator = document.createElement('div');
+    scoreIndicator.className = 'tile-score';
+    scoreIndicator.textContent = tileScore;
+    t.appendChild(scoreIndicator);
     
     // Add multiplier badge
     if(mults[i]) {
