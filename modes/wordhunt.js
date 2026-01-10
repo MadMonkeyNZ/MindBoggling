@@ -4,6 +4,8 @@
 let totalWordsOnBoard = 0;
 
 function startWordHuntGame() {
+  console.log("Starting Word Hunt Game");
+  
   // Set Word Hunt specific settings
   config.gameMode = "wordhunt";
   config.gridSize = 4;
@@ -12,16 +14,30 @@ function startWordHuntGame() {
   config.scoring = "traditional"; // Word Hunt uses word count, not points
   
   // Start the game
-  startGame();
+  if (typeof startGame === 'function') {
+    startGame();
+  } else {
+    console.error("startGame function not found!");
+    alert("Error: Game functions not loaded properly. Please refresh the page.");
+    return;
+  }
   
   // Find all possible words on the board
   setTimeout(() => {
-    totalWordsOnBoard = findAllWordsOnBoard().size;
-    
-    // Update UI for Word Hunt
-    UI.scoreLabel.textContent = "Words";
-    UI.wordhuntProgress.style.display = 'block';
-    updateWordHuntProgress();
+    if (typeof findAllWordsOnBoard === 'function') {
+      totalWordsOnBoard = findAllWordsOnBoard().size;
+      
+      // Update UI for Word Hunt
+      if (UI.scoreLabel) {
+        UI.scoreLabel.textContent = "Words";
+      }
+      if (UI.wordhuntProgress) {
+        UI.wordhuntProgress.style.display = 'block';
+      }
+      if (typeof updateWordHuntProgress === 'function') {
+        updateWordHuntProgress();
+      }
+    }
   }, 100);
 }
 

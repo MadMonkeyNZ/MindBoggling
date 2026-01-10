@@ -1,3 +1,5 @@
+// game-core.js - Enhanced with proper game mode handling
+
 // Ensure isGamePlaying is declared if audio.js didn't load
 if (typeof isGamePlaying === 'undefined') {
   window.isGamePlaying = false;
@@ -44,7 +46,7 @@ let gameEnded = false;
 let wordData = new Map();
 
 // Global audio state
-
+window.isGamePlaying = false;
 
 const LETTER_VALUES = {
   'A': 1, 'B': 3, 'C': 3, 'D': 2, 'E': 1, 'F': 4, 'G': 2, 'H': 4, 'I': 1,
@@ -230,10 +232,20 @@ function getTileScore(letter, multiplier) {
 }
 
 /* ================= CORE GAME FUNCTIONS ================= */
-// Also update the startGame function to ensure it resets game mode properly
+
+// Start Classic Game function
+function startClassicGame() {
+  console.log("Starting Classic Game");
+  config.gameMode = "classic";
+  startGame();
+}
+
+// Main startGame function
 function startGame() {
-  // Ensure game mode is set properly (default to classic if not set)
-  if (!config.gameMode || config.gameMode === 'wordhunt') {
+  console.log("startGame called with gameMode:", config.gameMode);
+  
+  // Ensure game mode is set properly
+  if (!config.gameMode) {
     config.gameMode = "classic";
   }
   
@@ -298,7 +310,9 @@ function startGame() {
         UI.wordhuntProgress.style.display = 'block';
         // Update Word Hunt progress immediately
         setTimeout(() => {
-          updateWordHuntProgress();
+          if (typeof updateWordHuntProgress === 'function') {
+            updateWordHuntProgress();
+          }
         }, 500);
       } else {
         UI.scoreLabel.textContent = "Score";
@@ -349,8 +363,6 @@ function startGame() {
   }, 100);
 }
 
-// ... existing code ...
-
 function generateSpecialTiles() {
   const totalTiles = config.gridSize * config.gridSize;
   mults = new Array(totalTiles).fill("");
@@ -380,8 +392,6 @@ function generateSpecialTiles() {
   
   console.log(`Generated ${specialIndices.length} special tiles:`, mults.filter(m => m !== ""));
 }
-
-// ... rest of existing code ...
 
 function renderBoard(target) {
   target.innerHTML = "";
@@ -649,7 +659,7 @@ function submitWord() {
     }
     
     // Update Word Hunt progress
-    if (config.gameMode === 'wordhunt') {
+    if (config.gameMode === 'wordhunt' && typeof updateWordHuntProgress === 'function') {
       updateWordHuntProgress();
     }
   } else {
@@ -870,7 +880,7 @@ async function findLongestWordsOnBoardWithProgress() {
 
 /* ================= GAME OVER FUNCTIONS ================= */
 function endGame() {
-  console.log("endGame called"); // Debug log
+  console.log("endGame called");
   if (gameEnded) return; // Prevent multiple calls
   gameEnded = true;
   
@@ -912,7 +922,9 @@ function endGame() {
   
   // Handle Word Hunt specific end game
   if (config.gameMode === 'wordhunt') {
-    endWordHuntGame();
+    if (typeof endWordHuntGame === 'function') {
+      endWordHuntGame();
+    }
     UI.finalScore.textContent = foundWords.size; // Show word count instead of score
   }
   
@@ -1258,9 +1270,14 @@ function playAgain() {
   
   // Start new game with same settings
   if (config.gameMode === 'wordhunt') {
-    startWordHuntGame();
+    if (typeof startWordHuntGame === 'function') {
+      startWordHuntGame();
+    } else {
+      console.error("startWordHuntGame function not found!");
+      startClassicGame();
+    }
   } else {
-    // Ensure game mode is reset to classic
+    // Ensure game mode is classic
     config.gameMode = "classic";
     startGame();
   }
@@ -1354,12 +1371,12 @@ function loadSettings() {
   config.uiVolume = Math.max(0, Math.min(1, config.uiVolume || 0.7));
   config.musicVolume = Math.max(0, Math.min(1, config.musicVolume || 0.5));
   config.musicTrack = config.musicTrack || "game1";
+  config.gameMode = config.gameMode || "classic";
   
   updateSettingsUI();
 }
 
 // Initialize
-// Add this to game-core.js initialization section (around line 1100)
 window.addEventListener('load', function() {
     console.log("Boggle Party loaded!");
     loadSettings();
@@ -1386,6 +1403,7 @@ window.addEventListener('load', function() {
 
 // Make functions globally available
 window.startGame = startGame;
+window.startClassicGame = startClassicGame;  // Add this line
 window.quitGame = quitGame;
 window.playAgain = playAgain;
-window.isGamePlaying = isGamePlaying; // Export for audio.js
+window.isGamePlaying = isGamePlaying;

@@ -1,7 +1,5 @@
 /* ================= SCREEN MANAGEMENT ================= */
 
-/* ================= SCREEN MANAGEMENT ================= */
-
 let screenHistory = [];
 
 /* ================= LOADING SCREEN FUNCTIONS ================= */
@@ -76,7 +74,7 @@ function showScreen(id) {
       } else if (id === 'main-menu' || id === 'game-modes' || id === 'statistics-screen') {
         // Play menu music (selected track)
         isGamePlaying = false;
-        if (config.musicVolume > 0) {
+        if (config.musicVolume > 0 && typeof playMusic === 'function') {
           playMusic(config.musicTrack || 'game1');
         }
         
@@ -104,8 +102,6 @@ function showScreen(id) {
     }
   }, 100);
 }
-
-// ... rest of screens.js code remains the same ...
 
 function updateGameModeButton() {
   const startButton = document.querySelector('#game-modes .menu-btn.primary');
@@ -319,9 +315,13 @@ function selectGameMode(mode) {
 
 function startSelectedGameMode() {
   if (config.gameMode === 'wordhunt') {
-    startWordHuntGame();
+    if (typeof startWordHuntGame === 'function') {
+      startWordHuntGame();
+    }
   } else {
-    startGame();
+    if (typeof startClassicGame === 'function') {
+      startClassicGame();
+    }
   }
 }
 
@@ -543,6 +543,10 @@ function loadAudioSettings() {
         config.musicTrack = parsedConfig.musicTrack;
       }
       
+      if (parsedConfig.gameMode !== undefined) {
+        config.gameMode = parsedConfig.gameMode;
+      }
+      
       // Apply to audio system if available
       if (typeof setUIVolume === 'function') {
         setUIVolume(config.uiVolume);
@@ -585,7 +589,6 @@ window.setGameTrack = setGameTrack;
 window.loadAudioSettings = loadAudioSettings;
 
 // Initialize everything when DOM is ready
-// Initialize everything when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
   console.log("DOM loaded, initializing...");
   
@@ -601,11 +604,6 @@ document.addEventListener('DOMContentLoaded', function() {
       musicTrack: "game1",
       gameMode: "classic"  // Set default to classic
     };
-  } else {
-    // Ensure gameMode is set to classic by default
-    if (!config.gameMode || config.gameMode === 'wordhunt') {
-      config.gameMode = "classic";
-    }
   }
   
   // Update UI with current settings

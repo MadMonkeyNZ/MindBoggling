@@ -30,7 +30,8 @@
       <div class="title">Boggle<br>Party</div>
       <div class="subtitle">Word Search Challenge</div>
       
-      <button class="menu-btn primary" onclick="startGame()">Start Classic Game</button>
+      <!-- CHANGED: Use startClassicGame instead of startGame -->
+      <button class="menu-btn primary" onclick="startClassicGame()">Start Classic Game</button>
       <button class="menu-btn" onclick="showScreen('game-modes')">Other Game Modes</button>
       <button class="menu-btn" onclick="showScreen('statistics-screen')">Statistics</button>
       
@@ -402,7 +403,7 @@
 <script src="audio.js"></script>
 <script src="game-core.js"></script>
 <script src="screens.js"></script>
-<script src="modes/classic.js"></script>
+<!-- Only include wordhunt.js since classic.js is now minimal -->
 <script src="modes/wordhunt.js"></script>
 </body>
 </html>
