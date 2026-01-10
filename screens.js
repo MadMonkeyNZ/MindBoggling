@@ -1,11 +1,15 @@
 /* ================= SCREEN MANAGEMENT ================= */
 
+/* ================= SCREEN MANAGEMENT ================= */
+
 let screenHistory = [];
 
 /* ================= LOADING SCREEN FUNCTIONS ================= */
 function showLoadingScreen() {
   if (UI.loadingScreen) {
     UI.loadingScreen.classList.add('active');
+    // Scroll to top when showing loading screen
+    UI.loadingScreen.scrollTop = 0;
   }
 }
 
@@ -45,6 +49,25 @@ function showScreen(id) {
     if (screen) {
       screen.classList.add('active');
       
+      // Scroll to top when showing any screen (especially game-over)
+      screen.scrollTop = 0;
+      
+      // If it's the game-over screen, also scroll the content container
+      if (id === 'game-over') {
+        const gameOverContent = screen.querySelector('.game-over-content');
+        if (gameOverContent) {
+          gameOverContent.scrollTop = 0;
+        }
+        
+        // Ensure the entire screen is at the top
+        setTimeout(() => {
+          screen.scrollTop = 0;
+          if (gameOverContent) {
+            gameOverContent.scrollTop = 0;
+          }
+        }, 10);
+      }
+      
       // Handle music based on screen
       if (id === 'game-over') {
         // Already handled in endGame()
@@ -56,14 +79,39 @@ function showScreen(id) {
         if (config.musicVolume > 0) {
           playMusic(config.musicTrack || 'game1');
         }
+        
+        // Scroll to top for these screens too
+        setTimeout(() => {
+          screen.scrollTop = 0;
+        }, 10);
       }
       
       // Load statistics if needed
       if (id === 'statistics-screen') {
         loadStatistics();
+        setTimeout(() => {
+          screen.scrollTop = 0;
+        }, 10);
+      }
+      
+      // Update game mode button text
+      if (id === 'game-modes') {
+        updateGameModeButton();
+        setTimeout(() => {
+          screen.scrollTop = 0;
+        }, 10);
       }
     }
   }, 100);
+}
+
+// ... rest of screens.js code remains the same ...
+
+function updateGameModeButton() {
+  const startButton = document.querySelector('#game-modes .menu-btn.primary');
+  if (startButton && config.gameMode === 'wordhunt') {
+    startButton.textContent = "Start Word Hunt";
+  }
 }
 
 /* ================= STATISTICS FUNCTIONS ================= */
@@ -264,11 +312,16 @@ function selectGameMode(mode) {
       firstCard.classList.add('selected');
     }
   }
+  
+  // Update start button text
+  updateGameModeButton();
 }
 
 function startSelectedGameMode() {
   if (config.gameMode === 'wordhunt') {
     startWordHuntGame();
+  } else {
+    startGame();
   }
 }
 
@@ -532,6 +585,7 @@ window.setGameTrack = setGameTrack;
 window.loadAudioSettings = loadAudioSettings;
 
 // Initialize everything when DOM is ready
+// Initialize everything when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
   console.log("DOM loaded, initializing...");
   
@@ -545,8 +599,13 @@ document.addEventListener('DOMContentLoaded', function() {
       uiVolume: 0.7,
       musicVolume: 0.2,
       musicTrack: "game1",
-      gameMode: "classic"
+      gameMode: "classic"  // Set default to classic
     };
+  } else {
+    // Ensure gameMode is set to classic by default
+    if (!config.gameMode || config.gameMode === 'wordhunt') {
+      config.gameMode = "classic";
+    }
   }
   
   // Update UI with current settings

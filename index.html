@@ -30,7 +30,7 @@
       <div class="title">Boggle<br>Party</div>
       <div class="subtitle">Word Search Challenge</div>
       
-      <button class="menu-btn primary" onclick="startGame()">Start Game</button>
+      <button class="menu-btn primary" onclick="startGame()">Start Classic Game</button>
       <button class="menu-btn" onclick="showScreen('game-modes')">Other Game Modes</button>
       <button class="menu-btn" onclick="showScreen('statistics-screen')">Statistics</button>
       
@@ -208,11 +208,11 @@
       </div>
       
       <div class="game-mode-cards">
-        <!-- Word Hunt -->
-        <div class="game-mode-card selected" onclick="selectGameMode('wordhunt')">
+        <!-- Word Hunt Only -->
+        <div class="game-mode-card selected" onclick="startWordHuntGame()">
           <div class="game-mode-title">Word Hunt</div>
           <div class="game-mode-description">
-            Find as many words as possible in 2 minutes! Your goal is to find all available words on the board. Minimum word length is 4 letters. Compete for the highest word count!
+            Find as many words as possible in 2 minutes! Your goal is to find all available words on the 4×4 board. Minimum word length is 4 letters. No multiplier tiles in this mode.
           </div>
           <div class="game-mode-details">
             <div class="game-mode-detail">
@@ -227,28 +227,16 @@
               <div class="game-mode-icon words"></div>
               <span>Min Length: 4+</span>
             </div>
-          </div>
-        </div>
-        
-        <!-- Coming Soon -->
-        <div class="game-mode-card" style="opacity: 0.7; cursor: default;">
-          <div class="game-mode-title">More Modes Coming Soon!</div>
-          <div class="game-mode-description">
-            We're working on exciting new game modes. Check back for updates with fresh challenges and gameplay variations.
-          </div>
-          <div class="game-mode-details">
             <div class="game-mode-detail">
-              <div class="game-mode-icon time"></div>
-              <span>Stay tuned!</span>
+              <div class="game-mode-icon multiplier"></div>
+              <span>No Multipliers</span>
             </div>
           </div>
+          <div class="game-mode-click-hint">Click to Start</div>
         </div>
       </div>
       
-      <button class="menu-btn primary" onclick="startSelectedGameMode()" style="margin-top: 20px;">
-        Start Word Hunt
-      </button>
-      <button class="menu-btn" onclick="showScreen('main-menu')" style="margin-top: 10px;">
+      <button class="menu-btn" onclick="showScreen('main-menu')" style="margin-top: 20px;">
         Back to Main Menu
       </button>
     </div>

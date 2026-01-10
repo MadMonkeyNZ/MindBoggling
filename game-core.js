@@ -230,7 +230,13 @@ function getTileScore(letter, multiplier) {
 }
 
 /* ================= CORE GAME FUNCTIONS ================= */
+// Also update the startGame function to ensure it resets game mode properly
 function startGame() {
+  // Ensure game mode is set properly (default to classic if not set)
+  if (!config.gameMode || config.gameMode === 'wordhunt') {
+    config.gameMode = "classic";
+  }
+  
   // Reset game state
   gameEnded = false;
   wordData.clear();
@@ -290,6 +296,10 @@ function startGame() {
       if (config.gameMode === 'wordhunt') {
         UI.scoreLabel.textContent = "Words";
         UI.wordhuntProgress.style.display = 'block';
+        // Update Word Hunt progress immediately
+        setTimeout(() => {
+          updateWordHuntProgress();
+        }, 500);
       } else {
         UI.scoreLabel.textContent = "Score";
         UI.wordhuntProgress.style.display = 'none';
@@ -339,9 +349,19 @@ function startGame() {
   }, 100);
 }
 
+// ... existing code ...
+
 function generateSpecialTiles() {
   const totalTiles = config.gridSize * config.gridSize;
   mults = new Array(totalTiles).fill("");
+  
+  // Skip special tiles for Word Hunt mode
+  if (config.gameMode === 'wordhunt') {
+    console.log("Word Hunt mode - skipping multiplier tiles");
+    return;
+  }
+  
+  console.log("Classic mode - generating multiplier tiles");
   
   const numSpecial = Math.floor(Math.random() * 3) + (config.gridSize === 4 ? 2 : 4);
   const specialIndices = [];
@@ -357,7 +377,11 @@ function generateSpecialTiles() {
     const mult = MULTS[Math.floor(Math.random() * MULTS.length)];
     mults[specialIndices[i]] = mult;
   }
+  
+  console.log(`Generated ${specialIndices.length} special tiles:`, mults.filter(m => m !== ""));
 }
+
+// ... rest of existing code ...
 
 function renderBoard(target) {
   target.innerHTML = "";
@@ -921,6 +945,18 @@ function endGame() {
   setTimeout(() => {
     console.log("Showing game-over screen");
     showScreen('game-over');
+    
+    // Force scroll to top after a short delay to ensure DOM is ready
+    setTimeout(() => {
+      const gameOverScreen = document.getElementById('game-over');
+      if (gameOverScreen) {
+        gameOverScreen.scrollTop = 0;
+        const gameOverContent = gameOverScreen.querySelector('.game-over-content');
+        if (gameOverContent) {
+          gameOverContent.scrollTop = 0;
+        }
+      }
+    }, 50);
   }, 500);
 }
 
@@ -1224,6 +1260,8 @@ function playAgain() {
   if (config.gameMode === 'wordhunt') {
     startWordHuntGame();
   } else {
+    // Ensure game mode is reset to classic
+    config.gameMode = "classic";
     startGame();
   }
 }
