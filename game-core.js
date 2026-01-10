@@ -29,7 +29,7 @@ let config = {
   gridSize: 4,
   time: 30, 
   minLen: 3, 
-  scoring: "traditional",
+  scoring: "modern",
   uiVolume: 0.7,
   musicVolume: 0.5,
   musicTrack: "game1",  // game1 or game2
