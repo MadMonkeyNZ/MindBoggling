@@ -959,34 +959,34 @@ input[type=range]::-webkit-slider-thumb:hover {
   color: #0ea5e9;
 }
 
-/* Music Type Toggle - Grid Layout */
+/* ================= UPDATED: MUSIC TRACK BUTTONS ================= */
 .music-type-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
   margin-top: 5px;
 }
 
 .music-type-btn {
-  padding: 12px 8px;
+  padding: 12px;
   border: none;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
   color: #94a3b8;
   font-weight: 600;
-  font-size: 0.8rem;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  text-align: center;
-  min-height: 50px;
+  text-align: left;
+  min-height: 60px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-direction: column;
+  gap: 12px;
   position: relative;
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
 .music-type-btn::before {
   content: '';
   position: absolute;
@@ -995,16 +995,17 @@ input[type=range]::-webkit-slider-thumb:hover {
   width: 100%;
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.2), transparent);
-  transition: left 0.5s ease;
+  transition: left 0.6s ease;
 }
+
 .music-type-btn:hover::before {
   left: 100%;
 }
 
 .music-type-btn.active {
-  background: rgba(139, 92, 246, 0.2);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.1));
   color: #8b5cf6;
-  box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
   border: 1px solid rgba(139, 92, 246, 0.4);
 }
 
@@ -1012,6 +1013,94 @@ input[type=range]::-webkit-slider-thumb:hover {
   background: rgba(255, 255, 255, 0.1);
   transform: translateY(-2px);
   border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.music-icon {
+  width: 36px;
+  height: 36px;
+  background: rgba(139, 92, 246, 0.15);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.music-type-btn.active .music-icon {
+  background: rgba(139, 92, 246, 0.3);
+}
+
+.play-icon {
+  width: 16px;
+  height: 16px;
+  fill: #8b5cf6;
+  transition: all 0.3s ease;
+}
+
+.music-type-btn.active .play-icon {
+  fill: #ffffff;
+}
+
+.music-type-btn:not(.active) .play-icon {
+  fill: #94a3b8;
+}
+
+.music-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-grow: 1;
+}
+
+.music-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  transition: all 0.3s ease;
+}
+
+.music-type-btn.active .music-title {
+  color: #ffffff;
+}
+
+.music-subtitle {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  transition: all 0.3s ease;
+}
+
+.music-type-btn.active .music-subtitle {
+  color: #c4b5fd;
+}
+
+/* Active state animation */
+.music-type-btn.active .music-icon::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  background: rgba(139, 92, 246, 0.4);
+  border-radius: 50%;
+  animation: musicPulse 2s infinite;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+}
+
+@keyframes musicPulse {
+  0% {
+    width: 40px;
+    height: 40px;
+    opacity: 0.6;
+  }
+  100% {
+    width: 60px;
+    height: 60px;
+    opacity: 0;
+  }
 }
 
 /* Game Over Screen - Enhanced */
@@ -1739,7 +1828,26 @@ input[type=range]::-webkit-slider-thumb:hover {
   }
   
   .music-type-btn {
-    padding: 10px 6px;
-    font-size: 0.75rem;
+    padding: 10px;
+    min-height: 55px;
+    gap: 10px;
+  }
+  
+  .music-icon {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .play-icon {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .music-title {
+    font-size: 0.9rem;
+  }
+  
+  .music-subtitle {
+    font-size: 0.7rem;
   }
 }

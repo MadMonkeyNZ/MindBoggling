@@ -470,8 +470,26 @@ function setupSettingsEventListeners() {
     });
   }
   
-  // Music track buttons
+  // UPDATED: Music track buttons with hover feedback
   document.querySelectorAll('.music-type-btn').forEach(btn => {
+    btn.addEventListener('mouseenter', function() {
+      // Play a subtle hover sound if not already active
+      if (!this.classList.contains('active') && typeof playSound === 'function') {
+        // Use a lower volume for hover sounds
+        const oldVolume = config.uiVolume;
+        if (oldVolume > 0) {
+          config.uiVolume = Math.max(0.1, oldVolume * 0.3);
+          playSound('link');
+          setTimeout(() => {
+            config.uiVolume = oldVolume;
+            if (typeof setUIVolume === 'function') {
+              setUIVolume(oldVolume);
+            }
+          }, 50);
+        }
+      }
+    });
+    
     btn.addEventListener('click', function() {
       const track = this.dataset.track;
       setGameTrack(track);
