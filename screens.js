@@ -92,9 +92,9 @@ function showScreen(id) {
         }, 10);
       }
       
-      // Update game mode button text
+      // Update game mode button text (if game modes screen)
       if (id === 'game-modes') {
-        updateGameModeButton();
+        updateGameModeButtons();
         setTimeout(() => {
           screen.scrollTop = 0;
         }, 10);
@@ -103,10 +103,24 @@ function showScreen(id) {
   }, 100);
 }
 
-function updateGameModeButton() {
-  const startButton = document.querySelector('#game-modes .menu-btn.primary');
-  if (startButton && config.gameMode === 'wordhunt') {
-    startButton.textContent = "Start Word Hunt";
+function updateGameModeButtons() {
+  const gameModeCards = document.querySelectorAll('.game-mode-card');
+  if (gameModeCards) {
+    gameModeCards.forEach(card => {
+      if (card.getAttribute('onclick') && card.getAttribute('onclick').includes('startWordHuntGame')) {
+        // Find the click hint element
+        const hint = card.querySelector('.game-mode-click-hint');
+        if (hint) {
+          hint.textContent = "Click to Start";
+        }
+      } else if (card.getAttribute('onclick') && card.getAttribute('onclick').includes('startEndlessGame')) {
+        // Find the click hint element
+        const hint = card.querySelector('.game-mode-click-hint');
+        if (hint) {
+          hint.textContent = "Click to Start";
+        }
+      }
+    });
   }
 }
 
@@ -150,6 +164,29 @@ function loadStatistics() {
   
   // Load achievements
   loadAchievements();
+  
+  // Load mode-specific high scores
+  loadModeHighScores();
+}
+
+function loadModeHighScores() {
+  // Word Hunt high scores (4x4 grid, 4+ letters)
+  const wordhunt4x4Key = 'wordhunt_best_4x4';
+  const wordhuntBest = parseInt(localStorage.getItem(wordhunt4x4Key) || '0');
+  
+  const wordhuntStat = document.getElementById('stat-wordhunt-best');
+  if (wordhuntStat) {
+    wordhuntStat.textContent = wordhuntBest;
+  }
+  
+  // Endless mode high scores (5x5 grid, 4+ letters)
+  const endless5x5Key = 'endless_best_5x5';
+  const endlessBest = parseInt(localStorage.getItem(endless5x5Key) || '0');
+  
+  const endlessStat = document.getElementById('stat-endless-best');
+  if (endlessStat) {
+    endlessStat.textContent = endlessBest;
+  }
 }
 
 function loadCommonWords() {
@@ -197,6 +234,12 @@ function loadAchievements() {
   const totalScore = parseInt(localStorage.getItem('boggle_total_score') || '0');
   const allTimeHigh = getAllTimeHighScore();
   
+  // Load mode-specific achievements
+  const wordhunt4x4Key = 'wordhunt_best_4x4';
+  const wordhuntBest = parseInt(localStorage.getItem(wordhunt4x4Key) || '0');
+  const endless5x5Key = 'endless_best_5x5';
+  const endlessBest = parseInt(localStorage.getItem(endless5x5Key) || '0');
+  
   const achievements = [];
   
   // Game count achievements
@@ -214,6 +257,15 @@ function loadAchievements() {
   if (allTimeHigh >= 100) achievements.push({ icon: '⭐', text: '100 Points' });
   if (allTimeHigh >= 500) achievements.push({ icon: '💫', text: '500 Points' });
   if (allTimeHigh >= 1000) achievements.push({ icon: '🚀', text: '1000 Points' });
+  
+  // Mode-specific achievements
+  if (wordhuntBest >= 20) achievements.push({ icon: '🔍', text: 'Word Hunter' });
+  if (wordhuntBest >= 50) achievements.push({ icon: '🎯', text: 'Word Master' });
+  if (wordhuntBest >= 100) achievements.push({ icon: '👁️', text: 'Word Seeker' });
+  
+  if (endlessBest >= 50) achievements.push({ icon: '∞', text: 'Endless Explorer' });
+  if (endlessBest >= 100) achievements.push({ icon: '⏳', text: 'Time Unlimited' });
+  if (endlessBest >= 200) achievements.push({ icon: '🏁', text: 'Completionist' });
   
   const achievementBadges = document.getElementById('achievement-badges');
   if (!achievementBadges) return;
@@ -250,6 +302,25 @@ function updateGameStatistics(wordsFound, score) {
   // Update total score
   const totalScore = parseInt(localStorage.getItem('boggle_total_score') || '0');
   localStorage.setItem('boggle_total_score', totalScore + score);
+  
+  // Update mode-specific stats
+  if (config.gameMode === 'wordhunt') {
+    const key = 'wordhunt_games_played';
+    const gamesPlayed = parseInt(localStorage.getItem(key) || '0');
+    localStorage.setItem(key, gamesPlayed + 1);
+    
+    const wordKey = 'wordhunt_total_words';
+    const totalWords = parseInt(localStorage.getItem(wordKey) || '0');
+    localStorage.setItem(wordKey, totalWords + wordsFound);
+  } else if (config.gameMode === 'endless') {
+    const key = 'endless_games_played';
+    const gamesPlayed = parseInt(localStorage.getItem(key) || '0');
+    localStorage.setItem(key, gamesPlayed + 1);
+    
+    const wordKey = 'endless_total_words';
+    const totalWords = parseInt(localStorage.getItem(wordKey) || '0');
+    localStorage.setItem(wordKey, totalWords + wordsFound);
+  }
 }
 
 function getWordLifetimeCount(word) {
@@ -302,21 +373,30 @@ function selectGameMode(mode) {
     card.classList.remove('selected');
   });
   
-  if (mode === 'wordhunt') {
-    const firstCard = document.querySelector('.game-mode-card:first-child');
-    if (firstCard) {
-      firstCard.classList.add('selected');
+  // Find and select the appropriate card
+  const cards = document.querySelectorAll('.game-mode-card');
+  cards.forEach(card => {
+    if (mode === 'wordhunt' && card.getAttribute('onclick') && card.getAttribute('onclick').includes('startWordHuntGame')) {
+      card.classList.add('selected');
+    } else if (mode === 'endless' && card.getAttribute('onclick') && card.getAttribute('onclick').includes('startEndlessGame')) {
+      card.classList.add('selected');
+    } else if (mode === 'classic' && card.getAttribute('onclick') && card.getAttribute('onclick').includes('startClassicGame')) {
+      card.classList.add('selected');
     }
-  }
+  });
   
   // Update start button text
-  updateGameModeButton();
+  updateGameModeButtons();
 }
 
 function startSelectedGameMode() {
   if (config.gameMode === 'wordhunt') {
     if (typeof startWordHuntGame === 'function') {
       startWordHuntGame();
+    }
+  } else if (config.gameMode === 'endless') {
+    if (typeof startEndlessGame === 'function') {
+      startEndlessGame();
     }
   } else {
     if (typeof startClassicGame === 'function') {

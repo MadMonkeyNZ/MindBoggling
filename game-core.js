@@ -1,4 +1,4 @@
-// game-core.js - Enhanced with proper game mode handling
+// game-core.js - Enhanced with optimized game mode handling
 
 // Ensure isGamePlaying is declared if audio.js didn't load
 if (typeof isGamePlaying === 'undefined') {
@@ -240,13 +240,33 @@ function startClassicGame() {
   startGame();
 }
 
-// Main startGame function
+// Start Endless Game function
+function startEndlessGame() {
+  console.log("Starting Endless Game");
+  config.gameMode = "endless";
+  startGame();
+}
+
+// Main startGame function - OPTIMIZED
 function startGame() {
   console.log("startGame called with gameMode:", config.gameMode);
   
   // Ensure game mode is set properly
   if (!config.gameMode) {
     config.gameMode = "classic";
+  }
+  
+  // Set specific settings for each mode
+  if (config.gameMode === 'wordhunt') {
+    config.gridSize = 4;
+    config.minLen = 4;
+    config.time = 120; // 2 minutes for Word Hunt
+    config.scoring = "traditional";
+  } else if (config.gameMode === 'endless') {
+    config.gridSize = 5;
+    config.minLen = 4;
+    config.time = 0; // No time limit for Endless
+    config.scoring = "traditional";
   }
   
   // Reset game state
@@ -287,89 +307,124 @@ function startGame() {
   // Update loading
   updateLoadingProgress(60, "Finding word combinations...");
   
-  // Find longest words on the new board
+  // Handle word finding differently for Endless mode
   setTimeout(() => {
-    findLongestWordsOnBoardWithProgress().then(() => {
-      updateLoadingProgress(90, "Finalizing setup...");
+    if (config.gameMode === 'endless') {
+      // For Endless mode, skip intensive word finding during loading
+      updateLoadingProgress(80, "Setting up Endless mode...");
       
-      // Set game state
-      isGamePlaying = true;
+      // Don't wait for word finding - set up game immediately
+      longestWordsOnBoard = [];
+      longestWordPath = [];
       
-      // Render board
-      renderBoard(UI.board);
-      
-      // Reset UI
-      UI.score.textContent = "0";
-      UI.time.textContent = timeLeft;
-      UI.time.style.color = '';
-      UI.currentWord.textContent = "";
-      
-      // Reset Word Hunt UI if needed
-      if (config.gameMode === 'wordhunt') {
-        UI.scoreLabel.textContent = "Words";
-        UI.wordhuntProgress.style.display = 'block';
-        // Update Word Hunt progress immediately
-        setTimeout(() => {
-          if (typeof updateWordHuntProgress === 'function') {
-            updateWordHuntProgress();
-          }
-        }, 500);
-      } else {
-        UI.scoreLabel.textContent = "Score";
-        UI.wordhuntProgress.style.display = 'none';
-      }
-      
-      // Update loading
-      updateLoadingProgress(100, "Ready!");
-      
-      // Hide loading screen after a brief delay
+      // Complete game setup
+      completeGameSetup();
+    } else {
+      // For other modes, use normal word finding
+      findLongestWordsOnBoardWithProgress().then(() => {
+        updateLoadingProgress(90, "Finalizing setup...");
+        completeGameSetup();
+      }).catch(error => {
+        console.error("Error finding words:", error);
+        // Continue even if word finding fails
+        completeGameSetup();
+      });
+    }
+  }, 100);
+}
+
+function completeGameSetup() {
+  updateLoadingProgress(90, "Finalizing setup...");
+  
+  // Set game state
+  isGamePlaying = true;
+  
+  // Render board
+  renderBoard(UI.board);
+  
+  // Reset UI
+  UI.score.textContent = "0";
+  
+  // Handle different modes
+  if (config.gameMode === 'wordhunt') {
+    UI.scoreLabel.textContent = "Words";
+    UI.wordhuntProgress.style.display = 'block';
+    // Initialize Word Hunt specific data
+    if (typeof initWordHuntGame === 'function') {
+      initWordHuntGame();
+    }
+  } else if (config.gameMode === 'endless') {
+    UI.scoreLabel.textContent = "Words";
+    UI.wordhuntProgress.style.display = 'block';
+    UI.time.textContent = "∞";
+    UI.time.style.color = '#8b5cf6';
+    // Change quit button to "Give Up" for Endless mode
+    const quitBtn = document.getElementById('quit-btn');
+    if (quitBtn) quitBtn.textContent = "Give Up";
+    // Initialize Endless mode - this will run word finding in background
+    if (typeof initEndlessGame === 'function') {
+      // Run with a small delay to ensure UI is ready
       setTimeout(() => {
-        hideLoadingScreen();
+        initEndlessGame();
+      }, 100);
+    }
+  } else {
+    UI.scoreLabel.textContent = "Score";
+    UI.wordhuntProgress.style.display = 'none';
+    UI.time.textContent = timeLeft;
+    UI.time.style.color = '';
+    // Reset quit button text for other modes
+    const quitBtn = document.getElementById('quit-btn');
+    if (quitBtn) quitBtn.textContent = "Quit";
+  }
+  
+  // Update loading
+  updateLoadingProgress(100, "Ready!");
+  
+  // Hide loading screen after a brief delay
+  setTimeout(() => {
+    hideLoadingScreen();
+    
+    // Show game screen
+    showScreen('game-ui');
+    
+    // Start game music with selected track
+    if (config.musicVolume > 0 && typeof playMusic === 'function') {
+      playMusic(config.musicTrack || 'game1');
+    }
+    
+    // Setup canvas
+    UI.canvas.width = UI.board.clientWidth;
+    UI.canvas.height = UI.board.clientHeight;
+
+    // Start timer only if not Endless mode and time > 0
+    if(timerInt) clearInterval(timerInt);
+    
+    if (config.gameMode !== 'endless' && timeLeft > 0) {
+      timerInt = setInterval(() => {
+        timeLeft--;
+        UI.time.textContent = timeLeft;
         
-        // Show game screen
-        showScreen('game-ui');
-        
-        // Start game music with selected track
-        if (config.musicVolume > 0 && typeof playMusic === 'function') {
-          playMusic(config.musicTrack || 'game1');
+        if (timeLeft <= 10) {
+          UI.time.style.color = '#ef4444';
+          if (timeLeft <= 5 && timeLeft > 0) {
+            if (typeof playSound === 'function') playSound('warning');
+          }
         }
         
-        // Setup canvas
-        UI.canvas.width = UI.board.clientWidth;
-        UI.canvas.height = UI.board.clientHeight;
-
-        // Start timer
-        if(timerInt) clearInterval(timerInt);
-        timerInt = setInterval(() => {
-          timeLeft--;
-          UI.time.textContent = timeLeft;
-          
-          if (timeLeft <= 10) {
-            UI.time.style.color = '#ef4444';
-            if (timeLeft <= 5 && timeLeft > 0) {
-              if (typeof playSound === 'function') playSound('warning');
-            }
-          }
-          
-          if(timeLeft <= 0) endGame();
-        }, 1000);
-      }, 300);
-    }).catch(error => {
-      console.error("Error finding words:", error);
-      // Continue even if word finding fails
-      hideLoadingScreen();
-      showScreen('game-ui');
-    });
-  }, 100);
+        if(timeLeft <= 0) endGame();
+      }, 1000);
+    }
+  }, 300);
 }
 
 function generateSpecialTiles() {
   const totalTiles = config.gridSize * config.gridSize;
   mults = new Array(totalTiles).fill("");
   
-  // Skip special tiles for Word Hunt mode
-  if (config.gameMode === 'wordhunt') {
-    console.log("Word Hunt mode - skipping multiplier tiles");
+  // Skip special tiles for Word Hunt and Endless modes
+  if (config.gameMode === 'wordhunt' || config.gameMode === 'endless') {
+    console.log(`${config.gameMode} mode - skipping multiplier tiles`);
     return;
   }
   
@@ -562,8 +617,8 @@ function submitWord() {
   // Calculate score for this specific path
   let newScore = calcScore(w, path);
   
-  // For Word Hunt mode, score is just 1 point per word
-  if (config.gameMode === 'wordhunt') {
+  // For Word Hunt and Endless modes, score is just 1 point per word
+  if (config.gameMode === 'wordhunt' || config.gameMode === 'endless') {
     newScore = 1;
   }
   
@@ -658,9 +713,11 @@ function submitWord() {
       UI.highScoreDisplay.textContent = currentScore;
     }
     
-    // Update Word Hunt progress
+    // Update Word Hunt or Endless progress
     if (config.gameMode === 'wordhunt' && typeof updateWordHuntProgress === 'function') {
       updateWordHuntProgress();
+    } else if (config.gameMode === 'endless' && typeof updateEndlessProgress === 'function') {
+      updateEndlessProgress();
     }
   } else {
     // Invalid word
@@ -754,12 +811,50 @@ function getMultipliersForWord(path) {
   return multiplierCounts;
 }
 
-/* ================= FIND LONGEST WORDS ================= */
+/* ================= FIND LONGEST WORDS - OPTIMIZED ================= */
 async function findLongestWordsOnBoardWithProgress() {
   const words = new Map();
   const visited = new Array(board.length).fill(false);
   const size = config.gridSize;
   const totalCells = size * size;
+  const minLen = config.minLen;
+  
+  // Early return for 5x5 Endless mode - use optimized function
+  if (size === 5 && config.gameMode === 'endless') {
+    // Use the optimized 5x5 function from endless.js
+    if (typeof findWords5x5Optimized === 'function') {
+      const wordsSet = findWords5x5Optimized();
+      
+      // Find longest words from the found set
+      let maxLength = 0;
+      const longestWords = [];
+      
+      for (const word of wordsSet) {
+        if (word.length > maxLength) {
+          maxLength = word.length;
+          longestWords.length = 0; // Clear array
+          longestWords.push(word);
+        } else if (word.length === maxLength) {
+          longestWords.push(word);
+        }
+        
+        // Store word with empty path for now
+        words.set(word, []);
+      }
+      
+      longestWordsOnBoard = longestWords;
+      
+      // Try to find a path for the longest word
+      if (longestWords.length > 0) {
+        longestWordPath = findPathForWord(longestWords[0]);
+      } else {
+        longestWordPath = [];
+      }
+      
+      console.log(`Endless mode: Found ${wordsSet.size} words, longest: ${longestWords[0] || 'none'} (${maxLength} letters)`);
+      return words;
+    }
+  }
   
   const directions = [
     [-1, -1], [-1, 0], [-1, 1],
@@ -772,10 +867,13 @@ async function findLongestWordsOnBoardWithProgress() {
   for (let i = 0; i < size; i++) {
     for (let j = 0; j < size; j++) {
       processedCells++;
-      const progress = (processedCells / totalCells) * 100;
+      const progress = 60 + Math.floor((processedCells / totalCells) * 30);
       updateLoadingProgress(progress, `Analyzing cell ${i + 1},${j + 1}...`);
       
-      await new Promise(resolve => setTimeout(resolve, 10));
+      // Yield to main thread occasionally
+      if (processedCells % 3 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
       
       const newVisited = visited.slice();
       
@@ -798,7 +896,7 @@ async function findLongestWordsOnBoardWithProgress() {
           const newCurrentVisited = currentVisited.slice();
           newCurrentVisited[idx] = true;
           
-          if (newCurrentNode.isEndOfWord && newCurrentWord.length >= config.minLen) {
+          if (newCurrentNode.isEndOfWord && newCurrentWord.length >= minLen) {
             words.set(newCurrentWord, newCurrentPath);
           }
           
@@ -822,7 +920,7 @@ async function findLongestWordsOnBoardWithProgress() {
           const newCurrentVisited = currentVisited.slice();
           newCurrentVisited[idx] = true;
           
-          if (newCurrentNode.isEndOfWord && newCurrentWord.length >= config.minLen) {
+          if (newCurrentNode.isEndOfWord && newCurrentWord.length >= minLen) {
             words.set(newCurrentWord, newCurrentPath);
           }
           
@@ -851,7 +949,7 @@ async function findLongestWordsOnBoardWithProgress() {
     }
   }
   
-  // Get all words with the maximum length
+  // Get all words with the maximum length and their paths
   const longestWords = [];
   const longestPaths = [];
   
@@ -875,7 +973,91 @@ async function findLongestWordsOnBoardWithProgress() {
   longestWordsOnBoard = uniqueWords;
   longestWordPath = uniquePaths[0] || [];
   
+  console.log(`Found ${words.size} words, longest: ${longestWordsOnBoard[0] || 'none'} (${maxLength} letters)`);
+  
   return words;
+}
+
+// Helper function to find path for a word (for Endless mode)
+function findPathForWord(word) {
+  const size = config.gridSize;
+  const directions = [
+    [-1, -1], [-1, 0], [-1, 1],
+    [0, -1],           [0, 1],
+    [1, -1],  [1, 0],  [1, 1]
+  ];
+  
+  // Convert board to uppercase for consistency
+  const upperBoard = board.map(letter => letter.toUpperCase());
+  
+  function dfs(row, col, index, visited, path) {
+    if (index >= word.length) {
+      return path;
+    }
+    
+    const idx = row * size + col;
+    
+    // Check if visited
+    if (visited[idx]) {
+      return null;
+    }
+    
+    // Handle QU tile
+    const boardLetter = upperBoard[idx];
+    const expectedLetter = word[index];
+    
+    if (boardLetter === 'QU') {
+      // We need 'QU' in the word at this position
+      if (index + 1 >= word.length || word[index] !== 'Q' || word[index + 1] !== 'U') {
+        return null;
+      }
+      // Skip the 'U' in the word
+      index += 2;
+    } else {
+      if (boardLetter !== expectedLetter) {
+        return null;
+      }
+      index++;
+    }
+    
+    // Mark visited and add to path
+    visited[idx] = true;
+    path.push(idx);
+    
+    // If we've reached the end of the word, return the path
+    if (index >= word.length) {
+      return path;
+    }
+    
+    // Explore neighbors
+    for (const [dx, dy] of directions) {
+      const newRow = row + dx;
+      const newCol = col + dy;
+      
+      if (newRow >= 0 && newRow < size && newCol >= 0 && newCol < size) {
+        const result = dfs(newRow, newCol, index, visited.slice(), path.slice());
+        if (result) {
+          return result;
+        }
+      }
+    }
+    
+    return null;
+  }
+  
+  // Try starting from every cell
+  for (let i = 0; i < size; i++) {
+    for (let j = 0; j < size; j++) {
+      const visited = new Array(size * size).fill(false);
+      const path = [];
+      const result = dfs(i, j, 0, visited, path);
+      if (result) {
+        return result;
+      }
+    }
+  }
+  
+  return [];
 }
 
 /* ================= GAME OVER FUNCTIONS ================= */
@@ -920,10 +1102,15 @@ function endGame() {
   // Render the game over board with highlighted longest word path
   renderGameOverBoard();
   
-  // Handle Word Hunt specific end game
+  // Handle specific game modes
   if (config.gameMode === 'wordhunt') {
     if (typeof endWordHuntGame === 'function') {
       endWordHuntGame();
+    }
+    UI.finalScore.textContent = foundWords.size; // Show word count instead of score
+  } else if (config.gameMode === 'endless') {
+    if (typeof endEndlessGame === 'function') {
+      endEndlessGame();
     }
     UI.finalScore.textContent = foundWords.size; // Show word count instead of score
   }
@@ -951,7 +1138,14 @@ function endGame() {
   // Generate enhanced end-game summary
   generateLongestWordInfo();
   generateWordLengthDistribution();
-  generateWordList();
+  
+  // Generate word list based on game mode
+  if (config.gameMode === 'wordhunt' || config.gameMode === 'endless') {
+    // These modes will generate their own word lists
+    console.log(`${config.gameMode} mode - skipping classic word list`);
+  } else {
+    generateWordList();
+  }
   
   // Show game over screen (summary music will start via showScreen)
   setTimeout(() => {
@@ -1276,6 +1470,13 @@ function playAgain() {
       console.error("startWordHuntGame function not found!");
       startClassicGame();
     }
+  } else if (config.gameMode === 'endless') {
+    if (typeof startEndlessGame === 'function') {
+      startEndlessGame();
+    } else {
+      console.error("startEndlessGame function not found!");
+      startClassicGame();
+    }
   } else {
     // Ensure game mode is classic
     config.gameMode = "classic";
@@ -1403,7 +1604,11 @@ window.addEventListener('load', function() {
 
 // Make functions globally available
 window.startGame = startGame;
-window.startClassicGame = startClassicGame;  // Add this line
+window.startClassicGame = startClassicGame;
+window.startEndlessGame = startEndlessGame;
 window.quitGame = quitGame;
 window.playAgain = playAgain;
 window.isGamePlaying = isGamePlaying;
+window.updateLoadingProgress = updateLoadingProgress;
+window.showLoadingScreen = showLoadingScreen;
+window.hideLoadingScreen = hideLoadingScreen;

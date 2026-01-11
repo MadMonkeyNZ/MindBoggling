@@ -2,6 +2,8 @@
 
 // Word Hunt specific variables
 let totalWordsOnBoard = 0;
+let allPossibleWords = new Set();
+let allPossibleWordsList = [];
 
 function startWordHuntGame() {
   console.log("Starting Word Hunt Game");
@@ -10,7 +12,7 @@ function startWordHuntGame() {
   config.gameMode = "wordhunt";
   config.gridSize = 4;
   config.time = 120; // 2 minutes
-  config.minLen = 4;
+  config.minLen = 4; // Word Hunt uses 4+ letter words
   config.scoring = "traditional"; // Word Hunt uses word count, not points
   
   // Start the game
@@ -25,7 +27,12 @@ function startWordHuntGame() {
   // Find all possible words on the board
   setTimeout(() => {
     if (typeof findAllWordsOnBoard === 'function') {
-      totalWordsOnBoard = findAllWordsOnBoard().size;
+      const wordsSet = findAllWordsOnBoard();
+      allPossibleWords = wordsSet;
+      allPossibleWordsList = Array.from(wordsSet).sort();
+      totalWordsOnBoard = allPossibleWordsList.length;
+      
+      console.log(`Total words on board: ${totalWordsOnBoard} (4+ letters only)`);
       
       // Update UI for Word Hunt
       if (UI.scoreLabel) {
@@ -107,6 +114,59 @@ function endWordHuntGame() {
   if (found > currentBest) {
     localStorage.setItem(key, found);
   }
+  
+  // Generate the list of all possible words with highlighting
+  generateWordHuntAllWordsList();
+}
+
+function generateWordHuntAllWordsList() {
+  if (!UI.wordList) return;
+  
+  // Sort all possible words alphabetically
+  const sortedWords = allPossibleWordsList.sort((a, b) => {
+    // Sort by length first, then alphabetically
+    if (a.length !== b.length) {
+      return b.length - a.length;
+    }
+    return a.localeCompare(b);
+  });
+  
+  UI.wordList.innerHTML = '';
+  
+  // Create a header indicating these are all possible words
+  const header = document.createElement('div');
+  header.className = 'wordhunt-all-words-header';
+  header.textContent = `All Possible Words (${sortedWords.length} total)`;
+  UI.wordList.appendChild(header);
+  
+  // NO CAP - show all words
+  sortedWords.forEach((word, index) => {
+    const wordItem = document.createElement('div');
+    wordItem.className = 'word-item wordhunt-word-item';
+    wordItem.style.animationDelay = `${Math.min(index, 200) * 0.05}s`; // Limit animation delay for performance
+    
+    // Check if word was found by player
+    const isFound = foundWords.has(word);
+    
+    wordItem.innerHTML = `
+      <div class="word-text ${isFound ? 'wordhunt-found' : ''}">${word.toUpperCase()}</div>
+      <div class="word-stats">
+        ${isFound ? '<div class="wordhunt-found-badge">✓</div>' : ''}
+        <div class="word-length">${word.length}</div>
+      </div>
+    `;
+    
+    UI.wordList.appendChild(wordItem);
+  });
+  
+  // Show message if there are many words
+  if (sortedWords.length > 200) {
+    const message = document.createElement('div');
+    message.className = 'word-list-message';
+    message.textContent = `Showing all ${sortedWords.length} possible words`;
+    message.style.cssText = 'text-align:center; color:#94a3b8; margin-top:15px; font-size:0.9rem; font-style:italic;';
+    UI.wordList.appendChild(message);
+  }
 }
 
 function findAllWordsOnBoard() {
@@ -132,7 +192,7 @@ function findAllWordsOnBoard() {
       currentWord += letter;
     }
     
-    // If this forms a valid word of sufficient length, add it
+    // Only add words that are 4+ letters (config.minLen is set to 4 for Word Hunt)
     if (currentWord.length >= config.minLen && dict.has(currentWord)) {
       words.add(currentWord);
     }
@@ -160,6 +220,14 @@ function findAllWordsOnBoard() {
       const newVisited = visited.slice();
       dfs(i, j, '', newVisited);
     }
+  }
+  
+  console.log(`Found ${words.size} possible words of ${config.minLen}+ letters`);
+  
+  // Debug: Log some words if count seems off
+  if (words.size > 0) {
+    const sampleWords = Array.from(words).slice(0, 5);
+    console.log('Sample words found:', sampleWords);
   }
   
   return words;
