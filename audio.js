@@ -1,14 +1,27 @@
-// audio.js - Enhanced Audio System
-// UI Sounds: Web Audio API with dynamic pitch scaling
-// Background Music: MP3 files
+// audio.js - Enhanced Audio System with proper music continuity
 
 let currentMusic = null;
-let musicVolume = 0.2;  // 20% default
+let musicVolume = 0.5;
 let uiVolume = 0.7;
-let isGamePlaying = false;
+let isMusicPlaying = false;
+let isMusicPaused = false;
+let currentTrackIndex = 0;
+let musicPlaylist = [];
+let musicMode = 'sequential'; // 'sequential' or 'single'
 
 // Audio Context for UI sounds
 let audioContext = null;
+
+// Available music tracks (will be auto-populated)
+let musicTracks = [];
+
+// State for music continuity
+let pausedMusicState = {
+    trackId: null,
+    currentTime: 0,
+    paused: false,
+    audioElement: null
+};
 
 // Audio settings
 const SOUND_SETTINGS = {
@@ -18,15 +31,15 @@ const SOUND_SETTINGS = {
     warning: { baseFreq: 500, type: 'square' },
     better: { baseFreq: 700, type: 'sine' },
     repeat: { baseFreq: 400, type: 'triangle' },
-    
+
     // Linking sound parameters
     link: {
-        baseFreq: 400,           // Starting frequency for 3-letter words
-        minFreq: 300,           // Minimum frequency
-        maxFreq: 1200,          // Maximum frequency
-        minLength: 3,           // Minimum word length to trigger linking sound
-        maxLength: 12,          // Maximum word length for frequency scaling
-        duration: 0.15,         // Duration of each linking beep
+        baseFreq: 400,
+        minFreq: 300,
+        maxFreq: 1200,
+        minLength: 3,
+        maxLength: 12,
+        duration: 0.15,
         type: 'sine'
     }
 };
@@ -36,17 +49,492 @@ function initAudioContext() {
     if (!audioContext && (window.AudioContext || window.webkitAudioContext)) {
         try {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            console.log("Audio Context initialized");
+            console.log("✅ Audio Context initialized successfully");
+
+            // Resume audio context if suspended
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
         } catch (e) {
-            console.error("Failed to initialize Audio Context:", e);
+            console.error("❌ Failed to initialize Audio Context:", e);
         }
+    }
+}
+
+// Test if a single audio file exists
+async function testAudioFile(url) {
+    return new Promise((resolve) => {
+        const audio = new Audio();
+        audio.src = url;
+
+        audio.addEventListener('canplaythrough', () => {
+            resolve(true);
+        });
+
+        audio.addEventListener('error', () => {
+            resolve(false);
+        });
+
+        setTimeout(() => {
+            resolve(false);
+        }, 1000);
+    });
+}
+
+// Discover available music tracks from audio folder
+async function discoverMusicTracks() {
+    console.log("🔍 Discovering music tracks...");
+
+    const trackPatterns = [
+        'game1.mp3', 'game2.mp3', 'game3.mp3', 'game4.mp3', 'game5.mp3',
+        'game6.mp3', 'game7.mp3', 'game8.mp3', 'game9.mp3', 'summary-music.mp3'
+    ];
+
+    musicTracks = [];
+    let foundTracks = 0;
+
+    console.log("Testing each track pattern...");
+
+    for (const pattern of trackPatterns) {
+        const filePath = `audio/${pattern}`;
+        console.log(`  Testing: ${pattern}...`);
+
+        const exists = await testAudioFile(filePath);
+
+        if (exists) {
+            const name = pattern.replace('.mp3', '')
+                .replace(/(\d+)/, ' $1')
+                .replace(/^./, str => str.toUpperCase())
+                .replace(/([A-Z])/g, ' $1')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            const trackId = pattern.replace('.mp3', '');
+
+            if (!musicTracks.some(track => track.id === trackId)) {
+                musicTracks.push({
+                    id: trackId,
+                    name: name,
+                    file: filePath,
+                    type: trackId.includes('summary') ? 'summary' : 'game'
+                });
+                foundTracks++;
+                console.log(`    ✓ Found: ${trackId} (${name})`);
+            }
+        }
+    }
+
+    console.log(`Found ${foundTracks} music tracks`);
+
+    // Create playlist (excluding summary music for sequential play)
+    musicPlaylist = musicTracks.filter(track => track.type === 'game');
+    
+    // Update global reference
+    window.musicTracks = musicTracks;
+
+    if (foundTracks === 0) {
+        console.warn("⚠️ No audio files found in /audio/ folder");
+        musicTracks.push({
+            id: 'demo',
+            name: 'Demo Track (Add MP3 files)',
+            file: '',
+            type: 'demo'
+        });
+    }
+
+    return musicTracks;
+}
+
+// Update music player UI
+function updateMusicPlayerUI() {
+    const musicPlayerBtn = document.querySelector('.music-player-btn:nth-child(2)');
+    if (musicPlayerBtn) {
+        if (isMusicPaused || !isMusicPlaying) {
+            musicPlayerBtn.textContent = '▶️';
+        } else {
+            musicPlayerBtn.textContent = '⏸️';
+        }
+    }
+}
+
+// Check if music should be playing (for game screens)
+function shouldPlayGameMusic() {
+    // Only play game music on game screens, not on summary screen
+    const activeScreen = document.querySelector('.screen.active');
+    return activeScreen && 
+           (activeScreen.id === 'game-ui' || activeScreen.id === 'main-menu');
+}
+
+// Play music track with continuity
+function playMusic(trackId, forceRestart = false) {
+    console.log(`🎵 Requested to play music: ${trackId}, forceRestart: ${forceRestart}`);
+    
+    // If trying to play the same track that's already playing and not forced to restart
+    if (currentMusic && 
+        currentMusic.src && 
+        currentMusic.src.includes(trackId) && 
+        !forceRestart &&
+        trackId !== 'summary') {
+        
+        console.log(`🎵 ${trackId} is already playing, continuing...`);
+        
+        // If it's paused, resume it
+        if (isMusicPaused) {
+            currentMusic.play().then(() => {
+                isMusicPaused = false;
+                isMusicPlaying = true;
+                updateMusicPlayerUI();
+                console.log("▶️ Resumed existing track");
+            }).catch(error => {
+                console.error("❌ Failed to resume music:", error);
+            });
+        }
+        return;
+    }
+
+    // If it's a summary track and we're not on a summary screen, don't play it
+    if (trackId === 'summary' && shouldPlayGameMusic()) {
+        console.log("🎵 Not playing summary music on game screen");
+        return;
+    }
+
+    // Save the state of current music before changing (only if not already saved)
+    if (currentMusic && currentMusic.id !== 'summary-music-track' && !pausedMusicState.audioElement) {
+        pausedMusicState = {
+            trackId: getCurrentTrackId(),
+            currentTime: currentMusic.currentTime,
+            paused: isMusicPaused,
+            audioElement: currentMusic
+        };
+        console.log(`💾 Saved music state: ${pausedMusicState.trackId} at ${pausedMusicState.currentTime}s`);
+    }
+
+    // Stop any currently playing music
+    if (currentMusic) {
+        stopMusic();
+    }
+
+    // Don't play if volume is 0
+    if (musicVolume <= 0) {
+        console.log("🔇 Music volume is 0, skipping playback");
+        isMusicPlaying = false;
+        isMusicPaused = false;
+        updateMusicPlayerUI();
+        return;
+    }
+
+    // If trackId is 'random', pick a random game track
+    let actualTrackId = trackId;
+    if (trackId === 'random') {
+        if (musicPlaylist.length > 0) {
+            const randomIndex = Math.floor(Math.random() * musicPlaylist.length);
+            actualTrackId = musicPlaylist[randomIndex].id;
+            currentTrackIndex = randomIndex;
+        } else {
+            actualTrackId = 'game1';
+        }
+    }
+
+    const validTracks = musicTracks.filter(track => track.id !== 'demo');
+    if (validTracks.length === 0) {
+        console.error("❌ No valid tracks available to play");
+        return;
+    }
+
+    // Find the track
+    let track = validTracks.find(t => t.id === actualTrackId);
+    
+    // If track not found, use first available
+    if (!track) {
+        track = validTracks[0];
+        console.log(`Track not found, using: ${track.id}`);
+    }
+    
+    // Update current track index for game tracks
+    if (track.type === 'game') {
+        currentTrackIndex = musicPlaylist.findIndex(t => t.id === track.id);
+    }
+
+    console.log(`🎵 Loading track: ${track.name} (${track.file})`);
+
+    // Create new audio element
+    const audioElement = new Audio();
+    
+    // Set IDs for easy identification
+    if (track.type === 'summary') {
+        audioElement.id = 'summary-music-track';
+    } else {
+        audioElement.id = 'game-music-track';
+    }
+    
+    audioElement.src = track.file;
+    audioElement.preload = 'auto';
+    audioElement.volume = musicVolume;
+    
+    // Set loop based on track type and mode
+    if (track.type === 'summary') {
+        audioElement.loop = false; // Summary music should not loop
+    } else {
+        audioElement.loop = (window.config && window.config.musicTrack !== 'random');
+    }
+
+    // Add event listeners
+    audioElement.addEventListener('play', () => {
+        console.log(`▶️ Music started playing: ${track.name}`);
+        isMusicPlaying = true;
+        isMusicPaused = false;
+        updateMusicPlayerUI();
+    });
+
+    audioElement.addEventListener('ended', () => {
+        console.log(`⏹️ Music ended: ${track.name}`);
+        
+        if (track.type === 'summary') {
+            // Summary music ended - resume game music if applicable
+            console.log("🎵 Summary music ended");
+            
+            // If we're still on the summary screen, don't auto-resume
+            const activeScreen = document.querySelector('.screen.active');
+            if (activeScreen && activeScreen.id === 'game-over') {
+                console.log("🎵 Still on summary screen, not resuming game music");
+                return;
+            }
+            
+            // Resume previous music
+            resumePreviousMusic();
+        } else if (window.config && window.config.musicTrack === 'random') {
+            // If in random mode, play next random track
+            setTimeout(() => {
+                playNextTrack();
+            }, 1000);
+        } else if (audioElement.loop) {
+            console.log(`🔁 Looping track: ${track.name}`);
+        } else {
+            // If sequential mode, play next track
+            playNextTrack();
+        }
+    });
+
+    audioElement.addEventListener('error', (e) => {
+        console.error(`❌ Music playback error for ${track.id}:`, e.target.error);
+        
+        // Try to play another track if this one fails
+        if (track.type !== 'summary') {
+            playNextTrack();
+        } else {
+            // If summary music fails, resume previous music
+            resumePreviousMusic();
+        }
+    });
+
+    // Try to play the audio
+    const playPromise = audioElement.play();
+
+    if (playPromise !== undefined) {
+        playPromise.then(() => {
+            console.log(`🎵 Successfully playing: ${track.name} at ${Math.round(musicVolume * 100)}% volume`);
+            currentMusic = audioElement;
+            isMusicPlaying = true;
+            isMusicPaused = false;
+            updateMusicPlayerUI();
+        }).catch(error => {
+            console.error(`❌ Failed to play music: ${track.id}`, error);
+            isMusicPlaying = false;
+            updateMusicPlayerUI();
+        });
+    }
+
+    // Store reference to audio element
+    currentMusic = audioElement;
+}
+
+// Get current track ID from audio element
+function getCurrentTrackId() {
+    if (!currentMusic || !currentMusic.src) return null;
+    
+    const src = currentMusic.src;
+    const track = musicTracks.find(t => src.includes(t.file));
+    return track ? track.id : null;
+}
+
+// Resume previously playing music
+function resumePreviousMusic() {
+    console.log("🎵 Attempting to resume previous music...");
+    
+    if (pausedMusicState.trackId && pausedMusicState.audioElement) {
+        console.log(`🎵 Resuming ${pausedMusicState.trackId} from ${pausedMusicState.currentTime}s`);
+        
+        // Don't resume if we're on the summary screen
+        const activeScreen = document.querySelector('.screen.active');
+        if (activeScreen && activeScreen.id === 'game-over') {
+            console.log("🎵 Still on summary screen, not resuming");
+            return;
+        }
+        
+        // Check if we should be playing game music
+        if (!shouldPlayGameMusic()) {
+            console.log("🎵 Not on a game screen, not resuming");
+            return;
+        }
+        
+        // Play the track from where it left off
+        const trackToResume = pausedMusicState.trackId;
+        const resumeTime = pausedMusicState.currentTime;
+        
+        playMusic(trackToResume, true);
+        
+        // Seek to the saved position after a short delay
+        setTimeout(() => {
+            if (currentMusic && currentMusic.readyState > 0) {
+                currentMusic.currentTime = resumeTime;
+                console.log(`🎵 Seeking to ${resumeTime}s`);
+            }
+        }, 100);
+        
+        // Clear the saved state
+        pausedMusicState = {
+            trackId: null,
+            currentTime: 0,
+            paused: false,
+            audioElement: null
+        };
+    } else {
+        console.log("🎵 No previous music state to resume");
+        
+        // Start default game music
+        const activeScreen = document.querySelector('.screen.active');
+        if (activeScreen && shouldPlayGameMusic()) {
+            const trackToPlay = window.config && window.config.musicTrack === 'random' ? 
+                'random' : (window.config ? window.config.musicTrack : 'game1');
+            playMusic(trackToPlay);
+        }
+    }
+}
+
+// Play next track
+function playNextTrack() {
+    if (musicPlaylist.length === 0) {
+        console.log("No tracks in playlist");
+        return;
+    }
+
+    // If music is paused, resume it first
+    if (isMusicPaused && currentMusic) {
+        toggleMusicPlayback();
+        return;
+    }
+
+    // Calculate next index
+    let nextIndex = currentTrackIndex + 1;
+    if (nextIndex >= musicPlaylist.length) {
+        nextIndex = 0; // Loop back to start
+    }
+
+    // Get next track
+    const nextTrack = musicPlaylist[nextIndex];
+    if (nextTrack) {
+        console.log(`⏭️ Playing next track: ${nextTrack.id}`);
+        playMusic(nextTrack.id);
+    }
+}
+
+// Play previous track
+function playPreviousTrack() {
+    if (musicPlaylist.length === 0) {
+        console.log("No tracks in playlist");
+        return;
+    }
+
+    // If music is paused, resume it first
+    if (isMusicPaused && currentMusic) {
+        toggleMusicPlayback();
+        return;
+    }
+
+    // Calculate previous index
+    let prevIndex = currentTrackIndex - 1;
+    if (prevIndex < 0) {
+        prevIndex = musicPlaylist.length - 1; // Loop to end
+    }
+
+    // Get previous track
+    const prevTrack = musicPlaylist[prevIndex];
+    if (prevTrack) {
+        console.log(`⏮️ Playing previous track: ${prevTrack.id}`);
+        playMusic(prevTrack.id);
+    }
+}
+
+// Toggle music play/pause
+function toggleMusicPlayback() {
+    console.log("🎵 Toggling music playback");
+    
+    if (!currentMusic) {
+        // If no music is playing, start with current track or random
+        const trackToPlay = window.config && window.config.musicTrack === 'random' ? 
+            'random' : (window.config ? window.config.musicTrack : 'game1');
+        playMusic(trackToPlay);
+        return;
+    }
+
+    if (isMusicPaused) {
+        // Resume playback
+        currentMusic.play().then(() => {
+            isMusicPaused = false;
+            isMusicPlaying = true;
+            updateMusicPlayerUI();
+            console.log("▶️ Music resumed");
+        }).catch(error => {
+            console.error("❌ Failed to resume music:", error);
+        });
+    } else {
+        // Pause playback
+        currentMusic.pause();
+        isMusicPaused = true;
+        isMusicPlaying = false;
+        updateMusicPlayerUI();
+        console.log("⏸️ Music paused");
+    }
+}
+
+// Stop current music
+function stopMusic() {
+    if (currentMusic) {
+        console.log("⏹️ Stopping current music");
+        
+        // Don't save state for summary music
+        if (currentMusic.id !== 'summary-music-track') {
+            pausedMusicState = {
+                trackId: getCurrentTrackId(),
+                currentTime: currentMusic.currentTime,
+                paused: isMusicPaused,
+                audioElement: currentMusic
+            };
+            console.log(`💾 Saved music state before stopping: ${pausedMusicState.trackId}`);
+        }
+        
+        currentMusic.pause();
+        currentMusic.currentTime = 0;
+        
+        // Remove event listeners
+        currentMusic.onplay = null;
+        currentMusic.onended = null;
+        currentMusic.onerror = null;
+        currentMusic.oncanplaythrough = null;
+        
+        currentMusic = null;
+        isMusicPlaying = false;
+        isMusicPaused = false;
+        updateMusicPlayerUI();
     }
 }
 
 // Set music volume (0.0 to 1.0)
 function setMusicVolume(volume) {
-    musicVolume = Math.max(0, Math.min(1, volume));
-    console.log(`Setting music volume to: ${musicVolume} (${Math.round(musicVolume * 100)}%)`);
+    const newVolume = Math.max(0, Math.min(1, volume));
+    console.log(`🔊 Setting music volume to: ${newVolume} (${Math.round(newVolume * 100)}%)`);
+    
+    musicVolume = newVolume;
     
     if (currentMusic) {
         currentMusic.volume = musicVolume;
@@ -54,184 +542,36 @@ function setMusicVolume(volume) {
     
     if (window.config) {
         window.config.musicVolume = musicVolume;
+        saveSettings();
     }
 }
 
 // Set UI/sound effects volume (0.0 to 1.0)
 function setUIVolume(volume) {
-    const oldVolume = uiVolume;
-    uiVolume = Math.max(0, Math.min(1, volume));
-    console.log(`Setting UI volume to: ${uiVolume} (${Math.round(uiVolume * 100)}%)`);
+    const newVolume = Math.max(0, Math.min(1, volume));
+    console.log(`🔊 Setting UI volume to: ${newVolume} (${Math.round(newVolume * 100)}%)`);
+    
+    uiVolume = newVolume;
     
     if (window.config) {
         window.config.uiVolume = uiVolume;
-    }
-}
-
-// Calculate dynamic frequency for linking sounds
-function calculateLinkFrequency(pathLength) {
-    const { minFreq, maxFreq, baseFreq, minLength, maxLength } = SOUND_SETTINGS.link;
-    
-    // Ensure pathLength is within bounds
-    const clampedLength = Math.max(minLength, Math.min(pathLength, maxLength));
-    
-    // Calculate frequency scaling
-    if (clampedLength <= minLength) {
-        return baseFreq;
-    }
-    
-    // Exponential scaling for more musical progression
-    const progress = (clampedLength - minLength) / (maxLength - minLength);
-    
-    // Use exponential scaling for more natural pitch progression
-    // This gives us a more musical, pleasing increase in pitch
-    const frequency = minFreq * Math.pow(2, progress * 2); // 2 octaves range
-    
-    // Clamp to max frequency
-    return Math.min(frequency, maxFreq);
-}
-
-// Play linking sound with dynamic pitch
-function playLinkSound(pathLength) {
-    if (uiVolume <= 0 || pathLength < SOUND_SETTINGS.link.minLength) return;
-    
-    // Initialize audio context if needed
-    if (!audioContext) {
-        initAudioContext();
-    }
-    
-    if (!audioContext) {
-        console.error("Audio Context not available");
-        return;
-    }
-    
-    try {
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        // Calculate dynamic frequency based on word length
-        const frequency = calculateLinkFrequency(pathLength);
-        
-        oscillator.frequency.value = frequency;
-        oscillator.type = SOUND_SETTINGS.link.type;
-        
-        // Create a more interesting envelope for linking sounds
-        const now = audioContext.currentTime;
-        const duration = SOUND_SETTINGS.link.duration;
-        
-        // Attack-decay envelope
-        gainNode.gain.setValueAtTime(0, now);
-        gainNode.gain.linearRampToValueAtTime(uiVolume * 0.4, now + 0.02); // Quick attack
-        gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration); // Gentle decay
-        
-        oscillator.start(now);
-        oscillator.stop(now + duration);
-        
-        // Add a subtle harmonic for richer sound on longer words
-        if (pathLength >= 6) {
-            setTimeout(() => {
-                try {
-                    const harmonic = audioContext.createOscillator();
-                    const harmonicGain = audioContext.createGain();
-                    
-                    harmonic.connect(harmonicGain);
-                    harmonicGain.connect(audioContext.destination);
-                    
-                    harmonic.frequency.value = frequency * 1.5; // Perfect fifth above
-                    harmonic.type = SOUND_SETTINGS.link.type;
-                    
-                    const harmonicNow = audioContext.currentTime;
-                    harmonicGain.gain.setValueAtTime(0, harmonicNow);
-                    harmonicGain.gain.linearRampToValueAtTime(uiVolume * 0.2, harmonicNow + 0.01);
-                    harmonicGain.gain.exponentialRampToValueAtTime(0.01, harmonicNow + duration * 0.8);
-                    
-                    harmonic.start(harmonicNow);
-                    harmonic.stop(harmonicNow + duration * 0.8);
-                } catch (e) {
-                    // Silent fail for harmonic
-                }
-            }, 10);
-        }
-        
-    } catch (error) {
-        console.error("Error playing link sound:", error);
-    }
-}
-
-// Play music track (using MP3 files)
-function playMusic(track) {
-    console.log(`Playing music: ${track}`);
-    
-    // Don't restart if the same track is already playing
-    if (currentMusic && 
-        currentMusic.id === 'music-' + track && 
-        !currentMusic.paused &&
-        Math.abs(currentMusic.currentTime) > 0.1) {
-        console.log(`Track ${track} is already playing, skipping restart.`);
-        return;
-    }
-    
-    // Stop current music if playing (and it's a different track)
-    if (currentMusic && currentMusic.id !== 'music-' + track) {
-        currentMusic.pause();
-        currentMusic.currentTime = 0;
-    }
-    
-    const audioElement = document.getElementById('music-' + track);
-    
-    if (audioElement) {
-        audioElement.volume = musicVolume;
-        audioElement.loop = track !== 'summary';
-        
-        // Only play if not already playing or it's a different track
-        if (audioElement.paused || currentMusic?.id !== 'music-' + track) {
-            const playPromise = audioElement.play();
-            
-            if (playPromise !== undefined) {
-                playPromise.then(() => {
-                    console.log(`Music playing: ${track} at ${Math.round(musicVolume * 100)}%`);
-                    currentMusic = audioElement;
-                }).catch(error => {
-                    console.error(`Music failed: ${track}`, error);
-                    if (track !== 'game1') {
-                        playMusic('game1');
-                    }
-                });
-            }
-        } else {
-            console.log(`Track ${track} is already playing, keeping it running.`);
-            currentMusic = audioElement;
-        }
-    } else {
-        console.error(`Music element not found: ${track}`);
-        if (track !== 'game1') {
-            playMusic('game1');
-        }
-    }
-}
-
-// Stop current music
-function stopMusic() {
-    if (currentMusic) {
-        currentMusic.pause();
-        currentMusic.currentTime = 0;
-        currentMusic = null;
+        saveSettings();
     }
 }
 
 // Play UI sound effect
 function playSound(type) {
-    if (uiVolume <= 0) return;
+    if (uiVolume <= 0) {
+        console.log("🔇 UI volume is 0, skipping sound effect");
+        return;
+    }
     
     if (!audioContext) {
         initAudioContext();
     }
     
     if (!audioContext) {
-        console.error("Audio Context not available");
+        console.error("❌ Audio Context not available for sound effects");
         return;
     }
     
@@ -252,94 +592,97 @@ function playSound(type) {
         oscillator.start(audioContext.currentTime);
         oscillator.stop(audioContext.currentTime + 0.2);
         
+        console.log(`🔊 Played ${type} sound effect`);
+        
     } catch (error) {
-        console.error("Error playing sound:", error);
+        console.error("❌ Error playing sound effect:", error);
     }
 }
 
-// Set game track (game1 or game2)
-function setGameTrack(track) {
-    if (window.config) {
-        window.config.musicTrack = track;
-    }
-  
-    document.querySelectorAll('.music-type-btn').forEach(btn => {
-        if (btn.dataset.track === track) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
-    });
-  
-    if (!isGamePlaying && typeof playMusic === 'function') {
-        playMusic(track);
-    }
-}
-
-// Update music volume for current track
-function updateMusicVolume() {
-    if (currentMusic) {
-        currentMusic.volume = musicVolume;
-    }
-}
-
-// Play a test sound to verify audio is working
-function playTestSound() {
-    console.log("Playing test sound...");
+// Play linking sound with dynamic pitch
+function playLinkSound(pathLength) {
+    if (uiVolume <= 0 || pathLength < SOUND_SETTINGS.link.minLength) return;
     
-    // Play a rising scale to demonstrate the linking sound progression
     if (!audioContext) {
         initAudioContext();
     }
     
-    if (audioContext) {
-        // Play a sequence of linking sounds from 3 to 8 letters
-        for (let i = 3; i <= 8; i++) {
-            setTimeout(() => {
-                playLinkSound(i);
-            }, i * 200);
-        }
+    if (!audioContext) {
+        console.error("❌ Audio Context not available for link sound");
+        return;
     }
+    
+    try {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // Calculate dynamic frequency based on word length
+        const { minFreq, maxFreq, baseFreq, minLength, maxLength } = SOUND_SETTINGS.link;
+        const clampedLength = Math.max(minLength, Math.min(pathLength, maxLength));
+        const progress = (clampedLength - minLength) / (maxLength - minLength);
+        const frequency = minFreq * Math.pow(2, progress * 2);
+        
+        oscillator.frequency.value = Math.min(frequency, maxFreq);
+        oscillator.type = SOUND_SETTINGS.link.type;
+        
+        // Create envelope
+        const now = audioContext.currentTime;
+        const duration = SOUND_SETTINGS.link.duration;
+        
+        gainNode.gain.setValueAtTime(0, now);
+        gainNode.gain.linearRampToValueAtTime(uiVolume * 0.4, now + 0.02);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration);
+        
+        oscillator.start(now);
+        oscillator.stop(now + duration);
+        
+    } catch (error) {
+        console.error("❌ Error playing link sound:", error);
+    }
+}
+
+// Set game track
+function setGameTrack(track) {
+    console.log(`🎵 Setting game track to: ${track}`);
+    
+    if (window.config) {
+        window.config.musicTrack = track;
+        saveSettings();
+    }
+    
+    // Update music player UI
+    updateMusicPlayerUI();
+    
+    // Only play the track if music is not already playing
+    if (musicVolume > 0 && !isMusicPlaying) {
+        playMusic(track);
+    }
+}
+
+function getRandomTrack() {
+    if (musicPlaylist.length > 0) {
+        return musicPlaylist[Math.floor(Math.random() * musicPlaylist.length)].id;
+    }
+    return 'game1';
 }
 
 // Initialize audio system
 function initAudio() {
-    console.log("Initializing audio system...");
+    console.log("🎵 Initializing audio system...");
     
+    // Initialize audio context on first user interaction
     document.addEventListener('click', function initOnClick() {
+        console.log("👆 User interaction detected, initializing audio context...");
         initAudioContext();
         document.removeEventListener('click', initOnClick);
     }, { once: true });
     
-    const savedConfig = localStorage.getItem('boggle_cfg');
-    if (savedConfig) {
-        try {
-            const config = JSON.parse(savedConfig);
-            if (config.musicVolume !== undefined) {
-                setMusicVolume(config.musicVolume);
-            }
-            if (config.uiVolume !== undefined) {
-                setUIVolume(config.uiVolume);
-            }
-            if (config.musicTrack !== undefined) {
-                setGameTrack(config.musicTrack);
-            }
-        } catch (e) {
-            console.error("Error loading audio settings:", e);
-        }
-    } else {
-        console.log("Using default audio settings");
-    }
-    
-    console.log("Audio system initialized");
-}
-
-// Initialize when page loads
-window.addEventListener('DOMContentLoaded', function() {
-    console.log("DOM Content Loaded, initializing audio...");
-    
-    setTimeout(() => {
-        initAudio();
+    // Discover music tracks
+    discoverMusicTracks().then(() => {
+        console.log("✅ Audio system initialized successfully");
         
         // Make functions globally available
         window.playMusic = playMusic;
@@ -349,10 +692,43 @@ window.addEventListener('DOMContentLoaded', function() {
         window.setMusicVolume = setMusicVolume;
         window.setUIVolume = setUIVolume;
         window.setGameTrack = setGameTrack;
-        window.updateMusicVolume = updateMusicVolume;
-        window.playTestSound = playTestSound;
-        window.isGamePlaying = isGamePlaying;
+        window.playNextTrack = playNextTrack;
+        window.playPreviousTrack = playPreviousTrack;
+        window.toggleMusicPlayback = toggleMusicPlayback;
+        window.getRandomTrack = getRandomTrack;
+        window.isMusicPlaying = isMusicPlaying;
+        window.isMusicPaused = isMusicPaused;
+        window.resumePreviousMusic = resumePreviousMusic;
+        window.shouldPlayGameMusic = shouldPlayGameMusic;
         
-        console.log("Audio system ready");
+        console.log("✅ Audio functions registered globally");
+        
+        // Start music on main menu if volume is not 0 and music is not already playing
+        const currentScreen = document.querySelector('.screen.active');
+        if (currentScreen && currentScreen.id === 'main-menu') {
+            if (window.config && window.config.musicVolume > 0 && !isMusicPlaying) {
+                setTimeout(() => {
+                    if (config.musicTrack === 'random') {
+                        playMusic('random');
+                    } else {
+                        playMusic(config.musicTrack);
+                    }
+                }, 500);
+            }
+        }
+        
+    }).catch(error => {
+        console.error("❌ Failed to initialize audio system:", error);
+    });
+}
+
+// Initialize when page loads
+window.addEventListener('DOMContentLoaded', function() {
+    console.log("📄 DOM Content Loaded");
+    
+    // Give DOM time to fully load
+    setTimeout(() => {
+        initAudio();
+        console.log("✅ Audio initialization scheduled");
     }, 300);
 });
