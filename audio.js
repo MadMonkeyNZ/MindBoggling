@@ -1,5 +1,4 @@
-// audio.js - Enhanced Audio System with proper music continuity
-
+// audio.js - Enhanced Audio System with improved sound feedback
 let currentMusic = null;
 let musicVolume = 0.5;
 let uiVolume = 0.7;
@@ -7,7 +6,7 @@ let isMusicPlaying = false;
 let isMusicPaused = false;
 let currentTrackIndex = 0;
 let musicPlaylist = [];
-let musicMode = 'sequential'; // 'sequential' or 'single'
+let musicMode = 'sequential';
 
 // Audio Context for UI sounds
 let audioContext = null;
@@ -32,12 +31,12 @@ const SOUND_SETTINGS = {
     better: { baseFreq: 700, type: 'sine' },
     repeat: { baseFreq: 400, type: 'triangle' },
 
-    // Linking sound parameters
+    // Improved linking sound parameters - start from first connection
     link: {
         baseFreq: 400,
-        minFreq: 300,
-        maxFreq: 1200,
-        minLength: 3,
+        minFreq: 400,
+        maxFreq: 1800,
+        minLength: 2, // Changed from 3 to 2 to start earlier
         maxLength: 12,
         duration: 0.15,
         type: 'sine'
@@ -145,17 +144,54 @@ async function discoverMusicTracks() {
     return musicTracks;
 }
 
-// Update music player UI
-function updateMusicPlayerUI() {
-    const musicPlayerBtn = document.querySelector('.music-player-btn:nth-child(2)');
-    if (musicPlayerBtn) {
-        if (isMusicPaused || !isMusicPlaying) {
-            musicPlayerBtn.textContent = '▶️';
-        } else {
-            musicPlayerBtn.textContent = '⏸️';
+// Update music player UI everywhere
+window.updateMusicUI = function() {
+    const playBtn = document.getElementById('play-pause-btn');
+    const gamePlayBtn = document.getElementById('game-play-pause-btn');
+    const trackNameElement = document.getElementById('current-track-name');
+    const gameTrackNameElement = document.getElementById('game-track-name');
+    
+    // Update play/pause buttons
+    if (playBtn) {
+        const icon = playBtn.querySelector('.btn-icon');
+        if (icon) {
+            icon.textContent = isMusicPaused || !isMusicPlaying ? '▶️' : '⏸️';
         }
     }
-}
+    if (gamePlayBtn) {
+        const icon = gamePlayBtn.querySelector('.btn-icon');
+        if (icon) {
+            icon.textContent = isMusicPaused || !isMusicPlaying ? '▶️' : '⏸️';
+        }
+    }
+    
+    // Update track names
+    const currentTrackId = getCurrentTrackId();
+    if (currentTrackId && musicTracks) {
+        const track = musicTracks.find(t => t.id === currentTrackId);
+        if (track) {
+            if (trackNameElement) {
+                trackNameElement.textContent = track.name;
+            }
+            if (gameTrackNameElement) {
+                gameTrackNameElement.textContent = track.name;
+            }
+        }
+    }
+    
+    // Update mode display
+    const modeElement = document.getElementById('track-mode');
+    if (modeElement) {
+        if (window.config && window.config.musicTrack === 'random') {
+            modeElement.textContent = 'Random Play';
+        } else if (window.config && window.config.musicTrack) {
+            const track = musicTracks.find(t => t.id === window.config.musicTrack);
+            modeElement.textContent = track ? track.name : 'Single Track';
+        } else {
+            modeElement.textContent = 'Sequential Play';
+        }
+    }
+};
 
 // Check if music should be playing (for game screens)
 function shouldPlayGameMusic() {
@@ -183,7 +219,7 @@ function playMusic(trackId, forceRestart = false) {
             currentMusic.play().then(() => {
                 isMusicPaused = false;
                 isMusicPlaying = true;
-                updateMusicPlayerUI();
+                updateMusicUI();
                 console.log("▶️ Resumed existing track");
             }).catch(error => {
                 console.error("❌ Failed to resume music:", error);
@@ -219,7 +255,7 @@ function playMusic(trackId, forceRestart = false) {
         console.log("🔇 Music volume is 0, skipping playback");
         isMusicPlaying = false;
         isMusicPaused = false;
-        updateMusicPlayerUI();
+        updateMusicUI();
         return;
     }
 
@@ -283,7 +319,7 @@ function playMusic(trackId, forceRestart = false) {
         console.log(`▶️ Music started playing: ${track.name}`);
         isMusicPlaying = true;
         isMusicPaused = false;
-        updateMusicPlayerUI();
+        updateMusicUI();
     });
 
     audioElement.addEventListener('ended', () => {
@@ -336,11 +372,11 @@ function playMusic(trackId, forceRestart = false) {
             currentMusic = audioElement;
             isMusicPlaying = true;
             isMusicPaused = false;
-            updateMusicPlayerUI();
+            updateMusicUI();
         }).catch(error => {
             console.error(`❌ Failed to play music: ${track.id}`, error);
             isMusicPlaying = false;
-            updateMusicPlayerUI();
+            updateMusicUI();
         });
     }
 
@@ -349,12 +385,21 @@ function playMusic(trackId, forceRestart = false) {
 }
 
 // Get current track ID from audio element
-function getCurrentTrackId() {
+window.getCurrentTrackId = function() {
     if (!currentMusic || !currentMusic.src) return null;
     
     const src = currentMusic.src;
     const track = musicTracks.find(t => src.includes(t.file));
     return track ? track.id : null;
+}
+
+// Get current track name
+window.getCurrentTrackName = function() {
+    const trackId = getCurrentTrackId();
+    if (!trackId) return 'No Track';
+    
+    const track = musicTracks.find(t => t.id === trackId);
+    return track ? track.name : 'Unknown Track';
 }
 
 // Resume previously playing music
@@ -412,7 +457,7 @@ function resumePreviousMusic() {
 }
 
 // Play next track
-function playNextTrack() {
+window.playNextTrack = function() {
     if (musicPlaylist.length === 0) {
         console.log("No tracks in playlist");
         return;
@@ -439,7 +484,7 @@ function playNextTrack() {
 }
 
 // Play previous track
-function playPreviousTrack() {
+window.playPreviousTrack = function() {
     if (musicPlaylist.length === 0) {
         console.log("No tracks in playlist");
         return;
@@ -466,7 +511,7 @@ function playPreviousTrack() {
 }
 
 // Toggle music play/pause
-function toggleMusicPlayback() {
+window.toggleMusicPlayback = function() {
     console.log("🎵 Toggling music playback");
     
     if (!currentMusic) {
@@ -482,7 +527,7 @@ function toggleMusicPlayback() {
         currentMusic.play().then(() => {
             isMusicPaused = false;
             isMusicPlaying = true;
-            updateMusicPlayerUI();
+            updateMusicUI();
             console.log("▶️ Music resumed");
         }).catch(error => {
             console.error("❌ Failed to resume music:", error);
@@ -492,7 +537,7 @@ function toggleMusicPlayback() {
         currentMusic.pause();
         isMusicPaused = true;
         isMusicPlaying = false;
-        updateMusicPlayerUI();
+        updateMusicUI();
         console.log("⏸️ Music paused");
     }
 }
@@ -525,12 +570,12 @@ function stopMusic() {
         currentMusic = null;
         isMusicPlaying = false;
         isMusicPaused = false;
-        updateMusicPlayerUI();
+        updateMusicUI();
     }
 }
 
 // Set music volume (0.0 to 1.0)
-function setMusicVolume(volume) {
+window.setMusicVolume = function(volume) {
     const newVolume = Math.max(0, Math.min(1, volume));
     console.log(`🔊 Setting music volume to: ${newVolume} (${Math.round(newVolume * 100)}%)`);
     
@@ -547,7 +592,7 @@ function setMusicVolume(volume) {
 }
 
 // Set UI/sound effects volume (0.0 to 1.0)
-function setUIVolume(volume) {
+window.setUIVolume = function(volume) {
     const newVolume = Math.max(0, Math.min(1, volume));
     console.log(`🔊 Setting UI volume to: ${newVolume} (${Math.round(newVolume * 100)}%)`);
     
@@ -560,7 +605,7 @@ function setUIVolume(volume) {
 }
 
 // Play UI sound effect
-function playSound(type) {
+window.playSound = function(type) {
     if (uiVolume <= 0) {
         console.log("🔇 UI volume is 0, skipping sound effect");
         return;
@@ -599,8 +644,8 @@ function playSound(type) {
     }
 }
 
-// Play linking sound with dynamic pitch
-function playLinkSound(pathLength) {
+// Play linking sound with dynamic pitch - IMPROVED
+window.playLinkSound = function(pathLength) {
     if (uiVolume <= 0 || pathLength < SOUND_SETTINGS.link.minLength) return;
     
     if (!audioContext) {
@@ -623,29 +668,142 @@ function playLinkSound(pathLength) {
         const { minFreq, maxFreq, baseFreq, minLength, maxLength } = SOUND_SETTINGS.link;
         const clampedLength = Math.max(minLength, Math.min(pathLength, maxLength));
         const progress = (clampedLength - minLength) / (maxLength - minLength);
-        const frequency = minFreq * Math.pow(2, progress * 2);
+        const frequency = minFreq * Math.pow(2, progress * 2.5);
         
         oscillator.frequency.value = Math.min(frequency, maxFreq);
         oscillator.type = SOUND_SETTINGS.link.type;
         
-        // Create envelope
+        // Create more appealing envelope
         const now = audioContext.currentTime;
         const duration = SOUND_SETTINGS.link.duration;
         
+        // Add a slight attack for smoother sound
         gainNode.gain.setValueAtTime(0, now);
-        gainNode.gain.linearRampToValueAtTime(uiVolume * 0.4, now + 0.02);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration);
+        gainNode.gain.linearRampToValueAtTime(uiVolume * 0.5, now + 0.01);
         
-        oscillator.start(now);
-        oscillator.stop(now + duration);
+        // Add harmonics for richer sound
+        if (pathLength >= 4) {
+            const oscillator2 = audioContext.createOscillator();
+            const gainNode2 = audioContext.createGain();
+            
+            oscillator2.connect(gainNode2);
+            gainNode2.connect(audioContext.destination);
+            
+            oscillator2.frequency.value = frequency * 1.5; // Fifth above
+            oscillator2.type = 'triangle';
+            
+            gainNode2.gain.setValueAtTime(0, now);
+            gainNode2.gain.linearRampToValueAtTime(uiVolume * 0.2, now + 0.01);
+            gainNode2.gain.exponentialRampToValueAtTime(0.01, now + duration);
+            
+            oscillator2.start(now);
+            oscillator2.stop(now + duration);
+        }
+        
+        // Richer decay for longer words
+        if (pathLength >= 6) {
+            const decayDuration = duration * 1.5;
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + decayDuration);
+            
+            oscillator.start(now);
+            oscillator.stop(now + decayDuration);
+        } else {
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration);
+            
+            oscillator.start(now);
+            oscillator.stop(now + duration);
+        }
+        
+        console.log(`🔊 Played link sound for path length ${pathLength} at ${Math.round(frequency)}Hz`);
         
     } catch (error) {
         console.error("❌ Error playing link sound:", error);
     }
 }
 
+// Play word complete sound - NEW FUNCTION
+window.playWordCompleteSound = function(wordLength, score) {
+    if (uiVolume <= 0) return;
+    
+    if (!audioContext) {
+        initAudioContext();
+    }
+    
+    if (!audioContext) {
+        console.error("❌ Audio Context not available for word complete sound");
+        return;
+    }
+    
+    try {
+        const now = audioContext.currentTime;
+        const baseFreq = 600;
+        const duration = 0.3 + (wordLength * 0.05);
+        
+        // Main oscillator
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // Frequency sweep up for rewarding feel
+        oscillator.frequency.setValueAtTime(baseFreq, now);
+        oscillator.frequency.exponentialRampToValueAtTime(baseFreq * 2, now + duration * 0.3);
+        oscillator.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, now + duration);
+        oscillator.type = 'sine';
+        
+        // Volume envelope
+        gainNode.gain.setValueAtTime(0, now);
+        gainNode.gain.linearRampToValueAtTime(uiVolume * 0.6, now + 0.05);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration);
+        
+        // Harmony oscillator for richer sound
+        const oscillator2 = audioContext.createOscillator();
+        const gainNode2 = audioContext.createGain();
+        
+        oscillator2.connect(gainNode2);
+        gainNode2.connect(audioContext.destination);
+        
+        oscillator2.frequency.setValueAtTime(baseFreq * 1.5, now);
+        oscillator2.frequency.exponentialRampToValueAtTime(baseFreq * 3, now + duration * 0.3);
+        oscillator2.type = 'triangle';
+        
+        gainNode2.gain.setValueAtTime(0, now);
+        gainNode2.gain.linearRampToValueAtTime(uiVolume * 0.3, now + 0.05);
+        gainNode2.gain.exponentialRampToValueAtTime(0.01, now + duration);
+        
+        // Start both oscillators
+        oscillator.start(now);
+        oscillator2.start(now);
+        oscillator.stop(now + duration);
+        oscillator2.stop(now + duration);
+        
+        // Add a percussion-like click at the beginning for extra feedback
+        if (score > 20) {
+            const clickTime = now + 0.02;
+            const clickGain = audioContext.createGain();
+            const clickOsc = audioContext.createOscillator();
+            
+            clickOsc.connect(clickGain);
+            clickGain.connect(audioContext.destination);
+            
+            clickOsc.frequency.value = 1200;
+            clickOsc.type = 'square';
+            
+            clickGain.gain.setValueAtTime(uiVolume * 0.3, clickTime);
+            clickGain.gain.exponentialRampToValueAtTime(0.01, clickTime + 0.1);
+            
+            clickOsc.start(clickTime);
+            clickOsc.stop(clickTime + 0.1);
+        }
+        
+    } catch (error) {
+        console.error("❌ Error playing word complete sound:", error);
+    }
+}
+
 // Set game track
-function setGameTrack(track) {
+window.setGameTrack = function(track) {
     console.log(`🎵 Setting game track to: ${track}`);
     
     if (window.config) {
@@ -654,7 +812,7 @@ function setGameTrack(track) {
     }
     
     // Update music player UI
-    updateMusicPlayerUI();
+    updateMusicUI();
     
     // Only play the track if music is not already playing
     if (musicVolume > 0 && !isMusicPlaying) {
@@ -662,7 +820,24 @@ function setGameTrack(track) {
     }
 }
 
-function getRandomTrack() {
+// Set game mode (random or specific track)
+window.setGameMode = function(mode) {
+    console.log(`🎵 Setting game mode to: ${mode}`);
+    
+    if (mode === 'random') {
+        setGameTrack('random');
+    } else {
+        // If it's a track ID, set that track
+        const track = musicTracks.find(t => t.id === mode);
+        if (track) {
+            setGameTrack(track.id);
+        }
+    }
+    
+    updateMusicUI();
+}
+
+window.getRandomTrack = function() {
     if (musicPlaylist.length > 0) {
         return musicPlaylist[Math.floor(Math.random() * musicPlaylist.length)].id;
     }
@@ -689,17 +864,22 @@ function initAudio() {
         window.stopMusic = stopMusic;
         window.playSound = playSound;
         window.playLinkSound = playLinkSound;
+        window.playWordCompleteSound = playWordCompleteSound;
         window.setMusicVolume = setMusicVolume;
         window.setUIVolume = setUIVolume;
         window.setGameTrack = setGameTrack;
+        window.setGameMode = setGameMode;
         window.playNextTrack = playNextTrack;
         window.playPreviousTrack = playPreviousTrack;
         window.toggleMusicPlayback = toggleMusicPlayback;
         window.getRandomTrack = getRandomTrack;
+        window.getCurrentTrackId = getCurrentTrackId;
+        window.getCurrentTrackName = getCurrentTrackName;
         window.isMusicPlaying = isMusicPlaying;
         window.isMusicPaused = isMusicPaused;
         window.resumePreviousMusic = resumePreviousMusic;
         window.shouldPlayGameMusic = shouldPlayGameMusic;
+        window.updateMusicUI = updateMusicUI;
         
         console.log("✅ Audio functions registered globally");
         
@@ -716,6 +896,9 @@ function initAudio() {
                 }, 500);
             }
         }
+        
+        // Initial UI update
+        setTimeout(() => updateMusicUI(), 300);
         
     }).catch(error => {
         console.error("❌ Failed to initialize audio system:", error);

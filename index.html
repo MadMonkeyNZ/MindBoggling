@@ -59,10 +59,12 @@
                         
                         <div class="setting-group">
                             <div class="setting-label">Time Limit</div>
-                            <div class="toggle-group">
+                            <div class="toggle-group time-group">
                                 <button class="toggle-btn time-btn active" data-time="30" onclick="setTimeLimit(30)">30s</button>
                                 <button class="toggle-btn time-btn" data-time="60" onclick="setTimeLimit(60)">60s</button>
                                 <button class="toggle-btn time-btn" data-time="90" onclick="setTimeLimit(90)">90s</button>
+                                <button class="toggle-btn time-btn" data-time="120" onclick="setTimeLimit(120)">2m</button>
+                                <button class="toggle-btn time-btn" data-time="180" onclick="setTimeLimit(180)">3m</button>
                                 <button class="toggle-btn time-btn" data-time="0" onclick="setTimeLimit(0)">∞</button>
                             </div>
                         </div>
@@ -131,6 +133,24 @@
 
         <div id="game-ui" class="screen">
             <div id="top-bar">
+                <div class="game-music-controls">
+                    <div class="game-track-info">
+                        <span class="game-track-icon">🎵</span>
+                        <span id="game-track-name" class="game-track-name">Loading...</span>
+                    </div>
+                    <div class="game-music-buttons">
+                        <button class="game-music-btn" onclick="playPreviousTrack()" title="Previous Track">
+                            ⏮
+                        </button>
+                        <button id="game-play-pause-btn" class="game-music-btn" onclick="toggleMusicPlayback()" title="Play/Pause">
+                            ▶️
+                        </button>
+                        <button class="game-music-btn" onclick="playNextTrack()" title="Next Track">
+                            ⏭
+                        </button>
+                    </div>
+                </div>
+                
                 <div class="hud-box">
                     <div class="hud-lbl">Score</div>
                     <div id="score" class="hud-val">0</div>
@@ -165,24 +185,32 @@
         <div id="game-over" class="screen">
             <div class="game-over-content">
                 <div class="game-over-title">Game Over!</div>
-                <div id="final-score" class="final-score">0</div>
+                
+                <div class="final-score-container">
+                    <div id="final-score" class="final-score">0</div>
+                    <div id="new-record-badge" class="record-badge">🏆 NEW RECORD!</div>
+                </div>
+                
+                <div id="score-comparison" class="score-comparison">
+                    <!-- Score comparison will be dynamically inserted here -->
+                </div>
                 
                 <div class="stats">
                     <div class="stat-box">
                         <div id="stat-words" class="stat-value">0</div>
-                        <div class="stat-label">Words</div>
+                        <div class="stat-label">Words Found</div>
                     </div>
                     <div class="stat-box">
                         <div id="stat-daily" class="stat-value">0</div>
                         <div class="stat-label">Daily Best</div>
                     </div>
                     <div class="stat-box">
-                        <div id="stat-alltime" class="stat-value">0</div>
-                        <div class="stat-label">All-Time Best</div>
+                        <div id="stat-current-settings" class="stat-value">0</div>
+                        <div class="stat-label">Settings Best</div>
                     </div>
                     <div class="stat-box">
-                        <div id="stat-settings" class="stat-value">0</div>
-                        <div class="stat-label">Settings Best</div>
+                        <div id="stat-alltime" class="stat-value">0</div>
+                        <div class="stat-label">All-Time Best</div>
                     </div>
                 </div>
                 
@@ -192,7 +220,7 @@
                 </div>
                 
                 <div class="game-board-section">
-                    <div class="game-board-header">Board</div>
+                    <div class="game-board-header">Game Board</div>
                     <div id="game-over-board-wrap" class="game-board-wrap">
                         <canvas id="game-over-lineCanvas"></canvas>
                         <div id="game-over-board" class="game-board"></div>

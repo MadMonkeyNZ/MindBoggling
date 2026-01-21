@@ -34,6 +34,11 @@ window.loadAudioSettings = function() {
                 window.config.uiVolume = volume;
                 saveSettings();
             }
+            
+            // Test sound with improved feedback
+            if (volume > 0 && typeof window.playSound === 'function') {
+                setTimeout(() => window.playSound('good'), 100);
+            }
         });
     }
     
@@ -65,4 +70,24 @@ window.loadAudioSettings = function() {
     
     audioSettingsInitialized = true;
     console.log("✅ Audio settings loaded");
+};
+
+// Add function to update time display based on mode
+window.updateTimeDisplay = function() {
+    const timeEl = document.getElementById('time');
+    if (!timeEl) return;
+    
+    if (window.config?.time === 0) {
+        timeEl.textContent = "∞";
+        timeEl.className = "hud-val time-display endless";
+    } else {
+        timeEl.textContent = window.timeLeft || window.config?.time || 30;
+        timeEl.className = "hud-val time-display";
+        
+        if (window.timeLeft <= 10) {
+            timeEl.style.color = '#ef4444';
+        } else {
+            timeEl.style.color = '';
+        }
+    }
 };

@@ -1,4 +1,4 @@
-// game-core.js - Complete with all functions properly exposed
+// game-core.js - Fixed version with working buttons
 
 /* ================= CONFIG & STATE ================= */
 const DICT_URL = "https://raw.githubusercontent.com/redbo/scrabble/master/dictionary.txt";
@@ -151,7 +151,7 @@ function saveHighscore(score) {
 
 function getAllSettingCombinations() {
   const gridSizes = [4, 5];
-  const times = [30, 60, 90, 0];
+  const times = [30, 60, 90, 120, 180, 0];
   const minLens = [3, 4, 5, 6];
   
   const combinations = [];
@@ -175,6 +175,86 @@ function getHighscores() {
     allTime: JSON.parse(localStorage.getItem(allTimeKey) || '{"score":0}'),
     settings: JSON.parse(localStorage.getItem(settingsKey) || '{"score":0}')
   };
+}
+
+/* ================= ENHANCED END GAME SCORING ================= */
+function updateGameStatistics() {
+  const highscores = getHighscores();
+  
+  // Update stats display
+  const dailyStat = document.getElementById('stat-daily');
+  const allTimeStat = document.getElementById('stat-alltime');
+  const settingsStat = document.getElementById('stat-settings');
+  const bestStat = document.getElementById('stat-best');
+  const currentSettingsStat = document.getElementById('stat-current-settings');
+  
+  if (dailyStat) dailyStat.textContent = highscores.daily.score || 0;
+  if (allTimeStat) allTimeStat.textContent = highscores.allTime.score || 0;
+  if (settingsStat) settingsStat.textContent = highscores.settings.score || 0;
+  
+  // Calculate settings-specific high score
+  const settingsKey = getHighscoreKey();
+  const settingsData = JSON.parse(localStorage.getItem(settingsKey) || '{"score":0}');
+  if (currentSettingsStat) {
+    currentSettingsStat.textContent = settingsData.score || 0;
+  }
+  
+  // Update new game over score comparison
+  updateScoreComparison(highscores);
+  
+  // Update main menu high scores
+  updateHighscoresDisplay();
+}
+
+function updateScoreComparison(highscores) {
+  const scoreComparison = document.getElementById('score-comparison');
+  const newRecordBadge = document.getElementById('new-record-badge');
+  const settingsKey = getHighscoreKey();
+  const settingsData = JSON.parse(localStorage.getItem(settingsKey) || '{"score":0}');
+  
+  if (!scoreComparison || !newRecordBadge) return;
+  
+  const currentSettingsHigh = settingsData.score || 0;
+  
+  if (currentScore > currentSettingsHigh) {
+    // New record!
+    scoreComparison.innerHTML = `
+      <div class="record-message">
+        <span class="record-icon">🏆</span>
+        <span class="record-text">New Settings Record!</span>
+      </div>
+      <div class="record-details">
+        <span class="old-record">Previous: ${currentSettingsHigh}</span>
+        <span class="record-improvement">+${currentScore - currentSettingsHigh}</span>
+      </div>
+    `;
+    newRecordBadge.style.display = 'block';
+  } else if (currentScore === currentSettingsHigh) {
+    // Tied record
+    scoreComparison.innerHTML = `
+      <div class="record-message">
+        <span class="record-icon">🎯</span>
+        <span class="record-text">Tied Settings Record!</span>
+      </div>
+      <div class="record-details">
+        <span class="old-record">Keep going to beat it!</span>
+      </div>
+    `;
+    newRecordBadge.style.display = 'none';
+  } else {
+    // Didn't beat record
+    const difference = currentSettingsHigh - currentScore;
+    scoreComparison.innerHTML = `
+      <div class="record-message">
+        <span class="record-icon">📊</span>
+        <span class="record-text">Settings Record: ${currentSettingsHigh}</span>
+      </div>
+      <div class="record-details">
+        <span class="old-record">You need ${difference} more points</span>
+      </div>
+    `;
+    newRecordBadge.style.display = 'none';
+  }
 }
 
 /* ================= TRIE DATA STRUCTURE ================= */
@@ -387,6 +467,94 @@ window.setMinLength = function(length) {
   saveSettings();
 };
 
+/* ================= IMPROVED BOARD GENERATION ================= */
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+function isVowel(letter) {
+  const vowels = ['A', 'E', 'I', 'O', 'U', 'QU'];
+  return vowels.includes(letter.toUpperCase());
+}
+
+function generateImprovedBoard(gridSize) {
+  const dice = gridSize === 4 ? DICE_4x4 : DICE_5x5;
+  const totalTiles = gridSize * gridSize;
+  let board = [];
+  let attempts = 0;
+  const maxAttempts = 10;
+  
+  do {
+    board = [];
+    const shuffledDice = shuffleArray([...dice]);
+    
+    for (let i = 0; i < totalTiles; i++) {
+      const die = shuffledDice[i];
+      const letter = die[Math.floor(Math.random() * die.length)];
+      board.push(letter === "Q" ? "Qu" : letter);
+    }
+    
+    attempts++;
+    
+    // For 5x5 grids, ensure good distribution
+    if (gridSize === 5 && attempts < maxAttempts) {
+      let vowelCount = 0;
+      let consonantCount = 0;
+      
+      board.forEach(letter => {
+        if (isVowel(letter)) vowelCount++;
+        else consonantCount++;
+      });
+      
+      const vowelRatio = vowelCount / totalTiles;
+      if (vowelRatio < 0.3 || vowelRatio > 0.5) {
+        continue;
+      }
+    }
+  } while (attempts < maxAttempts);
+  
+  console.log(`Generated board with ${attempts} attempts`);
+  return board;
+}
+
+/* ================= IMPROVED PROGRESS BAR ================= */
+function updateProgressBar() {
+  const totalWords = allPossibleWords.size;
+  const foundCount = foundWords.size;
+  
+  const progressStats = document.getElementById('progress-stats');
+  const progressFill = document.getElementById('progress-fill');
+  const progressLabel = document.querySelector('.progress-label');
+  
+  if (progressStats) {
+    progressStats.textContent = `${foundCount}`;
+  }
+  
+  if (progressLabel) {
+    progressLabel.textContent = `Words Found (${foundCount}/${totalWords})`;
+  }
+  
+  if (progressFill && totalWords > 0) {
+    const percentage = Math.min(100, (foundCount / totalWords) * 100);
+    progressFill.style.width = `${percentage}%`;
+    
+    // Color coding based on completion
+    if (percentage >= 75) {
+      progressFill.style.background = 'linear-gradient(90deg, #22c55e, #16a34a)';
+    } else if (percentage >= 50) {
+      progressFill.style.background = 'linear-gradient(90deg, #0ea5e9, #3b82f6)';
+    } else if (percentage >= 25) {
+      progressFill.style.background = 'linear-gradient(90deg, #fbbf24, #f59e0b)';
+    } else {
+      progressFill.style.background = 'linear-gradient(90deg, #0ea5e9, #8b5cf6)';
+    }
+  }
+}
+
 /* ================= CORE GAME FUNCTIONS ================= */
 window.startGame = function() {
   console.log("Starting game with settings:", config);
@@ -399,13 +567,9 @@ window.startGame = function() {
   showLoadingScreen();
   updateLoadingProgress(10, "Initializing game...");
 
-  const dice = config.gridSize === 4 ? DICE_4x4 : DICE_5x5;
+  // Use improved board generation
+  board = generateImprovedBoard(config.gridSize);
   const totalTiles = config.gridSize * config.gridSize;
-
-  board = [...dice].sort(() => Math.random() - .5).map(x => {
-    let c = x[Math.floor(Math.random() * x.length)];
-    return c === "Q" ? "Qu" : c;
-  }).slice(0, totalTiles);
 
   generateSpecialTiles();
 
@@ -445,7 +609,7 @@ function completeGameSetup() {
     // Initialize 3D tilt
     initBoardTilt();
 
-    // Render board
+    // Render board with enhanced 3D effect
     renderBoard(board);
 
     // Reset UI
@@ -696,6 +860,11 @@ function submitWord() {
 
       flash('better');
       if (typeof playSound === 'function') playSound('better');
+      
+      // Play word complete sound for better feedback
+      if (typeof playWordCompleteSound === 'function') {
+        playWordCompleteSound(w.length, newScore);
+      }
 
       const board = document.getElementById('board');
       if (board) {
@@ -720,6 +889,11 @@ function submitWord() {
 
     flash('good');
     if (typeof playSound === 'function') playSound('good');
+    
+    // Play word complete sound for better feedback
+    if (typeof playWordCompleteSound === 'function') {
+      playWordCompleteSound(w.length, newScore);
+    }
 
     path.forEach(i => {
       const tile = document.querySelector(`.tile[data-i="${i}"]`);
@@ -817,23 +991,6 @@ function getMultipliersForWord(path) {
   return multiplierCounts;
 }
 
-function updateProgressBar() {
-  const totalWords = allPossibleWords.size;
-  const foundCount = foundWords.size;
-  
-  const progressStats = document.getElementById('progress-stats');
-  const progressFill = document.getElementById('progress-fill');
-  
-  if (progressStats) {
-    progressStats.textContent = `${foundCount}`;
-  }
-  
-  if (progressFill && totalWords > 0) {
-    const percentage = Math.min(100, (foundCount / totalWords) * 100);
-    progressFill.style.width = `${percentage}%`;
-  }
-}
-
 /* ================= FIND ALL POSSIBLE WORDS ================= */
 async function findAllPossibleWords() {
   const words = new Map();
@@ -925,7 +1082,7 @@ async function findAllPossibleWords() {
   return words;
 }
 
-/* ================= GAME OVER FUNCTIONS ================= */
+/* ================= ENHANCED GAME OVER FUNCTIONS ================= */
 window.endGame = function() {
   console.log("🔚 End game called");
   if (gameEnded) {
@@ -1054,8 +1211,8 @@ function drawLongestWordPath() {
     
     // Draw the path with a more transparent line
     ctx.beginPath();
-    ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)'; // More transparent gold
-    ctx.lineWidth = 4; // Thinner line
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)';
+    ctx.lineWidth = 4;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     
@@ -1254,22 +1411,49 @@ window.playAgain = function() {
   startGame();
 };
 
-/* ================= GAME MUSIC CONTROLS ================= */
-function updateGameMusicControls() {
-  const musicControls = document.querySelector('.game-music-controls');
-  if (!musicControls) return;
+/* ================= ENHANCED GAME MUSIC CONTROLS ================= */
+window.updateMusicUI = function() {
+  const playBtn = document.getElementById('play-pause-btn');
+  const gamePlayBtn = document.getElementById('game-play-pause-btn');
+  const trackNameElement = document.getElementById('current-track-name');
+  const gameTrackNameElement = document.getElementById('game-track-name');
   
-  const playBtn = musicControls.querySelector('.play-btn');
-  const muteBtn = musicControls.querySelector('.mute-btn');
-  
+  // Update play/pause buttons
+  const isPlaying = window.isMusicPlaying && !window.isMusicPaused;
   if (playBtn) {
-    const isPlaying = window.isMusicPlaying && !window.isMusicPaused;
-    playBtn.innerHTML = isPlaying ? '⏸️' : '▶️';
+    playBtn.querySelector('.btn-icon').textContent = isPlaying ? '⏸️' : '▶️';
+    playBtn.title = isPlaying ? 'Pause' : 'Play';
+  }
+  if (gamePlayBtn) {
+    gamePlayBtn.querySelector('.btn-icon').textContent = isPlaying ? '⏸️' : '▶️';
+    gamePlayBtn.title = isPlaying ? 'Pause' : 'Play';
   }
   
-  if (muteBtn) {
-    const isMuted = config.musicVolume === 0;
-    muteBtn.innerHTML = isMuted ? '🔇' : '🔊';
+  // Update track names
+  const currentTrackId = window.getCurrentTrackId ? window.getCurrentTrackId() : null;
+  if (currentTrackId && window.musicTracks) {
+    const track = window.musicTracks.find(t => t.id === currentTrackId);
+    if (track) {
+      if (trackNameElement) {
+        trackNameElement.textContent = track.name;
+      }
+      if (gameTrackNameElement) {
+        gameTrackNameElement.textContent = track.name;
+      }
+    }
+  }
+};
+
+function updateGameMusicControls() {
+  const gameTrackName = document.getElementById('game-track-name');
+  if (gameTrackName && window.musicTracks) {
+    const currentTrackId = window.getCurrentTrackId ? window.getCurrentTrackId() : null;
+    if (currentTrackId) {
+      const track = window.musicTracks.find(t => t.id === currentTrackId);
+      if (track) {
+        gameTrackName.textContent = track.name;
+      }
+    }
   }
 }
 
@@ -1326,7 +1510,7 @@ function setupEventListeners() {
   }
 
   // Remove window listeners
-  window.removeEventListener('mousedove', handleMove);
+  window.removeEventListener('mousemove', handleMove);
   window.removeEventListener('touchmove', handleMove);
   window.removeEventListener('mouseup', handleEnd);
   window.removeEventListener('touchend', handleEnd);
@@ -1405,34 +1589,6 @@ function getRandomTrack() {
   return 'game1';
 }
 
-window.updateGameStatistics = function() {
-  const highscores = getHighscores();
-  
-  // Update stats display
-  const dailyStat = document.getElementById('stat-daily');
-  const allTimeStat = document.getElementById('stat-alltime');
-  const settingsStat = document.getElementById('stat-settings');
-  const bestStat = document.getElementById('stat-best');
-  
-  if (dailyStat) dailyStat.textContent = highscores.daily.score || 0;
-  if (allTimeStat) allTimeStat.textContent = highscores.allTime.score || 0;
-  if (settingsStat) settingsStat.textContent = highscores.settings.score || 0;
-  
-  // Update best score in localStorage
-  let bestScore = localStorage.getItem('bestScore');
-  bestScore = bestScore ? parseInt(bestScore) : 0;
-  
-  if (currentScore > bestScore) {
-    bestScore = currentScore;
-    localStorage.setItem('bestScore', bestScore.toString());
-  }
-  
-  if (bestStat) bestStat.textContent = bestScore;
-  
-  // Update main menu high scores
-  updateHighscoresDisplay();
-};
-
 function updateHighscoresDisplay() {
   const highscores = getHighscores();
   
@@ -1487,10 +1643,15 @@ window.addEventListener('load', function () {
   // Make functions globally available
   window.getRandomTrack = getRandomTrack;
   window.getAllSettingCombinations = getAllSettingCombinations;
+  window.updateMusicUI = updateMusicUI;
   
   setTimeout(() => {
     if (typeof window.loadAudioSettings === 'function') {
       window.loadAudioSettings();
+    }
+    // Initial music UI update
+    if (typeof window.updateMusicUI === 'function') {
+      setTimeout(() => window.updateMusicUI(), 1000);
     }
   }, 500);
 });
