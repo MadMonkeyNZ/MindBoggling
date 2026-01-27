@@ -22,29 +22,45 @@
   transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-body {
+/* FIXED: Better mobile viewport handling */
+html, body {
   margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
   background: radial-gradient(circle at top, var(--bg-mid), var(--bg-dark));
   font-family: 'Segoe UI', system-ui, sans-serif;
   color: var(--text);
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  overflow: hidden;
+  min-height: -webkit-fill-available; /* Mobile fix */
+  height: 100vh;
+  height: -webkit-fill-available;
   touch-action: manipulation;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+  position: fixed; /* Prevent scrolling issues */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 #app {
   width: 100%;
   max-width: 500px;
   height: 100vh;
+  height: -webkit-fill-available;
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden;
 }
 
 /* ================= SCREENS ================= */
@@ -62,6 +78,7 @@ body {
   transform: translateY(10px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  height: 100%;
 }
 
 .screen.active {
@@ -79,6 +96,7 @@ body {
   text-align: center;
   padding-top: 20px;
   padding-bottom: 20px;
+  height: 100%;
 }
 
 .main-menu-content {
@@ -89,6 +107,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 20px;
+  padding-bottom: 20px; /* Extra padding for mobile */
 }
 
 /* Title Container */
@@ -419,6 +438,9 @@ body {
   display: flex;
   flex-direction: column;
   padding: 10px;
+  height: 100%;
+  max-height: 100vh;
+  overflow: hidden;
 }
 
 #top-bar {
@@ -433,6 +455,7 @@ body {
   position: relative;
   flex-wrap: wrap;
   gap: 10px;
+  flex-shrink: 0; /* Prevent shrinking */
 }
 
 /* Game Music Controls in Game UI */
@@ -566,6 +589,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
   max-width: 400px;
   width: 90%;
+  flex-shrink: 0; /* Prevent shrinking */
 }
 
 .progress-header {
@@ -635,11 +659,14 @@ body {
   position: relative;
   aspect-ratio: 1;
   margin: 10px auto;
+  margin-bottom: 20px; /* Extra bottom margin for mobile */
   touch-action: none;
   width: 100%;
   max-width: 400px;
+  max-height: calc(100vh - 300px); /* Ensure it fits */
   padding: 0 8px;
   perspective: 1200px;
+  flex-grow: 1; /* Take available space */
 }
 
 #board {
@@ -721,11 +748,11 @@ body {
   transform: translateZ(20px);
 }
 
-/* Enhanced 3D Active State */
+/* FIXED: Removed scale transform to eliminate zoom effect */
 .tile.active {
   background: linear-gradient(145deg, #0ea5e9, #0c8fd8) !important;
   color: white !important;
-  transform: scale(1.08) translateZ(30px);
+  transform: translateZ(30px); /* Removed scale(1.08) */
   z-index: 15 !important;
   box-shadow: 
     0 0 40px var(--active),
@@ -873,6 +900,7 @@ body {
   overflow-y: auto;
   padding-top: 20px;
   padding-bottom: 40px;
+  height: 100%;
 }
 
 .game-over-content {
@@ -1505,6 +1533,25 @@ body {
   .progress-stats {
     font-size: 1rem;
   }
+  
+  /* Mobile-specific adjustments */
+  #board-wrap {
+    max-height: calc(100vh - 250px);
+    margin-bottom: 10px;
+  }
+  
+  .tile {
+    font-size: 1.2rem;
+    min-height: 50px;
+  }
+  
+  #game-ui {
+    padding: 5px;
+  }
+  
+  .screen {
+    padding: 12px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1611,6 +1658,23 @@ body {
     font-size: 0.9rem;
     min-width: 50px;
   }
+  
+  /* Extra small mobile adjustments */
+  #board-wrap {
+    max-height: 65vh;
+    max-width: 95vw;
+  }
+  
+  .tile {
+    font-size: 1rem;
+    min-height: 40px;
+  }
+  
+  .tile .tile-score {
+    font-size: 0.4rem;
+    width: 14px;
+    height: 14px;
+  }
 }
 
 @media (max-width: 360px) {
@@ -1656,6 +1720,16 @@ body {
   .progress-stats {
     font-size: 0.8rem;
     min-width: 40px;
+  }
+  
+  /* Very small screen adjustments */
+  #board-wrap {
+    max-height: 60vh;
+  }
+  
+  .tile {
+    min-height: 35px;
+    font-size: 0.9rem;
   }
 }
 
@@ -1714,6 +1788,29 @@ body {
   .radio-player {
     max-width: 100%;
     order: 3;
+  }
+  
+  /* Landscape game adjustments */
+  #game-ui {
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 5px;
+  }
+  
+  #top-bar {
+    width: 100%;
+    margin-bottom: 5px;
+  }
+  
+  #words-progress {
+    width: 100%;
+    margin: 5px auto;
+  }
+  
+  #board-wrap {
+    max-height: 70vh;
+    max-width: 70vh;
+    margin: 0 auto;
   }
 }
 
@@ -1805,4 +1902,24 @@ body {
     margin-top: 10px;
     width: 100%;
   }
+}
+
+/* Mobile keyboard avoidance */
+@supports (-webkit-touch-callout: none) {
+  body {
+    /* iOS Safari specific */
+    min-height: -webkit-fill-available;
+  }
+  
+  #app {
+    height: -webkit-fill-available;
+  }
+}
+
+/* Prevent text size adjustment on orientation change */
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }

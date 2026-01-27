@@ -921,6 +921,7 @@ function submitWord() {
   }
 }
 
+// In the calcScore function (around line ~500)
 function calcScore(w, idxs) {
   let pts = 0;
   let wordMultiplier = 1;
@@ -947,7 +948,9 @@ function calcScore(w, idxs) {
 
   pts *= wordMultiplier;
 
+  // Bonus for longer words
   if (w.length >= 8) pts += 10;
+  if (w.length >= 10) pts += 15; // Extra bonus for very long words
 
   return Math.max(pts, 1);
 }

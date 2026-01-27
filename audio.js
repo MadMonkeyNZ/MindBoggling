@@ -22,7 +22,7 @@ let pausedMusicState = {
     audioElement: null
 };
 
-// Audio settings
+// IMPROVED Audio settings with better linking sound
 const SOUND_SETTINGS = {
     // Base frequencies for different sound types
     good: { baseFreq: 800, type: 'sine' },
@@ -31,15 +31,22 @@ const SOUND_SETTINGS = {
     better: { baseFreq: 700, type: 'sine' },
     repeat: { baseFreq: 400, type: 'triangle' },
 
-    // Improved linking sound parameters - start from first connection
+    // IMPROVED linking sound parameters - more satisfying and musical
     link: {
-        baseFreq: 400,
-        minFreq: 400,
-        maxFreq: 1800,
-        minLength: 2, // Changed from 3 to 2 to start earlier
+        baseFreq: 350,
+        minFreq: 350,
+        maxFreq: 1400,
+        minLength: 2,
         maxLength: 12,
-        duration: 0.15,
-        type: 'sine'
+        duration: 0.25, // Longer duration for better feel
+        type: 'sine',
+        // New: Harmonic ratios for richer sound
+        harmonics: [
+            { ratio: 1.0, gain: 1.0 }, // Fundamental
+            { ratio: 1.5, gain: 0.6 }, // Perfect fifth
+            { ratio: 2.0, gain: 0.4 }, // Octave
+            { ratio: 2.5, gain: 0.3 }  // Major third + octave
+        ]
     }
 };
 
@@ -644,7 +651,7 @@ window.playSound = function(type) {
     }
 }
 
-// Play linking sound with dynamic pitch - IMPROVED
+// IMPROVED: Play linking sound with dynamic pitch and harmonics
 window.playLinkSound = function(pathLength) {
     if (uiVolume <= 0 || pathLength < SOUND_SETTINGS.link.minLength) return;
     
@@ -658,63 +665,99 @@ window.playLinkSound = function(pathLength) {
     }
     
     try {
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+        const now = audioContext.currentTime;
+        const { minFreq, maxFreq, duration, harmonics } = SOUND_SETTINGS.link;
         
         // Calculate dynamic frequency based on word length
-        const { minFreq, maxFreq, baseFreq, minLength, maxLength } = SOUND_SETTINGS.link;
+        const { minLength, maxLength } = SOUND_SETTINGS.link;
         const clampedLength = Math.max(minLength, Math.min(pathLength, maxLength));
         const progress = (clampedLength - minLength) / (maxLength - minLength);
-        const frequency = minFreq * Math.pow(2, progress * 2.5);
         
-        oscillator.frequency.value = Math.min(frequency, maxFreq);
-        oscillator.type = SOUND_SETTINGS.link.type;
+        // More musical frequency progression (exponential)
+        const baseFrequency = minFreq * Math.pow(2, progress * 1.5);
+        const frequency = Math.min(baseFrequency, maxFreq);
         
-        // Create more appealing envelope
-        const now = audioContext.currentTime;
-        const duration = SOUND_SETTINGS.link.duration;
+        // Create richer sound with multiple harmonics
+        harmonics.forEach((harmonic, index) => {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = frequency * harmonic.ratio;
+            oscillator.type = 'sine';
+            
+            // Stagger the start slightly for a more organic sound
+            const startDelay = index * 0.01;
+            const harmonicDuration = duration * (0.8 + Math.random() * 0.4);
+            
+            // More musical envelope with attack, sustain, release
+            gainNode.gain.setValueAtTime(0, now + startDelay);
+            
+            // Quick attack
+            gainNode.gain.linearRampToValueAtTime(
+                uiVolume * 0.4 * harmonic.gain, 
+                now + startDelay + 0.05
+            );
+            
+            // Gentle sustain
+            gainNode.gain.exponentialRampToValueAtTime(
+                uiVolume * 0.2 * harmonic.gain,
+                now + startDelay + harmonicDuration * 0.7
+            );
+            
+            // Smooth release
+            gainNode.gain.exponentialRampToValueAtTime(
+                0.001,
+                now + startDelay + harmonicDuration
+            );
+            
+            // Add slight vibrato for longer words
+            if (pathLength >= 5) {
+                const vibrato = audioContext.createOscillator();
+                const vibratoGain = audioContext.createGain();
+                
+                vibrato.connect(vibratoGain);
+                vibratoGain.connect(oscillator.frequency);
+                
+                vibrato.frequency.value = 5 + (pathLength * 0.5); // Vibrato speed
+                vibratoGain.gain.value = frequency * 0.03; // Vibrato depth
+                
+                vibrato.start(now + startDelay);
+                vibrato.stop(now + startDelay + harmonicDuration);
+            }
+            
+            oscillator.start(now + startDelay);
+            oscillator.stop(now + startDelay + harmonicDuration);
+        });
         
-        // Add a slight attack for smoother sound
-        gainNode.gain.setValueAtTime(0, now);
-        gainNode.gain.linearRampToValueAtTime(uiVolume * 0.5, now + 0.01);
-        
-        // Add harmonics for richer sound
+        // Add a subtle low-frequency oscillator for warmth on longer words
         if (pathLength >= 4) {
-            const oscillator2 = audioContext.createOscillator();
-            const gainNode2 = audioContext.createGain();
+            const lfo = audioContext.createOscillator();
+            const lfoGain = audioContext.createGain();
+            const lfoFilter = audioContext.createBiquadFilter();
             
-            oscillator2.connect(gainNode2);
-            gainNode2.connect(audioContext.destination);
+            lfo.connect(lfoGain);
+            lfoGain.connect(lfoFilter);
+            lfoFilter.connect(audioContext.destination);
             
-            oscillator2.frequency.value = frequency * 1.5; // Fifth above
-            oscillator2.type = 'triangle';
+            lfo.frequency.value = frequency * 0.25;
+            lfo.type = 'sine';
+            lfoGain.gain.value = uiVolume * 0.15;
+            lfoFilter.frequency.value = 400;
             
-            gainNode2.gain.setValueAtTime(0, now);
-            gainNode2.gain.linearRampToValueAtTime(uiVolume * 0.2, now + 0.01);
-            gainNode2.gain.exponentialRampToValueAtTime(0.01, now + duration);
+            const lfoDuration = duration * 1.2;
             
-            oscillator2.start(now);
-            oscillator2.stop(now + duration);
+            lfoGain.gain.setValueAtTime(0, now);
+            lfoGain.gain.linearRampToValueAtTime(uiVolume * 0.15, now + 0.1);
+            lfoGain.gain.exponentialRampToValueAtTime(0.001, now + lfoDuration);
+            
+            lfo.start(now);
+            lfo.stop(now + lfoDuration);
         }
         
-        // Richer decay for longer words
-        if (pathLength >= 6) {
-            const decayDuration = duration * 1.5;
-            gainNode.gain.exponentialRampToValueAtTime(0.01, now + decayDuration);
-            
-            oscillator.start(now);
-            oscillator.stop(now + decayDuration);
-        } else {
-            gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration);
-            
-            oscillator.start(now);
-            oscillator.stop(now + duration);
-        }
-        
-        console.log(`🔊 Played link sound for path length ${pathLength} at ${Math.round(frequency)}Hz`);
+        console.log(`🔊 Played enhanced link sound for path length ${pathLength} at ${Math.round(frequency)}Hz`);
         
     } catch (error) {
         console.error("❌ Error playing link sound:", error);
