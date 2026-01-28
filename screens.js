@@ -149,3 +149,39 @@ window.updateTimeDisplay = function() {
         }
     }
 };
+
+// Update high scores display when settings change
+window.updateHighScoresOnSettingsChange = function() {
+    // Update the main menu high scores display
+    if (typeof updateHighscoresDisplay === 'function') {
+        updateHighscoresDisplay();
+    }
+    
+    // Update high score labels
+    if (typeof updateHighScoreLabels === 'function') {
+        updateHighScoreLabels();
+    }
+    
+    // Update the main menu high score labels
+    const dailyHighscoreLabel = document.getElementById('daily-highscore-label');
+    const allTimeHighscoreLabel = document.getElementById('alltime-highscore-label');
+    
+    if (window.config && window.config.time === 0) {
+        // Endless mode
+        if (dailyHighscoreLabel) dailyHighscoreLabel.textContent = 'Daily % Best';
+        if (allTimeHighscoreLabel) allTimeHighscoreLabel.textContent = 'All-Time % Best';
+    } else {
+        // Timed mode
+        if (dailyHighscoreLabel) dailyHighscoreLabel.textContent = 'Daily Score Best';
+        if (allTimeHighscoreLabel) allTimeHighscoreLabel.textContent = 'All-Time Score Best';
+    }
+};
+
+// Initialize settings on load
+window.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        if (window.config) {
+            window.updateHighScoresOnSettingsChange();
+        }
+    }, 500);
+});

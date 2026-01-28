@@ -459,7 +459,7 @@ body {
   flex-grow: 0;
 }
 
-/* Game Music Controls in Game UI */
+/* SIMPLIFIED Game Music Controls in Game UI */
 .game-music-controls {
   display: flex;
   align-items: center;
@@ -467,22 +467,40 @@ body {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
   padding: 8px 12px;
-  min-width: 180px;
-  flex: 1;
-  max-width: 250px;
+  min-width: 120px;
+  flex: 0 0 auto;
 }
 
 .game-track-info {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1;
-  min-width: 0;
+  width: 100%;
 }
 
-.game-track-icon {
-  font-size: 1rem;
+.game-music-btn-simple {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(139, 92, 246, 0.2);
   color: #8b5cf6;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.game-music-btn-simple:hover {
+  background: rgba(139, 92, 246, 0.3);
+  transform: scale(1.1);
+}
+
+.game-music-btn-simple:active {
+  transform: scale(0.95);
 }
 
 .game-track-name {
@@ -493,36 +511,6 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
-}
-
-.game-music-buttons {
-  display: flex;
-  gap: 4px;
-}
-
-.game-music-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.1);
-  color: #94a3b8;
-  font-size: 0.9rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.game-music-btn:hover {
-  background: rgba(139, 92, 246, 0.2);
-  color: #8b5cf6;
-  transform: scale(1.1);
-}
-
-.game-music-btn:active {
-  transform: scale(0.95);
 }
 
 .hud-box {
@@ -1518,14 +1506,15 @@ body {
   }
   
   .game-music-controls {
-    min-width: 160px;
+    min-width: 100px;
+    padding: 6px 8px;
   }
   
   .game-track-name {
     font-size: 0.75rem;
   }
   
-  .game-music-btn {
+  .game-music-btn-simple {
     width: 28px;
     height: 28px;
     font-size: 0.8rem;
@@ -1763,7 +1752,7 @@ body {
     font-size: 0.7rem;
   }
   
-  .game-music-btn {
+  .game-music-btn-simple {
     width: 24px;
     height: 24px;
     font-size: 0.7rem;
@@ -1962,30 +1951,6 @@ body {
 .main-menu-content {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-
-/* Game music controls responsive */
-@media (max-width: 768px) {
-  .game-music-controls {
-    order: 1;
-    width: 100%;
-    max-width: none;
-    margin-bottom: 10px;
-  }
-  
-  #top-bar {
-    flex-direction: column;
-  }
-  
-  .hud-box {
-    order: 2;
-  }
-  
-  #quit-btn {
-    order: 3;
-    margin-top: 10px;
-    width: 100%;
-  }
 }
 
 /* Mobile keyboard avoidance */

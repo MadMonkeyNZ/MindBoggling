@@ -82,14 +82,14 @@ window.showScreen = function(screenId) {
   }
 };
 
-/* ================= HIGH SCORE SYSTEM ================= */
+/* ================= ENHANCED HIGH SCORE SYSTEM ================= */
 function getHighscoreKey() {
   return `boggle_${config.gridSize}x${config.gridSize}_${config.time}s_${config.minLen}l`;
 }
 
 function getDailyKey() {
   const today = new Date().toISOString().split('T')[0];
-  return `boggle_daily_${today}_${config.gridSize}x${config.gridSize}`;
+  return `boggle_daily_${today}_${config.gridSize}x${config.gridSize}_${config.time}s_${config.minLen}l`;
 }
 
 function getAllTimeKey() {
@@ -104,49 +104,79 @@ function saveHighscore(score) {
   const dailyKey = getDailyKey();
   const allTimeKey = getAllTimeKey();
   const settingsKey = getHighscoreKey();
-  const specificKey = getSettingsSpecificKey();
+  
+  // For endless mode, calculate percentage instead of score
+  let valueToSave = score;
+  if (config.time === 0) {
+    // Endless mode: save percentage of words found
+    const totalPossible = allPossibleWords.size;
+    const wordsFound = foundWords.size;
+    const percentage = totalPossible > 0 ? Math.round((wordsFound / totalPossible) * 100) : 0;
+    valueToSave = percentage;
+  }
   
   // Daily high score
   const dailyData = JSON.parse(localStorage.getItem(dailyKey) || '{}');
-  if (!dailyData.score || score > dailyData.score) {
-    dailyData.score = score;
-    dailyData.date = new Date().toISOString();
-    dailyData.gridSize = config.gridSize;
-    dailyData.time = config.time;
-    dailyData.minLen = config.minLen;
-    localStorage.setItem(dailyKey, JSON.stringify(dailyData));
+  if (config.time === 0) {
+    // For endless mode, compare percentages
+    if (!dailyData.percentage || valueToSave > dailyData.percentage) {
+      dailyData.percentage = valueToSave;
+      dailyData.score = score; // Still store actual score for reference
+      dailyData.date = new Date().toISOString();
+      dailyData.gridSize = config.gridSize;
+      dailyData.time = config.time;
+      dailyData.minLen = config.minLen;
+      localStorage.setItem(dailyKey, JSON.stringify(dailyData));
+    }
+  } else {
+    // For timed modes, compare scores
+    if (!dailyData.score || valueToSave > dailyData.score) {
+      dailyData.score = valueToSave;
+      dailyData.date = new Date().toISOString();
+      dailyData.gridSize = config.gridSize;
+      dailyData.time = config.time;
+      dailyData.minLen = config.minLen;
+      localStorage.setItem(dailyKey, JSON.stringify(dailyData));
+    }
   }
   
-  // All-time high score
+  // All-time high score for these settings
   const allTimeData = JSON.parse(localStorage.getItem(allTimeKey) || '{}');
-  if (!allTimeData.score || score > allTimeData.score) {
-    allTimeData.score = score;
-    allTimeData.date = new Date().toISOString();
-    localStorage.setItem(allTimeKey, JSON.stringify(allTimeData));
+  if (config.time === 0) {
+    // For endless mode, compare percentages
+    if (!allTimeData.percentage || valueToSave > allTimeData.percentage) {
+      allTimeData.percentage = valueToSave;
+      allTimeData.score = score; // Still store actual score for reference
+      allTimeData.date = new Date().toISOString();
+      localStorage.setItem(allTimeKey, JSON.stringify(allTimeData));
+    }
+  } else {
+    // For timed modes, compare scores
+    if (!allTimeData.score || valueToSave > allTimeData.score) {
+      allTimeData.score = valueToSave;
+      allTimeData.date = new Date().toISOString();
+      localStorage.setItem(allTimeKey, JSON.stringify(allTimeData));
+    }
   }
   
   // Settings-specific high score
   const settingsData = JSON.parse(localStorage.getItem(settingsKey) || '{}');
-  if (!settingsData.score || score > settingsData.score) {
-    settingsData.score = score;
-    settingsData.date = new Date().toISOString();
-    localStorage.setItem(settingsKey, JSON.stringify(settingsData));
-  }
-  
-  // Track all 32 combinations
-  const allCombinations = getAllSettingCombinations();
-  allCombinations.forEach(combo => {
-    const comboKey = `boggle_${combo.gridSize}x${combo.gridSize}_${combo.time}s_${combo.minLen}l`;
-    const comboData = JSON.parse(localStorage.getItem(comboKey) || '{"score":0}');
-    // Only update if this is the current settings combination
-    if (combo.gridSize === config.gridSize && combo.time === config.time && combo.minLen === config.minLen) {
-      if (!comboData.score || score > comboData.score) {
-        comboData.score = score;
-        comboData.date = new Date().toISOString();
-        localStorage.setItem(comboKey, JSON.stringify(comboData));
-      }
+  if (config.time === 0) {
+    // For endless mode, compare percentages
+    if (!settingsData.percentage || valueToSave > settingsData.percentage) {
+      settingsData.percentage = valueToSave;
+      settingsData.score = score;
+      settingsData.date = new Date().toISOString();
+      localStorage.setItem(settingsKey, JSON.stringify(settingsData));
     }
-  });
+  } else {
+    // For timed modes, compare scores
+    if (!settingsData.score || valueToSave > settingsData.score) {
+      settingsData.score = valueToSave;
+      settingsData.date = new Date().toISOString();
+      localStorage.setItem(settingsKey, JSON.stringify(settingsData));
+    }
+  }
 }
 
 function getAllSettingCombinations() {
@@ -170,11 +200,52 @@ function getHighscores() {
   const allTimeKey = getAllTimeKey();
   const settingsKey = getHighscoreKey();
   
-  return {
-    daily: JSON.parse(localStorage.getItem(dailyKey) || '{"score":0}'),
-    allTime: JSON.parse(localStorage.getItem(allTimeKey) || '{"score":0}'),
-    settings: JSON.parse(localStorage.getItem(settingsKey) || '{"score":0}')
-  };
+  const dailyData = JSON.parse(localStorage.getItem(dailyKey) || '{}');
+  const allTimeData = JSON.parse(localStorage.getItem(allTimeKey) || '{}');
+  const settingsData = JSON.parse(localStorage.getItem(settingsKey) || '{}');
+  
+  if (config.time === 0) {
+    // Endless mode: return percentages
+    return {
+      daily: { 
+        value: dailyData.percentage || 0, 
+        type: 'percentage',
+        score: dailyData.score || 0,
+        date: dailyData.date 
+      },
+      allTime: { 
+        value: allTimeData.percentage || 0, 
+        type: 'percentage',
+        score: allTimeData.score || 0,
+        date: allTimeData.date 
+      },
+      settings: { 
+        value: settingsData.percentage || 0, 
+        type: 'percentage',
+        score: settingsData.score || 0,
+        date: settingsData.date 
+      }
+    };
+  } else {
+    // Timed mode: return scores
+    return {
+      daily: { 
+        value: dailyData.score || 0, 
+        type: 'score',
+        date: dailyData.date 
+      },
+      allTime: { 
+        value: allTimeData.score || 0, 
+        type: 'score',
+        date: allTimeData.date 
+      },
+      settings: { 
+        value: settingsData.score || 0, 
+        type: 'score',
+        date: settingsData.date 
+      }
+    };
+  }
 }
 
 /* ================= ENHANCED END GAME SCORING ================= */
@@ -185,19 +256,45 @@ function updateGameStatistics() {
   const dailyStat = document.getElementById('stat-daily');
   const allTimeStat = document.getElementById('stat-alltime');
   const settingsStat = document.getElementById('stat-settings');
-  const bestStat = document.getElementById('stat-best');
   const currentSettingsStat = document.getElementById('stat-current-settings');
   
-  if (dailyStat) dailyStat.textContent = highscores.daily.score || 0;
-  if (allTimeStat) allTimeStat.textContent = highscores.allTime.score || 0;
-  if (settingsStat) settingsStat.textContent = highscores.settings.score || 0;
+  if (dailyStat) {
+    if (config.time === 0 && highscores.daily.type === 'percentage') {
+      dailyStat.textContent = `${highscores.daily.value}%`;
+    } else {
+      dailyStat.textContent = highscores.daily.value || 0;
+    }
+  }
+  
+  if (allTimeStat) {
+    if (config.time === 0 && highscores.allTime.type === 'percentage') {
+      allTimeStat.textContent = `${highscores.allTime.value}%`;
+    } else {
+      allTimeStat.textContent = highscores.allTime.value || 0;
+    }
+  }
+  
+  if (settingsStat) {
+    if (config.time === 0 && highscores.settings.type === 'percentage') {
+      settingsStat.textContent = `${highscores.settings.value}%`;
+    } else {
+      settingsStat.textContent = highscores.settings.value || 0;
+    }
+  }
   
   // Calculate settings-specific high score
   const settingsKey = getHighscoreKey();
-  const settingsData = JSON.parse(localStorage.getItem(settingsKey) || '{"score":0}');
+  const settingsData = JSON.parse(localStorage.getItem(settingsKey) || '{}');
   if (currentSettingsStat) {
-    currentSettingsStat.textContent = settingsData.score || 0;
+    if (config.time === 0) {
+      currentSettingsStat.textContent = `${settingsData.percentage || 0}%`;
+    } else {
+      currentSettingsStat.textContent = settingsData.score || 0;
+    }
   }
+  
+  // Update high score labels
+  updateHighScoreLabels();
   
   // Update new game over score comparison
   updateScoreComparison(highscores);
@@ -210,50 +307,121 @@ function updateScoreComparison(highscores) {
   const scoreComparison = document.getElementById('score-comparison');
   const newRecordBadge = document.getElementById('new-record-badge');
   const settingsKey = getHighscoreKey();
-  const settingsData = JSON.parse(localStorage.getItem(settingsKey) || '{"score":0}');
+  const settingsData = JSON.parse(localStorage.getItem(settingsKey) || '{}');
   
   if (!scoreComparison || !newRecordBadge) return;
   
-  const currentSettingsHigh = settingsData.score || 0;
+  let currentSettingsHigh;
+  let currentValue;
   
-  if (currentScore > currentSettingsHigh) {
-    // New record!
-    scoreComparison.innerHTML = `
-      <div class="record-message">
-        <span class="record-icon">🏆</span>
-        <span class="record-text">New Settings Record!</span>
-      </div>
-      <div class="record-details">
-        <span class="old-record">Previous: ${currentSettingsHigh}</span>
-        <span class="record-improvement">+${currentScore - currentSettingsHigh}</span>
-      </div>
-    `;
-    newRecordBadge.style.display = 'block';
-  } else if (currentScore === currentSettingsHigh) {
-    // Tied record
-    scoreComparison.innerHTML = `
-      <div class="record-message">
-        <span class="record-icon">🎯</span>
-        <span class="record-text">Tied Settings Record!</span>
-      </div>
-      <div class="record-details">
-        <span class="old-record">Keep going to beat it!</span>
-      </div>
-    `;
-    newRecordBadge.style.display = 'none';
+  if (config.time === 0) {
+    // Endless mode: compare percentages
+    currentSettingsHigh = settingsData.percentage || 0;
+    const totalPossible = allPossibleWords.size;
+    const wordsFound = foundWords.size;
+    currentValue = totalPossible > 0 ? Math.round((wordsFound / totalPossible) * 100) : 0;
+    
+    if (currentValue > currentSettingsHigh) {
+      // New record!
+      scoreComparison.innerHTML = `
+        <div class="record-message">
+          <span class="record-icon">🏆</span>
+          <span class="record-text">New Settings Record!</span>
+        </div>
+        <div class="record-details">
+          <span class="old-record">Previous: ${currentSettingsHigh}%</span>
+          <span class="record-improvement">+${currentValue - currentSettingsHigh}%</span>
+        </div>
+      `;
+      newRecordBadge.style.display = 'block';
+    } else if (currentValue === currentSettingsHigh) {
+      // Tied record
+      scoreComparison.innerHTML = `
+        <div class="record-message">
+          <span class="record-icon">🎯</span>
+          <span class="record-text">Tied Settings Record!</span>
+        </div>
+        <div class="record-details">
+          <span class="old-record">Keep going to beat it!</span>
+        </div>
+      `;
+      newRecordBadge.style.display = 'none';
+    } else {
+      // Didn't beat record
+      const difference = currentSettingsHigh - currentValue;
+      scoreComparison.innerHTML = `
+        <div class="record-message">
+          <span class="record-icon">📊</span>
+          <span class="record-text">Settings Record: ${currentSettingsHigh}%</span>
+        </div>
+        <div class="record-details">
+          <span class="old-record">You need ${difference} more %</span>
+        </div>
+      `;
+      newRecordBadge.style.display = 'none';
+    }
   } else {
-    // Didn't beat record
-    const difference = currentSettingsHigh - currentScore;
-    scoreComparison.innerHTML = `
-      <div class="record-message">
-        <span class="record-icon">📊</span>
-        <span class="record-text">Settings Record: ${currentSettingsHigh}</span>
-      </div>
-      <div class="record-details">
-        <span class="old-record">You need ${difference} more points</span>
-      </div>
-    `;
-    newRecordBadge.style.display = 'none';
+    // Timed mode: compare scores
+    currentSettingsHigh = settingsData.score || 0;
+    currentValue = currentScore;
+    
+    if (currentValue > currentSettingsHigh) {
+      // New record!
+      scoreComparison.innerHTML = `
+        <div class="record-message">
+          <span class="record-icon">🏆</span>
+          <span class="record-text">New Settings Record!</span>
+        </div>
+        <div class="record-details">
+          <span class="old-record">Previous: ${currentSettingsHigh}</span>
+          <span class="record-improvement">+${currentValue - currentSettingsHigh}</span>
+        </div>
+      `;
+      newRecordBadge.style.display = 'block';
+    } else if (currentValue === currentSettingsHigh) {
+      // Tied record
+      scoreComparison.innerHTML = `
+        <div class="record-message">
+          <span class="record-icon">🎯</span>
+          <span class="record-text">Tied Settings Record!</span>
+        </div>
+        <div class="record-details">
+          <span class="old-record">Keep going to beat it!</span>
+        </div>
+      `;
+      newRecordBadge.style.display = 'none';
+    } else {
+      // Didn't beat record
+      const difference = currentSettingsHigh - currentValue;
+      scoreComparison.innerHTML = `
+        <div class="record-message">
+          <span class="record-icon">📊</span>
+          <span class="record-text">Settings Record: ${currentSettingsHigh}</span>
+        </div>
+        <div class="record-details">
+          <span class="old-record">You need ${difference} more points</span>
+        </div>
+      `;
+      newRecordBadge.style.display = 'none';
+    }
+  }
+}
+
+function updateHighScoreLabels() {
+  const dailyLabel = document.getElementById('daily-label');
+  const settingsLabel = document.getElementById('settings-label');
+  const allTimeLabel = document.getElementById('alltime-label');
+  
+  if (config.time === 0) {
+    // Endless mode
+    if (dailyLabel) dailyLabel.textContent = 'Daily % Best';
+    if (settingsLabel) settingsLabel.textContent = 'Settings % Best';
+    if (allTimeLabel) allTimeLabel.textContent = 'All-Time % Best';
+  } else {
+    // Timed mode
+    if (dailyLabel) dailyLabel.textContent = 'Daily Score Best';
+    if (settingsLabel) settingsLabel.textContent = 'Settings Score Best';
+    if (allTimeLabel) allTimeLabel.textContent = 'All-Time Score Best';
   }
 }
 
@@ -453,18 +621,24 @@ window.setGridSize = function(size) {
   config.gridSize = size;
   updateSettingsUI();
   saveSettings();
+  updateHighscoresDisplay();
+  updateHighScoreLabels();
 };
 
 window.setTimeLimit = function(time) {
   config.time = time;
   updateSettingsUI();
   saveSettings();
+  updateHighscoresDisplay();
+  updateHighScoreLabels();
 };
 
 window.setMinLength = function(length) {
   config.minLen = length;
   updateSettingsUI();
   saveSettings();
+  updateHighscoresDisplay();
+  updateHighScoreLabels();
 };
 
 /* ================= IMPROVED BOARD GENERATION ================= */
@@ -1415,9 +1589,7 @@ window.playAgain = function() {
   startGame();
 };
 
-/* ================= ENHANCED GAME MUSIC CONTROLS ================= */
-
-
+/* ================= SIMPLIFIED GAME MUSIC CONTROLS ================= */
 function updateGameMusicControls() {
   const gameTrackName = document.getElementById('game-track-name');
   if (gameTrackName && window.musicTracks) {
@@ -1517,6 +1689,9 @@ function loadSettings() {
   
   // Update high scores display
   updateHighscoresDisplay();
+  
+  // Update labels based on game mode
+  updateHighScoreLabels();
 }
 
 function updateSettingsUI() {
@@ -1569,8 +1744,21 @@ function updateHighscoresDisplay() {
   const dailyDisplay = document.getElementById('daily-highscore');
   const allTimeDisplay = document.getElementById('alltime-highscore');
   
-  if (dailyDisplay) dailyDisplay.textContent = highscores.daily.score || 0;
-  if (allTimeDisplay) allTimeDisplay.textContent = highscores.allTime.score || 0;
+  if (dailyDisplay) {
+    if (config.time === 0 && highscores.daily.type === 'percentage') {
+      dailyDisplay.textContent = `${highscores.daily.value}%`;
+    } else {
+      dailyDisplay.textContent = highscores.daily.value || 0;
+    }
+  }
+  
+  if (allTimeDisplay) {
+    if (config.time === 0 && highscores.allTime.type === 'percentage') {
+      allTimeDisplay.textContent = `${highscores.allTime.value}%`;
+    } else {
+      allTimeDisplay.textContent = highscores.allTime.value || 0;
+    }
+  }
 }
 
 /* ================= LOADING SCREEN FUNCTIONS ================= */
