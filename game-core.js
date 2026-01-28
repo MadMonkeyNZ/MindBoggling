@@ -385,7 +385,7 @@ function initParticleCanvas() {
 }
 
 /* ================= 3D BOARD TILT EFFECT ================= */
-let tiltEnabled = true;
+let tiltEnabled = false;
 let tiltX = 0;
 let tiltY = 0;
 const MAX_TILT = 1;
@@ -1156,6 +1156,7 @@ function renderGameOverBoard() {
 
   target.innerHTML = "";
   target.style.gridTemplateColumns = `repeat(${config.gridSize}, 1fr)`;
+  target.style.gridTemplateRows = `repeat(${config.gridSize}, 1fr)`;
 
   const canvas = document.getElementById('game-over-lineCanvas');
   if (canvas) {

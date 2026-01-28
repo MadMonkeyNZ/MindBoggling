@@ -29,6 +29,7 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  position: fixed; /* Prevent scrolling on mobile */
 }
 
 body {
@@ -38,25 +39,23 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: -webkit-fill-available; /* Mobile fix */
-  height: 100vh;
-  height: -webkit-fill-available;
+  min-height: 100vh;
   touch-action: manipulation;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
-  position: fixed; /* Prevent scrolling issues */
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
+  overflow: hidden;
 }
 
 #app {
   width: 100%;
   max-width: 500px;
   height: 100vh;
-  height: -webkit-fill-available;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -79,6 +78,7 @@ body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   height: 100%;
+  overflow: hidden; /* Prevent scrolling issues */
 }
 
 .screen.active {
@@ -107,7 +107,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 20px;
-  padding-bottom: 20px; /* Extra padding for mobile */
+  padding-bottom: 20px;
 }
 
 /* Title Container */
@@ -447,7 +447,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
   padding: 12px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 16px;
@@ -455,7 +455,8 @@ body {
   position: relative;
   flex-wrap: wrap;
   gap: 10px;
-  flex-shrink: 0; /* Prevent shrinking */
+  flex-shrink: 0;
+  flex-grow: 0;
 }
 
 /* Game Music Controls in Game UI */
@@ -582,14 +583,14 @@ body {
 
 /* IMPROVED Words Progress Bar */
 #words-progress {
-  margin: 15px auto;
+  margin: 10px auto;
   padding: 12px 15px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   max-width: 400px;
   width: 90%;
-  flex-shrink: 0; /* Prevent shrinking */
+  flex-shrink: 0;
 }
 
 .progress-header {
@@ -654,43 +655,52 @@ body {
   }
 }
 
-/* ================= ENHANCED 3D TILES ================= */
+/* ================= FIXED: CLEAN BOARD WITH MINIMAL GAPS ================= */
 #board-wrap {
   position: relative;
   aspect-ratio: 1;
-  margin: 10px auto;
-  margin-bottom: 20px; /* Extra bottom margin for mobile */
+  margin: 5px auto 15px auto;
   touch-action: none;
   width: 100%;
   max-width: 400px;
-  max-height: calc(100vh - 300px); /* Ensure it fits */
-  padding: 0 8px;
+  max-height: 60vh;
+  padding: 0; /* No padding */
   perspective: 1200px;
-  flex-grow: 1; /* Take available space */
+  flex: 1 1 auto;
+  overflow: visible;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 #board {
   display: grid;
-  gap: 6px;
+  gap: 2px; /* Minimal gap - reduced from 6px */
   height: 100%;
+  width: 100%;
   position: relative;
   z-index: 2;
   transform-style: preserve-3d;
-  transition: transform 0.2s ease-out;
   box-shadow: 
     0 25px 50px rgba(0,0,0,0.4),
     0 0 0 2px rgba(255,255,255,0.1),
     inset 0 1px 0 rgba(255,255,255,0.1);
   border-radius: 16px;
-  padding: 8px;
+  padding: 4px; /* Reduced from 8px */
   background: rgba(255, 255, 255, 0.03);
+  /* Remove transforms that could distort the board */
+  transform: none !important;
+  transition: none !important;
+  /* Ensure board stays within container */
+  box-sizing: border-box;
 }
 
+/* FIXED: Perfectly square tiles with minimal gaps */
 .tile {
   position: relative;
   background: linear-gradient(145deg, #ffffff, #e6e6e6);
   color: #0f172a;
-  border-radius: 14px;
+  border-radius: 10px; /* Slightly smaller radius */
   font-size: 1.5rem;
   font-weight: 800;
   display: flex;
@@ -698,16 +708,23 @@ body {
   justify-content: center;
   user-select: none;
   box-shadow: 
-    0 6px 0 rgba(0, 0, 0, 0.2),
+    0 4px 0 rgba(0, 0, 0, 0.2),
     inset 0 2px 4px rgba(255, 255, 255, 0.8),
     inset 0 -2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   overflow: hidden;
-  min-height: 60px;
+  /* FIX: Make tiles square using aspect-ratio */
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  height: 100%;
   transform-style: preserve-3d;
   transform: translateZ(0);
   border: 1px solid rgba(255, 255, 255, 0.5);
   cursor: pointer;
+  /* Prevent the tile from moving the board */
+  will-change: transform, box-shadow;
+  /* Ensure tiles don't overflow */
+  box-sizing: border-box;
 }
 
 .tile:before {
@@ -723,7 +740,7 @@ body {
     rgba(255, 255, 255, 0.1) 50%,
     rgba(255, 255, 255, 0.2) 100%
   );
-  border-radius: 14px;
+  border-radius: 10px;
   z-index: 1;
 }
 
@@ -748,11 +765,11 @@ body {
   transform: translateZ(20px);
 }
 
-/* FIXED: Removed scale transform to eliminate zoom effect */
+/* FIXED: Removed scale transform and board movement */
 .tile.active {
   background: linear-gradient(145deg, #0ea5e9, #0c8fd8) !important;
   color: white !important;
-  transform: translateZ(30px); /* Removed scale(1.08) */
+  transform: translateZ(30px) !important; /* Only Z movement, no scale */
   z-index: 15 !important;
   box-shadow: 
     0 0 40px var(--active),
@@ -1070,21 +1087,24 @@ body {
 
 .game-board {
   display: grid;
-  gap: 6px;
+  gap: 2px; /* Minimal gap - reduced from 6px */
   height: 100%;
+  width: 100%;
   position: relative;
   z-index: 2;
   transform-style: preserve-3d;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 12px;
-  padding: 6px;
+  padding: 4px; /* Reduced from 6px */
+  box-sizing: border-box;
 }
 
+/* FIXED: Game over tiles should also be square with minimal gaps */
 .game-over-tile {
   position: relative;
   background: linear-gradient(145deg, #ffffff, #e6e6e6);
   color: #0f172a;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 1.2rem;
   font-weight: 800;
   display: flex;
@@ -1092,12 +1112,15 @@ body {
   justify-content: center;
   user-select: none;
   box-shadow: 
-    0 4px 0 rgba(0, 0, 0, 0.2),
+    0 3px 0 rgba(0, 0, 0, 0.2),
     inset 0 2px 4px rgba(255, 255, 255, 0.8),
     inset 0 -2px 4px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-  min-height: 45px;
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  height: 100%;
   border: 1px solid rgba(255, 255, 255, 0.5);
+  box-sizing: border-box;
 }
 
 .game-over-tile:before {
@@ -1113,7 +1136,7 @@ body {
     rgba(255, 255, 255, 0.1) 50%,
     rgba(255, 255, 255, 0.2) 100%
   );
-  border-radius: 10px;
+  border-radius: 8px;
   z-index: 1;
 }
 
@@ -1534,23 +1557,33 @@ body {
     font-size: 1rem;
   }
   
-  /* Mobile-specific adjustments */
+  /* MOBILE FIX: Better board sizing */
   #board-wrap {
-    max-height: calc(100vh - 250px);
-    margin-bottom: 10px;
+    max-height: 55vh;
+    margin: 0 auto 10px auto;
+  }
+  
+  #board {
+    gap: 2px;
+    padding: 3px;
   }
   
   .tile {
     font-size: 1.2rem;
-    min-height: 50px;
+    border-radius: 8px;
   }
   
   #game-ui {
-    padding: 5px;
+    padding: 8px;
   }
   
   .screen {
     padding: 12px;
+  }
+  
+  #words-progress {
+    margin: 8px auto;
+    padding: 10px 12px;
   }
 }
 
@@ -1645,9 +1678,14 @@ body {
     max-width: 200px;
   }
   
+  .game-board {
+    gap: 2px;
+    padding: 3px;
+  }
+  
   .game-over-tile {
-    min-height: 40px;
     font-size: 1rem;
+    border-radius: 6px;
   }
   
   .progress-label {
@@ -1659,21 +1697,31 @@ body {
     min-width: 50px;
   }
   
-  /* Extra small mobile adjustments */
+  /* SMALL MOBILE FIX: Adjust board size */
   #board-wrap {
-    max-height: 65vh;
-    max-width: 95vw;
+    max-height: 50vh;
+    padding: 0 5px;
+  }
+  
+  #board {
+    gap: 1px;
+    padding: 2px;
   }
   
   .tile {
     font-size: 1rem;
-    min-height: 40px;
+    border-radius: 6px;
   }
   
   .tile .tile-score {
     font-size: 0.4rem;
     width: 14px;
     height: 14px;
+  }
+  
+  #top-bar {
+    padding: 10px;
+    gap: 8px;
   }
 }
 
@@ -1722,14 +1770,34 @@ body {
     min-width: 40px;
   }
   
-  /* Very small screen adjustments */
+  /* VERY SMALL SCREEN FIXES */
   #board-wrap {
-    max-height: 60vh;
+    max-height: 45vh;
+    margin-bottom: 5px;
+  }
+  
+  #board {
+    gap: 1px;
+    padding: 2px;
   }
   
   .tile {
-    min-height: 35px;
     font-size: 0.9rem;
+    border-radius: 5px;
+  }
+  
+  .game-board {
+    gap: 1px;
+    padding: 2px;
+  }
+  
+  .game-over-tile {
+    font-size: 0.9rem;
+    border-radius: 5px;
+  }
+  
+  .hud-val {
+    font-size: 1.1rem;
   }
 }
 
@@ -1800,17 +1868,22 @@ body {
   #top-bar {
     width: 100%;
     margin-bottom: 5px;
+    flex-direction: row;
+    gap: 8px;
   }
   
   #words-progress {
     width: 100%;
     margin: 5px auto;
+    order: 4;
   }
   
   #board-wrap {
     max-height: 70vh;
     max-width: 70vh;
     margin: 0 auto;
+    order: 3;
+    width: 100%;
   }
 }
 
@@ -1922,4 +1995,40 @@ html {
   -moz-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;
   text-size-adjust: 100%;
+}
+
+/* FIX: Remove board tilt movement completely */
+#board {
+  transform: none !important;
+  transition: none !important;
+}
+
+/* FIX: Ensure game UI doesn't scroll */
+#game-ui {
+  overflow: hidden !important;
+}
+
+/* FIX: Add safe area insets for iPhone X and newer */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: min(0vmin, env(safe-area-inset-left));
+    padding-right: min(0vmin, env(safe-area-inset-right));
+    padding-top: min(0vmin, env(safe-area-inset-top));
+    padding-bottom: min(0vmin, env(safe-area-inset-bottom));
+  }
+  
+  #app {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* For 5x5 grid, adjust font size for smaller screens */
+@media (max-width: 480px) {
+  #board[style*="5"] .tile {
+    font-size: 1rem;
+  }
+  
+  #board[style*="5"][style*="5"] .tile {
+    font-size: 0.9rem;
+  }
 }
