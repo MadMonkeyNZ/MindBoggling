@@ -121,15 +121,20 @@
                         <button class="radio-btn" onclick="playPreviousTrack()" title="Previous Track">
                             <span class="btn-icon">⏮</span>
                         </button>
-                        <button id="play-pause-btn" class="radio-btn play-btn" onclick="window.toggleMusicPlayback ? window.toggleMusicPlayback() : toggleMusic()" title="Play/Pause">
-                            <span class="btn-icon">▶️</span>
-                        </button>
-                        <button class="radio-btn" onclick="playNextTrack()" title="Next Track">
-                            <span class="btn-icon">⏭</span>
-                        </button>
-                        <button class="radio-btn" onclick="window.setGameMode ? window.setGameMode('random') : setGameMode('random')" title="Random Play">
-                            <span class="btn-icon">🔀</span>
-                        </button>
+<!-- In index.html, change these buttons: -->
+<button id="play-pause-btn" class="radio-btn play-btn" onclick="toggleMusicPlayback()" title="Play/Pause">
+    <span class="btn-icon">▶</span>
+</button>
+
+<button class="radio-btn" onclick="playNextTrack()" title="Next Track">
+    <span class="btn-icon">⏭</span>
+</button>
+
+<button class="radio-btn" onclick="setGameMode('random')" title="Random Play">
+    <span class="btn-icon">🔀</span>
+</button>
+
+
                     </div>
                 </div>
             </div>

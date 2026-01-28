@@ -1416,37 +1416,7 @@ window.playAgain = function() {
 };
 
 /* ================= ENHANCED GAME MUSIC CONTROLS ================= */
-window.updateMusicUI = function() {
-  const playBtn = document.getElementById('play-pause-btn');
-  const gamePlayBtn = document.getElementById('game-play-pause-btn');
-  const trackNameElement = document.getElementById('current-track-name');
-  const gameTrackNameElement = document.getElementById('game-track-name');
-  
-  // Update play/pause buttons
-  const isPlaying = window.isMusicPlaying && !window.isMusicPaused;
-  if (playBtn) {
-    playBtn.querySelector('.btn-icon').textContent = isPlaying ? '⏸️' : '▶️';
-    playBtn.title = isPlaying ? 'Pause' : 'Play';
-  }
-  if (gamePlayBtn) {
-    gamePlayBtn.querySelector('.btn-icon').textContent = isPlaying ? '⏸️' : '▶️';
-    gamePlayBtn.title = isPlaying ? 'Pause' : 'Play';
-  }
-  
-  // Update track names
-  const currentTrackId = window.getCurrentTrackId ? window.getCurrentTrackId() : null;
-  if (currentTrackId && window.musicTracks) {
-    const track = window.musicTracks.find(t => t.id === currentTrackId);
-    if (track) {
-      if (trackNameElement) {
-        trackNameElement.textContent = track.name;
-      }
-      if (gameTrackNameElement) {
-        gameTrackNameElement.textContent = track.name;
-      }
-    }
-  }
-};
+
 
 function updateGameMusicControls() {
   const gameTrackName = document.getElementById('game-track-name');
@@ -1638,24 +1608,28 @@ function updateLoadingProgress(percentage, status = "") {
 
 // Initialize
 window.addEventListener('load', function () {
-  console.log("Boggle Party loaded!");
-  loadSettings();
-  setupEventListeners();
-  initParticleCanvas();
-  loadDictionary();
+    console.log("Boggle Party loaded!");
+    loadSettings();
+    setupEventListeners();
+    initParticleCanvas();
+    loadDictionary();
 
-  // Make functions globally available
-  window.getRandomTrack = getRandomTrack;
-  window.getAllSettingCombinations = getAllSettingCombinations;
-  window.updateMusicUI = updateMusicUI;
-  
-  setTimeout(() => {
-    if (typeof window.loadAudioSettings === 'function') {
-      window.loadAudioSettings();
-    }
-    // Initial music UI update
-    if (typeof window.updateMusicUI === 'function') {
-      setTimeout(() => window.updateMusicUI(), 1000);
-    }
-  }, 500);
+    // Make functions globally available
+    window.getRandomTrack = getRandomTrack;
+    window.getAllSettingCombinations = getAllSettingCombinations;
+    
+    // Don't redeclare updateMusicUI here - it's already in audio.js
+    
+    setTimeout(() => {
+        if (typeof window.loadAudioSettings === 'function') {
+            window.loadAudioSettings();
+        }
+        // Initial music UI update - wait for audio to initialize
+        setTimeout(() => {
+            if (typeof window.updateMusicUI === 'function') {
+                window.updateMusicUI();
+                console.log("🎵 Initial music UI update called");
+            }
+        }, 1500); // Increased delay for audio to fully initialize
+    }, 500);
 });

@@ -91,9 +91,11 @@ async function testAudioFile(url) {
 async function discoverMusicTracks() {
     console.log("🔍 Discovering music tracks...");
 
+    // UPDATED: Added game10 and reorganized for clarity
     const trackPatterns = [
         'game1.mp3', 'game2.mp3', 'game3.mp3', 'game4.mp3', 'game5.mp3',
-        'game6.mp3', 'game7.mp3', 'game8.mp3', 'game9.mp3', 'summary-music.mp3'
+        'game6.mp3', 'game7.mp3', 'game8.mp3', 'game9.mp3', 'game10.mp3',
+        'summary-music.mp3'
     ];
 
     musicTracks = [];
@@ -108,13 +110,17 @@ async function discoverMusicTracks() {
         const exists = await testAudioFile(filePath);
 
         if (exists) {
-            const name = pattern.replace('.mp3', '')
-                .replace(/(\d+)/, ' $1')
-                .replace(/^./, str => str.toUpperCase())
-                .replace(/([A-Z])/g, ' $1')
-                .replace(/\s+/g, ' ')
-                .trim();
-
+            // IMPROVED: Better name formatting for all tracks
+            let name = pattern.replace('.mp3', '');
+            
+            // Convert "game1" to "Game 1", "game10" to "Game 10", "summary-music" to "Summary Music"
+            if (name.startsWith('game')) {
+                const num = name.replace('game', '');
+                name = `Game ${num}`;
+            } else if (name === 'summary-music') {
+                name = 'Summary Music';
+            }
+            
             const trackId = pattern.replace('.mp3', '');
 
             if (!musicTracks.some(track => track.id === trackId)) {
@@ -131,6 +137,7 @@ async function discoverMusicTracks() {
     }
 
     console.log(`Found ${foundTracks} music tracks`);
+    console.log('Available tracks:', musicTracks.map(t => t.name));
 
     // Create playlist (excluding summary music for sequential play)
     musicPlaylist = musicTracks.filter(track => track.type === 'game');
@@ -151,12 +158,16 @@ async function discoverMusicTracks() {
     return musicTracks;
 }
 
+
+
 // Update music player UI everywhere
 window.updateMusicUI = function() {
     const playBtn = document.getElementById('play-pause-btn');
     const gamePlayBtn = document.getElementById('game-play-pause-btn');
     const trackNameElement = document.getElementById('current-track-name');
     const gameTrackNameElement = document.getElementById('game-track-name');
+    
+    console.log("🎵 Updating music UI...");
     
     // Update play/pause buttons
     if (playBtn) {
@@ -172,17 +183,43 @@ window.updateMusicUI = function() {
         }
     }
     
-    // Update track names
+    // Update track names - FIXED LOGIC
     const currentTrackId = getCurrentTrackId();
-    if (currentTrackId && musicTracks) {
+    
+    if (currentTrackId && musicTracks && musicTracks.length > 0) {
         const track = musicTracks.find(t => t.id === currentTrackId);
         if (track) {
+            console.log(`🎵 Setting track name to: ${track.name}`);
             if (trackNameElement) {
                 trackNameElement.textContent = track.name;
+                trackNameElement.style.opacity = '1';
             }
             if (gameTrackNameElement) {
                 gameTrackNameElement.textContent = track.name;
+                gameTrackNameElement.style.opacity = '1';
             }
+        } else {
+            // Track not found, use default
+            console.log(`🎵 Track ID ${currentTrackId} not found in musicTracks`);
+            setDefaultTrackName();
+        }
+    } else {
+        // No current track or no tracks loaded
+        if (musicTracks && musicTracks.length > 0) {
+            // Show first available track name
+            const firstTrack = musicTracks.find(t => t.type === 'game');
+            if (firstTrack) {
+                if (trackNameElement) {
+                    trackNameElement.textContent = firstTrack.name + " (Ready)";
+                    trackNameElement.style.opacity = '0.8';
+                }
+                if (gameTrackNameElement) {
+                    gameTrackNameElement.textContent = firstTrack.name + " (Ready)";
+                    gameTrackNameElement.style.opacity = '0.8';
+                }
+            }
+        } else {
+            setDefaultTrackName();
         }
     }
     
@@ -191,11 +228,27 @@ window.updateMusicUI = function() {
     if (modeElement) {
         if (window.config && window.config.musicTrack === 'random') {
             modeElement.textContent = 'Random Play';
+            modeElement.style.color = '#8b5cf6';
         } else if (window.config && window.config.musicTrack) {
             const track = musicTracks.find(t => t.id === window.config.musicTrack);
-            modeElement.textContent = track ? track.name : 'Single Track';
+            modeElement.textContent = track ? `Playing: ${track.name}` : 'Single Track';
+            modeElement.style.color = '#0ea5e9';
         } else {
             modeElement.textContent = 'Sequential Play';
+            modeElement.style.color = '#0ea5e9';
+        }
+    }
+    
+    function setDefaultTrackName() {
+        if (trackNameElement) {
+            trackNameElement.textContent = musicTracks && musicTracks.length > 0 ? 
+                `${musicTracks.length} tracks available` : 'Loading Music...';
+            trackNameElement.style.opacity = '0.7';
+        }
+        if (gameTrackNameElement) {
+            gameTrackNameElement.textContent = musicTracks && musicTracks.length > 0 ? 
+                `${musicTracks.length} tracks available` : 'Loading...';
+            gameTrackNameElement.style.opacity = '0.7';
         }
     }
 };
@@ -371,6 +424,7 @@ function playMusic(trackId, forceRestart = false) {
     });
 
     // Try to play the audio
+    // Try to play the audio
     const playPromise = audioElement.play();
 
     if (playPromise !== undefined) {
@@ -379,16 +433,18 @@ function playMusic(trackId, forceRestart = false) {
             currentMusic = audioElement;
             isMusicPlaying = true;
             isMusicPaused = false;
-            updateMusicUI();
+            updateMusicUI(); // ADD THIS
+            console.log("▶️ Music started playing");
         }).catch(error => {
             console.error(`❌ Failed to play music: ${track.id}`, error);
             isMusicPlaying = false;
-            updateMusicUI();
+            updateMusicUI(); // ADD THIS
         });
     }
 
     // Store reference to audio element
     currentMusic = audioElement;
+    updateMusicUI(); // ADD THIS - Immediate UI feedback
 }
 
 // Get current track ID from audio element
@@ -873,6 +929,7 @@ function initAudio() {
     // Discover music tracks
     discoverMusicTracks().then(() => {
         console.log("✅ Audio system initialized successfully");
+        console.log("🎵 Available tracks:", musicTracks.map(t => ({id: t.id, name: t.name})));
         
         // Make functions globally available
         window.playMusic = playMusic;
@@ -898,35 +955,77 @@ function initAudio() {
         
         console.log("✅ Audio functions registered globally");
         
+        // IMPROVED: Initial UI update with proper timing
+        setTimeout(() => {
+            updateMusicUI();
+            console.log("🎵 Initial UI update complete");
+        }, 100);
+        
         // Start music on main menu if volume is not 0 and music is not already playing
         const currentScreen = document.querySelector('.screen.active');
         if (currentScreen && currentScreen.id === 'main-menu') {
             if (window.config && window.config.musicVolume > 0 && !isMusicPlaying) {
                 setTimeout(() => {
-                    if (config.musicTrack === 'random') {
-                        playMusic('random');
-                    } else {
-                        playMusic(config.musicTrack);
-                    }
+                    // Wait a bit more to ensure everything is ready
+                    setTimeout(() => {
+                        if (config.musicTrack === 'random') {
+                            playMusic('random');
+                        } else {
+                            playMusic(config.musicTrack || 'game1');
+                        }
+                        console.log("🎵 Initial music started");
+                    }, 300);
                 }, 500);
             }
         }
-        
-        // Initial UI update
-        setTimeout(() => updateMusicUI(), 300);
         
     }).catch(error => {
         console.error("❌ Failed to initialize audio system:", error);
     });
 }
 
-// Initialize when page loads
+// Quick initialization fix
 window.addEventListener('DOMContentLoaded', function() {
-    console.log("📄 DOM Content Loaded");
+    console.log("📄 DOM Content Loaded - Audio init starting");
     
     // Give DOM time to fully load
     setTimeout(() => {
         initAudio();
         console.log("✅ Audio initialization scheduled");
+        
+        // Force initial UI update after a delay
+        setTimeout(() => {
+            if (typeof window.updateMusicUI === 'function') {
+                window.updateMusicUI();
+                console.log("🔄 Forced initial UI update");
+            }
+        }, 1000);
     }, 300);
+});
+
+// Ensure functions are available early
+window.ensureAudioFunctionsAvailable = function() {
+    if (!window.toggleMusicPlayback) window.toggleMusicPlayback = function() {
+        console.log("Audio not initialized yet");
+    };
+    if (!window.playNextTrack) window.playNextTrack = function() {
+        console.log("Audio not initialized yet");
+    };
+    if (!window.setGameMode) window.setGameMode = function(mode) {
+        console.log("Audio not initialized yet");
+    };
+};
+
+// Call it immediately
+window.ensureAudioFunctionsAvailable();
+
+// Also update on window load
+window.addEventListener('load', function() {
+    console.log("🎵 Window fully loaded - Final UI update");
+    setTimeout(() => {
+        if (typeof window.updateMusicUI === 'function') {
+            window.updateMusicUI();
+            console.log("✅ Final music UI update complete");
+        }
+    }, 2000);
 });

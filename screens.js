@@ -72,6 +72,64 @@ window.loadAudioSettings = function() {
     console.log("✅ Audio settings loaded");
 };
 
+// Add these functions to screens.js to fix reference errors
+window.toggleMusic = function() {
+    if (typeof window.toggleMusicPlayback === 'function') {
+        window.toggleMusicPlayback();
+    }
+};
+
+// Ensure functions are available globally
+window.ensureAudioFunctions = function() {
+    if (!window.playNextTrack) {
+        window.playNextTrack = function() {
+            console.log("playNextTrack not yet initialized");
+        };
+    }
+    if (!window.setGameMode) {
+        window.setGameMode = function(mode) {
+            console.log("setGameMode not yet initialized");
+            if (window.config) {
+                window.config.musicTrack = mode;
+                saveSettings();
+            }
+        };
+    }
+};
+
+// Call this when screens.js loads
+window.ensureAudioFunctions();
+
+// Force refresh music UI
+window.refreshMusicUI = function() {
+    if (typeof window.updateMusicUI === 'function') {
+        console.log("🔄 Forcing music UI refresh");
+        window.updateMusicUI();
+    }
+    
+    // Also update audio settings sliders
+    if (window.config) {
+        const uiVolumeSlider = document.getElementById('ui-volume-slider');
+        const musicVolumeSlider = document.getElementById('music-volume-slider');
+        
+        if (uiVolumeSlider) {
+            uiVolumeSlider.value = window.config.uiVolume * 100;
+            const uiVolumeValue = document.getElementById('ui-volume-value');
+            if (uiVolumeValue) {
+                uiVolumeValue.textContent = Math.round(window.config.uiVolume * 100) + '%';
+            }
+        }
+        
+        if (musicVolumeSlider) {
+            musicVolumeSlider.value = window.config.musicVolume * 100;
+            const musicVolumeValue = document.getElementById('music-volume-value');
+            if (musicVolumeValue) {
+                musicVolumeValue.textContent = Math.round(window.config.musicVolume * 100) + '%';
+            }
+        }
+    }
+};
+
 // Add function to update time display based on mode
 window.updateTimeDisplay = function() {
     const timeEl = document.getElementById('time');

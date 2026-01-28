@@ -655,52 +655,59 @@ body {
   }
 }
 
-/* ================= FIXED: CLEAN BOARD WITH MINIMAL GAPS ================= */
+/* ================= FIXED: FORCE PERFECT SQUARE BOARD ================= */
 #board-wrap {
   position: relative;
-  aspect-ratio: 1;
   margin: 5px auto 15px auto;
   touch-action: none;
-  width: 100%;
+  width: 90vmin; /* Use vmin to always use the smaller dimension */
+  height: 90vmin; /* Force square shape */
   max-width: 400px;
-  max-height: 60vh;
-  padding: 0; /* No padding */
+  max-height: 400px;
   perspective: 1200px;
-  flex: 1 1 auto;
+  flex-shrink: 0; /* Don't allow shrinking */
+  flex-grow: 0; /* Don't allow growing */
   overflow: visible;
   display: flex;
   justify-content: center;
   align-items: center;
+  /* Center the board regardless of window height */
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Canvas and board must match the container exactly */
+#lineCanvas, #board {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
 }
 
 #board {
   display: grid;
-  gap: 2px; /* Minimal gap - reduced from 6px */
-  height: 100%;
-  width: 100%;
-  position: relative;
-  z-index: 2;
-  transform-style: preserve-3d;
+  gap: 6px; /* INCREASED BACK TO 6px */
+  border-radius: 16px;
+  padding: 8px; /* INCREASED BACK TO 8px */
+  background: rgba(255, 255, 255, 0.03);
   box-shadow: 
     0 25px 50px rgba(0,0,0,0.4),
     0 0 0 2px rgba(255,255,255,0.1),
     inset 0 1px 0 rgba(255,255,255,0.1);
-  border-radius: 16px;
-  padding: 4px; /* Reduced from 8px */
-  background: rgba(255, 255, 255, 0.03);
-  /* Remove transforms that could distort the board */
+  /* Remove any transforms that could distort */
   transform: none !important;
   transition: none !important;
-  /* Ensure board stays within container */
   box-sizing: border-box;
 }
 
-/* FIXED: Perfectly square tiles with minimal gaps */
+/* FIXED: Perfectly square tiles */
 .tile {
   position: relative;
   background: linear-gradient(145deg, #ffffff, #e6e6e6);
   color: #0f172a;
-  border-radius: 10px; /* Slightly smaller radius */
+  border-radius: 14px; /* INCREASED BACK TO 14px */
   font-size: 1.5rem;
   font-weight: 800;
   display: flex;
@@ -708,12 +715,11 @@ body {
   justify-content: center;
   user-select: none;
   box-shadow: 
-    0 4px 0 rgba(0, 0, 0, 0.2),
+    0 6px 0 rgba(0, 0, 0, 0.2),
     inset 0 2px 4px rgba(255, 255, 255, 0.8),
     inset 0 -2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   overflow: hidden;
-  /* FIX: Make tiles square using aspect-ratio */
   aspect-ratio: 1 / 1;
   width: 100%;
   height: 100%;
@@ -721,9 +727,7 @@ body {
   transform: translateZ(0);
   border: 1px solid rgba(255, 255, 255, 0.5);
   cursor: pointer;
-  /* Prevent the tile from moving the board */
   will-change: transform, box-shadow;
-  /* Ensure tiles don't overflow */
   box-sizing: border-box;
 }
 
@@ -740,7 +744,7 @@ body {
     rgba(255, 255, 255, 0.1) 50%,
     rgba(255, 255, 255, 0.2) 100%
   );
-  border-radius: 10px;
+  border-radius: 14px; /* INCREASED BACK TO 14px */
   z-index: 1;
 }
 
@@ -765,11 +769,11 @@ body {
   transform: translateZ(20px);
 }
 
-/* FIXED: Removed scale transform and board movement */
+/* FIXED: Active tile styling */
 .tile.active {
   background: linear-gradient(145deg, #0ea5e9, #0c8fd8) !important;
   color: white !important;
-  transform: translateZ(30px) !important; /* Only Z movement, no scale */
+  transform: translateZ(30px) !important;
   z-index: 15 !important;
   box-shadow: 
     0 0 40px var(--active),
@@ -897,16 +901,6 @@ body {
   text-align: center;
   transform: translateZ(15px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-#lineCanvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 5;
-  transform-style: preserve-3d;
 }
 
 /* ================= ENHANCED GAME OVER SCREEN ================= */
@@ -1079,32 +1073,36 @@ body {
 
 .game-board-wrap {
   position: relative;
-  aspect-ratio: 1;
-  margin: 0 auto;
+  width: 60vmin; /* Use vmin for game over board too */
+  height: 60vmin;
   max-width: 250px;
+  max-height: 250px;
+  margin: 0 auto;
   perspective: 1000px;
 }
 
 .game-board {
   display: grid;
-  gap: 2px; /* Minimal gap - reduced from 6px */
-  height: 100%;
+  gap: 6px; /* INCREASED BACK TO 6px */
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
-  position: relative;
+  height: 100%;
   z-index: 2;
   transform-style: preserve-3d;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 12px;
-  padding: 4px; /* Reduced from 6px */
+  padding: 6px; /* INCREASED BACK TO 6px */
   box-sizing: border-box;
 }
 
-/* FIXED: Game over tiles should also be square with minimal gaps */
+/* FIXED: Game over tiles should also be square */
 .game-over-tile {
   position: relative;
   background: linear-gradient(145deg, #ffffff, #e6e6e6);
   color: #0f172a;
-  border-radius: 8px;
+  border-radius: 10px; /* INCREASED BACK TO 10px */
   font-size: 1.2rem;
   font-weight: 800;
   display: flex;
@@ -1112,7 +1110,7 @@ body {
   justify-content: center;
   user-select: none;
   box-shadow: 
-    0 3px 0 rgba(0, 0, 0, 0.2),
+    0 4px 0 rgba(0, 0, 0, 0.2),
     inset 0 2px 4px rgba(255, 255, 255, 0.8),
     inset 0 -2px 4px rgba(0, 0, 0, 0.1);
   overflow: hidden;
@@ -1136,7 +1134,7 @@ body {
     rgba(255, 255, 255, 0.1) 50%,
     rgba(255, 255, 255, 0.2) 100%
   );
-  border-radius: 8px;
+  border-radius: 10px; /* INCREASED BACK TO 10px */
   z-index: 1;
 }
 
@@ -1211,7 +1209,7 @@ body {
 .chart-bar-container {
   flex: 1;
   height: 24px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255,255, 0.05);
   border-radius: 4px;
   overflow: hidden;
   display: flex;
@@ -1559,18 +1557,20 @@ body {
   
   /* MOBILE FIX: Better board sizing */
   #board-wrap {
-    max-height: 55vh;
+    width: 85vmin;
+    height: 85vmin;
+    max-height: 85vmin; /* Force square on mobile */
     margin: 0 auto 10px auto;
   }
   
   #board {
-    gap: 2px;
-    padding: 3px;
+    gap: 6px; /* Keep 6px gap on mobile */
+    padding: 6px; /* Reduced padding on mobile */
   }
   
   .tile {
     font-size: 1.2rem;
-    border-radius: 8px;
+    border-radius: 12px; /* Slightly smaller radius on mobile */
   }
   
   #game-ui {
@@ -1675,17 +1675,20 @@ body {
   }
   
   .game-board-wrap {
+    width: 60vmin;
+    height: 60vmin;
     max-width: 200px;
+    max-height: 200px;
   }
   
   .game-board {
-    gap: 2px;
-    padding: 3px;
+    gap: 6px; /* Keep 6px gap on mobile */
+    padding: 5px; /* Slightly reduced padding */
   }
   
   .game-over-tile {
     font-size: 1rem;
-    border-radius: 6px;
+    border-radius: 8px; /* Slightly smaller on mobile */
   }
   
   .progress-label {
@@ -1699,18 +1702,19 @@ body {
   
   /* SMALL MOBILE FIX: Adjust board size */
   #board-wrap {
-    max-height: 50vh;
-    padding: 0 5px;
+    width: 90vmin;
+    height: 90vmin;
+    max-height: 90vmin;
   }
   
   #board {
-    gap: 1px;
-    padding: 2px;
+    gap: 4px; /* Slightly smaller gap on very small screens */
+    padding: 5px;
   }
   
   .tile {
     font-size: 1rem;
-    border-radius: 6px;
+    border-radius: 10px; /* Slightly smaller on very small screens */
   }
   
   .tile .tile-score {
@@ -1772,28 +1776,35 @@ body {
   
   /* VERY SMALL SCREEN FIXES */
   #board-wrap {
-    max-height: 45vh;
+    width: 95vmin;
+    height: 95vmin;
+    max-height: 95vmin;
     margin-bottom: 5px;
   }
   
   #board {
-    gap: 1px;
-    padding: 2px;
+    gap: 4px; /* Keep 4px gap on very small screens */
+    padding: 4px;
   }
   
   .tile {
     font-size: 0.9rem;
-    border-radius: 5px;
+    border-radius: 8px;
+  }
+  
+  .game-board-wrap {
+    width: 70vmin;
+    height: 70vmin;
   }
   
   .game-board {
-    gap: 1px;
-    padding: 2px;
+    gap: 4px; /* Smaller gap on very small screens */
+    padding: 4px;
   }
   
   .game-over-tile {
     font-size: 0.9rem;
-    border-radius: 5px;
+    border-radius: 6px;
   }
   
   .hud-val {
@@ -1879,11 +1890,11 @@ body {
   }
   
   #board-wrap {
-    max-height: 70vh;
-    max-width: 70vh;
+    width: 70vmin;
+    height: 70vmin;
+    max-height: 70vmin;
     margin: 0 auto;
     order: 3;
-    width: 100%;
   }
 }
 
@@ -2020,6 +2031,48 @@ html {
   #app {
     padding-bottom: env(safe-area-inset-bottom);
   }
+}
+
+/* Fix for music track name display */
+.track-name, .game-track-name {
+    transition: opacity 0.3s ease;
+    min-height: 1.2em; /* Prevent layout shift */
+}
+
+.track-name.loading, .game-track-name.loading {
+    opacity: 0.7;
+    font-style: italic;
+}
+
+/* Ensure track info doesn't overflow */
+.track-details {
+    min-width: 0; /* Allow text truncation */
+}
+
+.track-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.game-track-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+
+/* Radio player track info improvements */
+.track-info {
+    min-height: 70px; /* Prevent layout jumps */
+    display: flex;
+    align-items: center;
+}
+
+.track-details {
+    flex: 1;
+    overflow: hidden;
 }
 
 /* For 5x5 grid, adjust font size for smaller screens */
