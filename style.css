@@ -22,14 +22,22 @@
   transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* FIXED: Better mobile viewport handling */
+/* FIXED: Better mobile viewport handling with safe area support */
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  position: fixed; /* Prevent scrolling on mobile */
+  position: fixed;
+  /* Prevent bounce/overscroll on iOS */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  /* Use safe area insets */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 body {
@@ -40,6 +48,7 @@ body {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  min-height: -webkit-fill-available; /* iOS fix */
   touch-action: manipulation;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
@@ -55,11 +64,14 @@ body {
 #app {
   width: 100%;
   max-width: 500px;
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  /* Account for safe areas */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* ================= SCREENS ================= */
@@ -78,7 +90,10 @@ body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   height: 100%;
-  overflow: hidden; /* Prevent scrolling issues */
+  overflow: hidden;
+  /* Account for safe areas */
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 }
 
 .screen.active {
@@ -441,6 +456,9 @@ body {
   height: 100%;
   max-height: 100vh;
   overflow: hidden;
+  /* Center content vertically */
+  justify-content: center;
+  align-items: center;
 }
 
 #top-bar {
@@ -457,6 +475,8 @@ body {
   gap: 10px;
   flex-shrink: 0;
   flex-grow: 0;
+  width: 100%;
+  max-width: 400px;
 }
 
 /* SIMPLIFIED Game Music Controls in Game UI */
@@ -643,13 +663,13 @@ body {
   }
 }
 
-/* ================= FIXED: FORCE PERFECT SQUARE BOARD ================= */
+/* ================= FIXED: PERFECT SQUARE BOARD WITH LARGER LETTERS ================= */
 #board-wrap {
   position: relative;
   margin: 5px auto 15px auto;
   touch-action: none;
-  width: 90vmin; /* Use vmin to always use the smaller dimension */
-  height: 90vmin; /* Force square shape */
+  width: 92vmin; /* Slightly larger for mobile */
+  height: 92vmin; /* Force square shape */
   max-width: 400px;
   max-height: 400px;
   perspective: 1200px;
@@ -662,6 +682,9 @@ body {
   /* Center the board regardless of window height */
   margin-left: auto;
   margin-right: auto;
+  /* Prevent any jitter or movement */
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 /* Canvas and board must match the container exactly */
@@ -672,13 +695,16 @@ body {
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 #board {
   display: grid;
-  gap: 6px; /* INCREASED BACK TO 6px */
+  gap: 8px; /* Increased gap for mobile */
   border-radius: 16px;
-  padding: 8px; /* INCREASED BACK TO 8px */
+  padding: 10px; /* Increased padding for mobile */
   background: rgba(255, 255, 255, 0.03);
   box-shadow: 
     0 25px 50px rgba(0,0,0,0.4),
@@ -688,15 +714,18 @@ body {
   transform: none !important;
   transition: none !important;
   box-sizing: border-box;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
-/* FIXED: Perfectly square tiles */
+/* FIXED: Larger, perfectly square tiles for mobile */
 .tile {
   position: relative;
   background: linear-gradient(145deg, #ffffff, #e6e6e6);
   color: #0f172a;
-  border-radius: 14px; /* INCREASED BACK TO 14px */
-  font-size: 1.5rem;
+  border-radius: 14px;
+  font-size: 1.8rem; /* Increased font size for mobile */
   font-weight: 800;
   display: flex;
   align-items: center;
@@ -706,7 +735,7 @@ body {
     0 6px 0 rgba(0, 0, 0, 0.2),
     inset 0 2px 4px rgba(255, 255, 255, 0.8),
     inset 0 -2px 4px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Faster transition */
   overflow: hidden;
   aspect-ratio: 1 / 1;
   width: 100%;
@@ -717,6 +746,8 @@ body {
   cursor: pointer;
   will-change: transform, box-shadow;
   box-sizing: border-box;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .tile:before {
@@ -732,7 +763,7 @@ body {
     rgba(255, 255, 255, 0.1) 50%,
     rgba(255, 255, 255, 0.2) 100%
   );
-  border-radius: 14px; /* INCREASED BACK TO 14px */
+  border-radius: 14px;
   z-index: 1;
 }
 
@@ -740,13 +771,13 @@ body {
   position: absolute;
   top: 4px;
   right: 4px;
-  font-size: 0.5rem;
+  font-size: 0.6rem; /* Slightly larger for mobile */
   font-weight: 900;
   color: #0f172a;
   background: rgba(255, 255, 255, 0.9);
   border-radius: 50%;
-  width: 16px;
-  height: 16px;
+  width: 18px; /* Slightly larger */
+  height: 18px; /* Slightly larger */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -757,32 +788,34 @@ body {
   transform: translateZ(20px);
 }
 
-/* FIXED: Active tile styling */
+/* FIXED: Active tile styling with NO JOLT */
 .tile.active {
   background: linear-gradient(145deg, #0ea5e9, #0c8fd8) !important;
   color: white !important;
-  transform: translateZ(30px) !important;
+  transform: translateZ(15px) !important; /* Reduced from 30px to prevent jolt */
   z-index: 15 !important;
   box-shadow: 
-    0 0 40px var(--active),
-    0 10px 30px rgba(14, 165, 233, 0.4),
+    0 0 30px var(--active),
+    0 8px 20px rgba(14, 165, 233, 0.4),
     inset 0 2px 4px rgba(255, 255, 255, 0.4),
     inset 0 -2px 4px rgba(0, 0, 0, 0.2) !important;
   animation: pulse-glow 2s infinite;
+  /* Smooth transition without jolt */
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease !important;
 }
 
 @keyframes pulse-glow {
   0%, 100% {
     box-shadow: 
-      0 0 40px var(--active),
-      0 10px 30px rgba(14, 165, 233, 0.4),
+      0 0 30px var(--active),
+      0 8px 20px rgba(14, 165, 233, 0.4),
       inset 0 2px 4px rgba(255, 255, 255, 0.4),
       inset 0 -2px 4px rgba(0, 0, 0, 0.2);
   }
   50% {
     box-shadow: 
-      0 0 60px var(--active),
-      0 15px 40px rgba(14, 165, 233, 0.6),
+      0 0 40px var(--active),
+      0 10px 25px rgba(14, 165, 233, 0.6),
       inset 0 2px 4px rgba(255, 255, 255, 0.4),
       inset 0 -2px 4px rgba(0, 0, 0, 0.2);
   }
@@ -792,7 +825,7 @@ body {
   background: linear-gradient(145deg, #22c55e, #1ea34d) !important;
   color: white !important;
   z-index: 15 !important;
-  transform: translateZ(15px);
+  transform: translateZ(10px); /* Reduced */
   box-shadow: 
     0 4px 8px rgba(34, 197, 94, 0.3),
     inset 0 2px 4px rgba(255, 255, 255, 0.4),
@@ -803,7 +836,7 @@ body {
   background: linear-gradient(145deg, #ef4444, #dc2626) !important;
   color: white !important;
   z-index: 15 !important;
-  transform: translateZ(15px);
+  transform: translateZ(10px); /* Reduced */
   box-shadow: 
     0 4px 8px rgba(239, 68, 68, 0.3),
     inset 0 2px 4px rgba(255, 255, 255, 0.4),
@@ -814,7 +847,7 @@ body {
   background: linear-gradient(145deg, #fbbf24, #e0a800) !important;
   color: white !important;
   z-index: 15 !important;
-  transform: translateZ(15px);
+  transform: translateZ(10px); /* Reduced */
   box-shadow: 
     0 4px 8px rgba(251, 191, 36, 0.3),
     inset 0 2px 4px rgba(255, 255, 255, 0.4),
@@ -825,7 +858,7 @@ body {
   background: linear-gradient(145deg, #8b5cf6, #7c3aed) !important;
   color: white !important;
   z-index: 15 !important;
-  transform: translateZ(15px);
+  transform: translateZ(10px); /* Reduced */
   box-shadow: 
     0 4px 8px rgba(139, 92, 246, 0.3),
     inset 0 2px 4px rgba(255, 255, 255, 0.4),
@@ -1061,7 +1094,7 @@ body {
 
 .game-board-wrap {
   position: relative;
-  width: 60vmin; /* Use vmin for game over board too */
+  width: 60vmin;
   height: 60vmin;
   max-width: 250px;
   max-height: 250px;
@@ -1071,7 +1104,7 @@ body {
 
 .game-board {
   display: grid;
-  gap: 6px; /* INCREASED BACK TO 6px */
+  gap: 6px;
   position: absolute;
   top: 0;
   left: 0;
@@ -1081,7 +1114,7 @@ body {
   transform-style: preserve-3d;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 12px;
-  padding: 6px; /* INCREASED BACK TO 6px */
+  padding: 6px;
   box-sizing: border-box;
 }
 
@@ -1090,7 +1123,7 @@ body {
   position: relative;
   background: linear-gradient(145deg, #ffffff, #e6e6e6);
   color: #0f172a;
-  border-radius: 10px; /* INCREASED BACK TO 10px */
+  border-radius: 10px;
   font-size: 1.2rem;
   font-weight: 800;
   display: flex;
@@ -1122,7 +1155,7 @@ body {
     rgba(255, 255, 255, 0.1) 50%,
     rgba(255, 255, 255, 0.2) 100%
   );
-  border-radius: 10px; /* INCREASED BACK TO 10px */
+  border-radius: 10px;
   z-index: 1;
 }
 
@@ -1476,58 +1509,69 @@ body {
   z-index: 1000;
 }
 
-/* ================= RESPONSIVE ADJUSTMENTS ================= */
+/* ================= MOBILE OPTIMIZATIONS ================= */
+/* Disable 3D effects and animations on mobile for better performance */
 @media (max-width: 768px) {
-  .main-menu-content {
-    max-width: 100%;
-    padding: 0 10px;
-  }
-
-  .settings-container {
-    max-width: 100%;
-  }
-
-  .toggle-group.time-group {
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(2, 1fr);
-  }
-
-  .toggle-group.time-group .toggle-btn {
-    font-size: 0.7rem;
-    padding: 6px 3px;
-  }
-
-  .radio-player {
-    max-width: 100%;
-  }
-
-  .track-info {
-    padding: 12px;
+  /* Disable tilt effect completely on mobile */
+  #board {
+    transform: none !important;
+    transition: none !important;
   }
   
-  .game-music-controls {
-    min-width: 100px;
-    padding: 6px 8px;
+  /* Disable 3D transforms on mobile for better performance */
+  .tile {
+    transform: none !important;
+    transform-style: flat !important;
   }
   
-  .game-track-name {
-    font-size: 0.75rem;
+  .tile.active {
+    transform: scale(0.95) !important; /* Use scale instead of translateZ */
+    transition: transform 0.1s ease !important;
   }
   
-  .game-music-btn-simple {
-    width: 28px;
-    height: 28px;
-    font-size: 0.8rem;
+  /* Larger board for mobile */
+  #board-wrap {
+    width: 95vmin;
+    height: 95vmin;
+    max-width: 95vmin;
+    max-height: 95vmin;
   }
   
+  /* Larger font size for mobile */
+  .tile {
+    font-size: 2rem !important; /* Even larger for mobile */
+  }
+  
+  /* For 5x5 grid on mobile, slightly smaller font */
+  #board[style*="5"] .tile {
+    font-size: 1.6rem !important;
+  }
+  
+  /* Adjust padding and gaps for mobile */
+  #board {
+    gap: 6px;
+    padding: 8px;
+  }
+  
+  /* Center the game UI vertically */
+  #game-ui {
+    justify-content: center;
+    padding-top: env(safe-area-inset-top, 20px);
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
+  
+  /* Adjust top bar for mobile */
   #top-bar {
     flex-direction: column;
     align-items: stretch;
+    margin-bottom: 15px;
   }
   
   .game-music-controls {
     order: 1;
-    max-width: 100%;
+    width: 100%;
+    max-width: none;
+    margin-bottom: 10px;
   }
   
   .hud-box {
@@ -1540,123 +1584,41 @@ body {
     width: 100%;
   }
   
-  .progress-stats {
-    font-size: 1rem;
-  }
-  
-  /* MOBILE FIX: Better board sizing */
-  #board-wrap {
-    width: 85vmin;
-    height: 85vmin;
-    max-height: 85vmin; /* Force square on mobile */
-    margin: 0 auto 10px auto;
-  }
-  
-  #board {
-    gap: 6px; /* Keep 6px gap on mobile */
-    padding: 6px; /* Reduced padding on mobile */
-  }
-  
-  .tile {
-    font-size: 1.2rem;
-    border-radius: 12px; /* Slightly smaller radius on mobile */
-  }
-  
-  #game-ui {
-    padding: 8px;
-  }
-  
-  .screen {
-    padding: 12px;
-  }
-  
+  /* Progress bar adjustments */
   #words-progress {
-    margin: 8px auto;
-    padding: 10px 12px;
+    margin: 15px auto;
+    padding: 12px 15px;
   }
-}
-
-@media (max-width: 480px) {
-  .title {
-    font-size: 2rem;
+  
+  /* Disable pulsing animations on mobile for better performance */
+  .tile.active {
+    animation: none !important;
   }
-
-  .subtitle {
-    font-size: 0.9rem;
+  
+  .time-display.endless {
+    animation: none !important;
   }
-
-  .menu-buttons {
-    max-width: 100%;
+  
+  /* Reduce shadows for better performance */
+  .tile {
+    box-shadow: 
+      0 4px 0 rgba(0, 0, 0, 0.2),
+      inset 0 2px 4px rgba(255, 255, 255, 0.8),
+      inset 0 -2px 4px rgba(0, 0, 0, 0.1) !important;
   }
-
-  .menu-btn {
-    padding: 14px;
-    font-size: 1rem;
+  
+  .tile.active {
+    box-shadow: 
+      0 0 20px var(--active),
+      0 6px 15px rgba(14, 165, 233, 0.4),
+      inset 0 2px 4px rgba(255, 255, 255, 0.4),
+      inset 0 -2px 4px rgba(0, 0, 0, 0.2) !important;
   }
-
-  .settings-section {
+  
+  /* Adjust game over screen for mobile */
+  .game-over-content {
     padding: 15px;
-  }
-
-  .section-title {
-    font-size: 1rem;
-  }
-
-  .setting-label {
-    font-size: 0.85rem;
-  }
-
-  .toggle-btn {
-    font-size: 0.8rem;
-    padding: 6px 8px;
-  }
-
-  .toggle-group.time-group .toggle-btn {
-    font-size: 0.65rem;
-    padding: 5px 2px;
-  }
-
-  .radio-controls {
-    gap: 8px;
-  }
-
-  .radio-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 1.1rem;
-  }
-
-  .radio-btn.play-btn {
-    width: 44px;
-    height: 44px;
-    font-size: 1.2rem;
-  }
-
-  .track-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 1.3rem;
-  }
-
-  .track-name {
-    font-size: 1rem;
-  }
-
-  .track-mode {
-    font-size: 0.75rem;
-  }
-  
-  .highscores-container {
-    gap: 10px;
-  }
-  
-  .highscore-box {
-    min-width: 80px;
-    padding: 8px;
-  }
-  
-  .highscore-value {
-    font-size: 1.2rem;
+    margin: 10px;
   }
   
   .stats {
@@ -1664,304 +1626,111 @@ body {
   }
   
   .game-board-wrap {
-    width: 60vmin;
-    height: 60vmin;
-    max-width: 200px;
-    max-height: 200px;
-  }
-  
-  .game-board {
-    gap: 6px; /* Keep 6px gap on mobile */
-    padding: 5px; /* Slightly reduced padding */
-  }
-  
-  .game-over-tile {
-    font-size: 1rem;
-    border-radius: 8px; /* Slightly smaller on mobile */
-  }
-  
-  .progress-label {
-    font-size: 0.8rem;
-  }
-  
-  .progress-stats {
-    font-size: 0.9rem;
-    min-width: 50px;
-  }
-  
-  /* SMALL MOBILE FIX: Adjust board size */
-  #board-wrap {
-    width: 90vmin;
-    height: 90vmin;
-    max-height: 90vmin;
-  }
-  
-  #board {
-    gap: 4px; /* Slightly smaller gap on very small screens */
-    padding: 5px;
-  }
-  
-  .tile {
-    font-size: 1rem;
-    border-radius: 10px; /* Slightly smaller on very small screens */
-  }
-  
-  .tile .tile-score {
-    font-size: 0.4rem;
-    width: 14px;
-    height: 14px;
-  }
-  
-  #top-bar {
-    padding: 10px;
-    gap: 8px;
+    width: 70vmin;
+    height: 70vmin;
   }
 }
 
-@media (max-width: 360px) {
+/* Extra small mobile devices */
+@media (max-width: 480px) {
+  /* Even larger board on very small screens */
+  #board-wrap {
+    width: 98vmin;
+    height: 98vmin;
+    max-width: 98vmin;
+    max-height: 98vmin;
+  }
+  
+  /* Adjust font sizes */
   .title {
     font-size: 1.8rem;
   }
-
-  .toggle-group.time-group {
-    grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: repeat(3, 1fr);
+  
+  .subtitle {
+    font-size: 0.9rem;
   }
-
-  .radio-controls {
-    gap: 6px;
+  
+  .tile {
+    font-size: 1.8rem !important;
   }
-
-  .radio-btn {
-    width: 36px;
-    height: 36px;
-    font-size: 1rem;
+  
+  /* For 5x5 grid on very small screens */
+  #board[style*="5"] .tile {
+    font-size: 1.4rem !important;
   }
-
-  .radio-btn.play-btn {
-    width: 40px;
-    height: 40px;
+  
+  /* Adjust gaps */
+  #board {
+    gap: 4px;
+    padding: 6px;
+  }
+  
+  /* Adjust tile border radius */
+  .tile {
+    border-radius: 12px;
+  }
+  
+  /* Adjust progress bar */
+  .progress-stats {
+    font-size: 0.9rem;
+  }
+  
+  /* Adjust HUD */
+  .hud-val {
     font-size: 1.1rem;
   }
   
-  .game-music-controls {
-    padding: 6px 8px;
+  .hud-lbl {
+    font-size: 0.6rem;
+  }
+  
+  /* Adjust game music controls */
+  .game-music-btn-simple {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
   }
   
   .game-track-name {
     font-size: 0.7rem;
   }
-  
-  .game-music-btn-simple {
-    width: 24px;
-    height: 24px;
-    font-size: 0.7rem;
-  }
-  
-  .progress-stats {
-    font-size: 0.8rem;
-    min-width: 40px;
-  }
-  
-  /* VERY SMALL SCREEN FIXES */
-  #board-wrap {
-    width: 95vmin;
-    height: 95vmin;
-    max-height: 95vmin;
-    margin-bottom: 5px;
-  }
-  
-  #board {
-    gap: 4px; /* Keep 4px gap on very small screens */
-    padding: 4px;
-  }
-  
-  .tile {
-    font-size: 0.9rem;
-    border-radius: 8px;
-  }
-  
-  .game-board-wrap {
-    width: 70vmin;
-    height: 70vmin;
-  }
-  
-  .game-board {
-    gap: 4px; /* Smaller gap on very small screens */
-    padding: 4px;
-  }
-  
-  .game-over-tile {
-    font-size: 0.9rem;
-    border-radius: 6px;
-  }
-  
-  .hud-val {
-    font-size: 1.1rem;
-  }
 }
 
-/* Landscape orientation for mobile */
+/* Landscape mode adjustments */
 @media (max-height: 600px) and (orientation: landscape) {
-  #main-menu {
-    padding-top: 10px;
-    padding-bottom: 10px;
-    overflow-y: auto;
-  }
-
-  .main-menu-content {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    max-width: 100%;
-    gap: 15px;
-  }
-
-  .title-container {
-    width: 100%;
-    margin-bottom: 10px;
-  }
-
-  .title {
-    font-size: 1.8rem;
-    margin-bottom: 5px;
-  }
-
-  .subtitle {
-    font-size: 0.8rem;
-  }
-
-  .menu-buttons {
-    max-width: 200px;
-    margin: 0;
-  }
-
-  .settings-container {
-    max-width: 300px;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  .settings-section {
-    flex: 1;
-    min-width: 140px;
-    padding: 12px;
-  }
-
-  .toggle-group.time-group {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .radio-player {
-    max-width: 100%;
-    order: 3;
-  }
-  
-  /* Landscape game adjustments */
-  #game-ui {
-    flex-direction: row;
-    flex-wrap: wrap;
-    padding: 5px;
-  }
-  
-  #top-bar {
-    width: 100%;
-    margin-bottom: 5px;
-    flex-direction: row;
-    gap: 8px;
-  }
-  
-  #words-progress {
-    width: 100%;
-    margin: 5px auto;
-    order: 4;
-  }
-  
+  /* Reduce board size in landscape */
   #board-wrap {
     width: 70vmin;
     height: 70vmin;
+    max-width: 70vmin;
     max-height: 70vmin;
-    margin: 0 auto;
-    order: 3;
-  }
-}
-
-/* Tablet optimizations */
-@media (min-width: 769px) and (max-width: 1024px) {
-  .main-menu-content {
-    max-width: 500px;
-  }
-
-  .settings-container {
-    max-width: 400px;
-  }
-
-  .radio-player {
-    max-width: 400px;
-  }
-
-  .toggle-btn {
-    padding: 10px 14px;
-  }
-
-  .toggle-group.time-group .toggle-btn {
-    font-size: 0.85rem;
-    padding: 8px 6px;
-  }
-}
-
-/* Loading screen responsive */
-@media (max-width: 480px) {
-  .loading-title {
-    font-size: 1.5rem;
-  }
-
-  .loading-subtitle {
-    font-size: 0.9rem;
-  }
-
-  .loading-content {
-    padding: 20px;
-    margin: 0 10px;
-  }
-}
-
-/* Ensure content fits on small screens */
-.main-menu-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  height: 100%;
-  overflow-y: auto;
-  padding-bottom: 20px;
-}
-
-/* Smooth scrolling for iOS */
-.main-menu-content {
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Hide scrollbar but keep functionality */
-.main-menu-content::-webkit-scrollbar {
-  display: none;
-}
-
-.main-menu-content {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* Mobile keyboard avoidance */
-@supports (-webkit-touch-callout: none) {
-  body {
-    /* iOS Safari specific */
-    min-height: -webkit-fill-available;
   }
   
-  #app {
-    height: -webkit-fill-available;
+  /* Adjust tile font size for landscape */
+  .tile {
+    font-size: 1.4rem !important;
+  }
+  
+  /* For 5x5 grid in landscape */
+  #board[style*="5"] .tile {
+    font-size: 1.2rem !important;
+  }
+  
+  /* Reduce top bar height */
+  #top-bar {
+    padding: 8px;
+    margin-bottom: 5px;
+  }
+  
+  /* Hide progress bar in landscape to save space */
+  #words-progress {
+    display: none;
+  }
+  
+  /* Adjust game UI padding */
+  #game-ui {
+    padding-top: 5px;
+    padding-bottom: 5px;
   }
 }
 
@@ -1973,29 +1742,67 @@ html {
   text-size-adjust: 100%;
 }
 
-/* FIX: Remove board tilt movement completely */
-#board {
-  transform: none !important;
-  transition: none !important;
+/* Fix for iOS Safari 100vh issue */
+@supports (-webkit-touch-callout: none) {
+  body {
+    /* iOS Safari specific */
+    min-height: -webkit-fill-available;
+  }
+  
+  #app {
+    height: -webkit-fill-available;
+  }
+  
+  .screen {
+    height: -webkit-fill-available;
+  }
 }
 
-/* FIX: Ensure game UI doesn't scroll */
+/* Ensure game UI doesn't scroll */
 #game-ui {
   overflow: hidden !important;
 }
 
-/* FIX: Add safe area insets for iPhone X and newer */
-@supports (padding: max(0px)) {
-  body {
-    padding-left: min(0vmin, env(safe-area-inset-left));
-    padding-right: min(0vmin, env(safe-area-inset-right));
-    padding-top: min(0vmin, env(safe-area-inset-top));
-    padding-bottom: min(0vmin, env(safe-area-inset-bottom));
-  }
-  
-  #app {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
+/* Fix for mobile search bar covering content */
+body {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+/* Prevent zoom on input focus on mobile */
+input, textarea, select, button {
+  font-size: 16px; /* Prevent iOS zoom */
+}
+
+/* Improve touch targets */
+button, .tile, .toggle-btn, .radio-btn {
+  min-height: 44px; /* Apple's recommended minimum touch target */
+}
+
+/* Disable user selection on interactive elements */
+button, .tile {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Smooth scrolling for iOS */
+.main-menu-content, #game-over {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Hide scrollbar but keep functionality */
+.main-menu-content::-webkit-scrollbar,
+#game-over::-webkit-scrollbar {
+  display: none;
+}
+
+.main-menu-content,
+#game-over {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Fix for music track name display */
@@ -2038,15 +1845,4 @@ html {
 .track-details {
     flex: 1;
     overflow: hidden;
-}
-
-/* For 5x5 grid, adjust font size for smaller screens */
-@media (max-width: 480px) {
-  #board[style*="5"] .tile {
-    font-size: 1rem;
-  }
-  
-  #board[style*="5"][style*="5"] .tile {
-    font-size: 0.9rem;
-  }
 }

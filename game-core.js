@@ -1168,6 +1168,77 @@ function getMultipliersForWord(path) {
   return multiplierCounts;
 }
 
+/* ================= MOBILE PERFORMANCE OPTIMIZATIONS ================= */
+function initMobileOptimizations() {
+  console.log("📱 Initializing mobile optimizations...");
+  
+  // Check if on mobile
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
+  if (isMobile) {
+    console.log("📱 Mobile device detected, applying optimizations");
+    
+    // Disable tilt effect on mobile
+    tiltEnabled = false;
+    
+    // Add CSS class for mobile-specific styles
+    document.body.classList.add('is-mobile');
+    
+    // Prevent default touch actions that could cause issues
+    document.addEventListener('touchmove', function(e) {
+      if (e.scale !== 1) {
+        e.preventDefault(); // Prevent zooming
+      }
+    }, { passive: false });
+    
+    // Fix for iOS rubber band effect
+    document.body.addEventListener('touchstart', function(e) {
+      if (e.touches.length > 1) {
+        e.preventDefault(); // Prevent multi-touch gestures
+      }
+    }, { passive: false });
+    
+    // Optimize for mobile performance
+    if (window.DeviceOrientationEvent) {
+      // Disable device orientation if not needed
+      window.removeEventListener('deviceorientation', handleTilt);
+    }
+  }
+}
+
+// Call this in the initialization section (at the end of the file)
+// Update the window.addEventListener('load', function() section:
+
+window.addEventListener('load', function () {
+    console.log("Boggle Party loaded!");
+    loadSettings();
+    setupEventListeners();
+    initParticleCanvas();
+    loadDictionary();
+    
+    // Initialize mobile optimizations
+    initMobileOptimizations();
+    
+    // Make functions globally available
+    window.getRandomTrack = getRandomTrack;
+    window.getAllSettingCombinations = getAllSettingCombinations;
+    
+    // Don't redeclare updateMusicUI here - it's already in audio.js
+    
+    setTimeout(() => {
+        if (typeof window.loadAudioSettings === 'function') {
+            window.loadAudioSettings();
+        }
+        // Initial music UI update - wait for audio to initialize
+        setTimeout(() => {
+            if (typeof window.updateMusicUI === 'function') {
+                window.updateMusicUI();
+                console.log("🎵 Initial music UI update called");
+            }
+        }, 1500);
+    }, 500);
+});
+
 /* ================= FIND ALL POSSIBLE WORDS ================= */
 async function findAllPossibleWords() {
   const words = new Map();

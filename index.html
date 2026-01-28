@@ -2,17 +2,37 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- IMPROVED viewport for mobile -->
+    <!-- IMPROVED: Enhanced viewport for better mobile experience -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no">
     <title>Boggle Party</title>
     <link rel="stylesheet" href="style.css">
     <meta name="theme-color" content="#0f172a">
+    
     <!-- iOS specific tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Boggle Party">
+    
+    <!-- Android/Chrome -->
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- Prevent pull-to-refresh and overscroll glow -->
+    <style>
+        html, body {
+            overscroll-behavior: none;
+            -webkit-overflow-scrolling: touch;
+        }
+    </style>
 </head>
 <body>
     <div id="app">
+        <!-- Content remains the same... -->
+        <!-- NO CHANGES TO THE REST OF THE HTML -->
+    </div>
+</body>
+</html>
+
+
         <div id="loading-screen" class="screen">
             <div class="loading-content">
                 <div class="loading-title">Boggle Party</div>
@@ -239,5 +259,6 @@
     <script src="audio.js"></script>
     <script src="game-core.js"></script>
     <script src="screens.js"></script>
+<script src="mobile.js"></script>
 </body>
 </html>
