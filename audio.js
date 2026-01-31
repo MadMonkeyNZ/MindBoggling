@@ -1,4 +1,5 @@
-// audio.js - Enhanced Audio System with improved sound feedback
+// audio.js - Enhanced Audio System with improved sound feedback (fixed mobile init and state)
+
 let currentMusic = null;
 let musicVolume = 0.5;
 let uiVolume = 0.7;
@@ -16,1016 +17,759 @@ let musicTracks = [];
 
 // State for music continuity
 let pausedMusicState = {
-    trackId: null,
-    currentTime: 0,
-    paused: false,
-    audioElement: null
+  trackId: null,
+  currentTime: 0,
+  paused: false,
+  audioElement: null
 };
 
 // IMPROVED Audio settings with better linking sound
 const SOUND_SETTINGS = {
-    // Base frequencies for different sound types
-    good: { baseFreq: 800, type: 'sine' },
-    bad: { baseFreq: 300, type: 'sawtooth' },
-    warning: { baseFreq: 500, type: 'square' },
-    better: { baseFreq: 700, type: 'sine' },
-    repeat: { baseFreq: 400, type: 'triangle' },
-
-    // IMPROVED linking sound parameters - more satisfying and musical
-    link: {
-        baseFreq: 350,
-        minFreq: 350,
-        maxFreq: 1400,
-        minLength: 2,
-        maxLength: 12,
-        duration: 0.25, // Longer duration for better feel
-        type: 'sine',
-        // New: Harmonic ratios for richer sound
-        harmonics: [
-            { ratio: 1.0, gain: 1.0 }, // Fundamental
-            { ratio: 1.5, gain: 0.6 }, // Perfect fifth
-            { ratio: 2.0, gain: 0.4 }, // Octave
-            { ratio: 2.5, gain: 0.3 }  // Major third + octave
-        ]
-    }
+  good: { baseFreq: 800, type: 'sine' },
+  bad: { baseFreq: 300, type: 'sawtooth' },
+  warning: { baseFreq: 500, type: 'square' },
+  better: { baseFreq: 700, type: 'sine' },
+  repeat: { baseFreq: 400, type: 'triangle' },
+  link: {
+    baseFreq: 350,
+    minFreq: 350,
+    maxFreq: 1400,
+    minLength: 2,
+    maxLength: 12,
+    duration: 0.25,
+    type: 'sine',
+    harmonics: [
+      { ratio: 1.0, gain: 1.0 },
+      { ratio: 1.5, gain: 0.6 },
+      { ratio: 2.0, gain: 0.4 },
+      { ratio: 2.5, gain: 0.3 }
+    ]
+  }
 };
 
 // Initialize Audio Context
 function initAudioContext() {
-    if (!audioContext && (window.AudioContext || window.webkitAudioContext)) {
-        try {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            console.log("✅ Audio Context initialized successfully");
+  if (!audioContext && (window.AudioContext || window.webkitAudioContext)) {
+    try {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      console.log("✅ Audio Context initialized successfully");
 
-            // Resume audio context if suspended
-            if (audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
-        } catch (e) {
-            console.error("❌ Failed to initialize Audio Context:", e);
-        }
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+    } catch (e) {
+      console.error("❌ Failed to initialize Audio Context:", e);
     }
+  }
 }
 
 // Test if a single audio file exists
 async function testAudioFile(url) {
-    return new Promise((resolve) => {
-        const audio = new Audio();
-        audio.src = url;
+  return new Promise((resolve) => {
+    const audio = new Audio();
+    audio.src = url;
 
-        audio.addEventListener('canplaythrough', () => {
-            resolve(true);
-        });
+    audio.addEventListener('canplaythrough', () => resolve(true));
+    audio.addEventListener('error', () => resolve(false));
 
-        audio.addEventListener('error', () => {
-            resolve(false);
-        });
-
-        setTimeout(() => {
-            resolve(false);
-        }, 1000);
-    });
+    // Safety timeout
+    setTimeout(() => resolve(false), 1500);
+  });
 }
 
-// Discover available music tracks from audio folder
 async function discoverMusicTracks() {
-    console.log("🔍 Discovering music tracks...");
+  console.log("🔍 Discovering music tracks...");
 
-    // UPDATED: Added game10 and reorganized for clarity
-    const trackPatterns = [
-        'game1.mp3', 'game2.mp3', 'game3.mp3', 'game4.mp3', 'game5.mp3',
-        'game6.mp3', 'game7.mp3', 'game8.mp3', 'game9.mp3', 'game10.mp3',
-        'summary-music.mp3'
-    ];
+  const trackPatterns = [
+    'game1.mp3', 'game2.mp3', 'game3.mp3', 'game4.mp3', 'game5.mp3',
+    'game6.mp3', 'game7.mp3', 'game8.mp3', 'game9.mp3', 'game10.mp3',
+    'summary-music.mp3'
+  ];
 
-    musicTracks = [];
-    let foundTracks = 0;
+  musicTracks = [];
+  let foundTracks = 0;
 
-    console.log("Testing each track pattern...");
-
-    for (const pattern of trackPatterns) {
-        const filePath = `audio/${pattern}`;
-        console.log(`  Testing: ${pattern}...`);
-
-        const exists = await testAudioFile(filePath);
-
-        if (exists) {
-            // IMPROVED: Better name formatting for all tracks
-            let name = pattern.replace('.mp3', '');
-            
-            // Convert "game1" to "Game 1", "game10" to "Game 10", "summary-music" to "Summary Music"
-            if (name.startsWith('game')) {
-                const num = name.replace('game', '');
-                name = `Game ${num}`;
-            } else if (name === 'summary-music') {
-                name = 'Summary Music';
-            }
-            
-            const trackId = pattern.replace('.mp3', '');
-
-            if (!musicTracks.some(track => track.id === trackId)) {
-                musicTracks.push({
-                    id: trackId,
-                    name: name,
-                    file: filePath,
-                    type: trackId.includes('summary') ? 'summary' : 'game'
-                });
-                foundTracks++;
-                console.log(`    ✓ Found: ${trackId} (${name})`);
-            }
-        }
-    }
-
-    console.log(`Found ${foundTracks} music tracks`);
-    console.log('Available tracks:', musicTracks.map(t => t.name));
-
-    // Create playlist (excluding summary music for sequential play)
-    musicPlaylist = musicTracks.filter(track => track.type === 'game');
-    
-    // Update global reference
-    window.musicTracks = musicTracks;
-
-    if (foundTracks === 0) {
-        console.warn("⚠️ No audio files found in /audio/ folder");
+  for (const pattern of trackPatterns) {
+    const filePath = `audio/${pattern}`;
+    const exists = await testAudioFile(filePath);
+    if (exists) {
+      let name = pattern.replace('.mp3', '');
+      if (name.startsWith('game')) {
+        const num = name.replace('game', '');
+        name = `Game ${num}`;
+      } else if (name === 'summary-music') {
+        name = 'Summary Music';
+      }
+      const trackId = pattern.replace('.mp3', '');
+      if (!musicTracks.some(t => t.id === trackId)) {
         musicTracks.push({
-            id: 'demo',
-            name: 'Demo Track (Add MP3 files)',
-            file: '',
-            type: 'demo'
+          id: trackId,
+          name,
+          file: filePath,
+          type: trackId.includes('summary') ? 'summary' : 'game'
         });
+        foundTracks++;
+      }
     }
+  }
 
-    return musicTracks;
+  console.log(`Found ${foundTracks} music tracks`);
+  musicPlaylist = musicTracks.filter(track => track.type === 'game');
+  window.musicTracks = musicTracks;
+
+  if (foundTracks === 0) {
+    console.warn("⚠️ No audio files found in /audio/ folder");
+    musicTracks.push({
+      id: 'demo',
+      name: 'Demo Track (Add MP3 files)',
+      file: '',
+      type: 'demo'
+    });
+  }
+
+  return musicTracks;
 }
-
-
 
 // Update music player UI everywhere
 window.updateMusicUI = function() {
-    const playBtn = document.getElementById('play-pause-btn');
-    const gamePlayBtn = document.getElementById('game-play-pause-btn');
-    const trackNameElement = document.getElementById('current-track-name');
-    const gameTrackNameElement = document.getElementById('game-track-name');
-    
-    console.log("🎵 Updating music UI...");
-    
-    // Update play/pause buttons
-    if (playBtn) {
-        const icon = playBtn.querySelector('.btn-icon');
-        if (icon) {
-            icon.textContent = isMusicPaused || !isMusicPlaying ? '▶️' : '⏸️';
-        }
-    }
-    if (gamePlayBtn) {
-        const icon = gamePlayBtn.querySelector('.btn-icon');
-        if (icon) {
-            icon.textContent = isMusicPaused || !isMusicPlaying ? '▶️' : '⏸️';
-        }
-    }
-    
-    // Update track names - FIXED LOGIC
-    const currentTrackId = getCurrentTrackId();
-    
-    if (currentTrackId && musicTracks && musicTracks.length > 0) {
-        const track = musicTracks.find(t => t.id === currentTrackId);
-        if (track) {
-            console.log(`🎵 Setting track name to: ${track.name}`);
-            if (trackNameElement) {
-                trackNameElement.textContent = track.name;
-                trackNameElement.style.opacity = '1';
-            }
-            if (gameTrackNameElement) {
-                gameTrackNameElement.textContent = track.name;
-                gameTrackNameElement.style.opacity = '1';
-            }
-        } else {
-            // Track not found, use default
-            console.log(`🎵 Track ID ${currentTrackId} not found in musicTracks`);
-            setDefaultTrackName();
-        }
+  const playBtn = document.getElementById('play-pause-btn');
+  const gamePlayBtn = document.getElementById('game-play-pause-btn');
+  const trackNameElement = document.getElementById('current-track-name');
+  const gameTrackNameElement = document.getElementById('game-track-name');
+
+  console.log("🎵 Updating music UI...");
+
+  // Update play/pause icons
+  const iconState = isMusicPaused || !isMusicPlaying ? '▶️' : '⏸️';
+  if (playBtn) {
+    const icon = playBtn.querySelector('.btn-icon');
+    if (icon) icon.textContent = iconState;
+  }
+  if (gamePlayBtn) {
+    const icon = gamePlayBtn.querySelector('.btn-icon');
+    if (icon) icon.textContent = iconState;
+  }
+
+  // Track name
+  const currentTrackId = window.getCurrentTrackId ? window.getCurrentTrackId() : null;
+  if (currentTrackId && musicTracks && musicTracks.length > 0) {
+    const track = musicTracks.find(t => t.id === currentTrackId);
+    if (track) {
+      if (trackNameElement) {
+        trackNameElement.textContent = track.name;
+        trackNameElement.style.opacity = '1';
+      }
+      if (gameTrackNameElement) {
+        gameTrackNameElement.textContent = track.name;
+        gameTrackNameElement.style.opacity = '1';
+      }
     } else {
-        // No current track or no tracks loaded
-        if (musicTracks && musicTracks.length > 0) {
-            // Show first available track name
-            const firstTrack = musicTracks.find(t => t.type === 'game');
-            if (firstTrack) {
-                if (trackNameElement) {
-                    trackNameElement.textContent = firstTrack.name + " (Ready)";
-                    trackNameElement.style.opacity = '0.8';
-                }
-                if (gameTrackNameElement) {
-                    gameTrackNameElement.textContent = firstTrack.name + " (Ready)";
-                    gameTrackNameElement.style.opacity = '0.8';
-                }
-            }
-        } else {
-            setDefaultTrackName();
-        }
+      setDefaultTrackName();
     }
-    
-    // Update mode display
-    const modeElement = document.getElementById('track-mode');
-    if (modeElement) {
-        if (window.config && window.config.musicTrack === 'random') {
-            modeElement.textContent = 'Random Play';
-            modeElement.style.color = '#8b5cf6';
-        } else if (window.config && window.config.musicTrack) {
-            const track = musicTracks.find(t => t.id === window.config.musicTrack);
-            modeElement.textContent = track ? `Playing: ${track.name}` : 'Single Track';
-            modeElement.style.color = '#0ea5e9';
-        } else {
-            modeElement.textContent = 'Sequential Play';
-            modeElement.style.color = '#0ea5e9';
-        }
+  } else {
+    setDefaultTrackName();
+  }
+
+  // Mode display
+  const modeElement = document.getElementById('track-mode');
+  if (modeElement) {
+    if (window.config && window.config.musicTrack === 'random') {
+      modeElement.textContent = 'Random Play';
+      modeElement.style.color = '#8b5cf6';
+    } else if (window.config && window.config.musicTrack) {
+      const track = musicTracks.find(t => t.id === window.config.musicTrack);
+      modeElement.textContent = track ? `Playing: ${track.name}` : 'Single Track';
+      modeElement.style.color = '#0ea5e9';
+    } else {
+      modeElement.textContent = 'Sequential Play';
+      modeElement.style.color = '#0ea5e9';
     }
-    
-    function setDefaultTrackName() {
-        if (trackNameElement) {
-            trackNameElement.textContent = musicTracks && musicTracks.length > 0 ? 
-                `${musicTracks.length} tracks available` : 'Loading Music...';
-            trackNameElement.style.opacity = '0.7';
-        }
-        if (gameTrackNameElement) {
-            gameTrackNameElement.textContent = musicTracks && musicTracks.length > 0 ? 
-                `${musicTracks.length} tracks available` : 'Loading...';
-            gameTrackNameElement.style.opacity = '0.7';
-        }
+  }
+
+  function setDefaultTrackName() {
+    if (trackNameElement) {
+      trackNameElement.textContent = musicTracks && musicTracks.length > 0 ?
+        `${musicTracks.length} tracks available` : 'Loading Music...';
+      trackNameElement.style.opacity = '0.7';
     }
+    if (gameTrackNameElement) {
+      gameTrackNameElement.textContent = musicTracks && musicTracks.length > 0 ?
+        `${musicTracks.length} tracks available` : 'Loading...';
+      gameTrackNameElement.style.opacity = '0.7';
+    }
+  }
 };
 
-// Check if music should be playing (for game screens)
-function shouldPlayGameMusic() {
-    // Only play game music on game screens, not on summary screen
-    const activeScreen = document.querySelector('.screen.active');
-    return activeScreen && 
-           (activeScreen.id === 'game-ui' || activeScreen.id === 'main-menu');
+// When playMusic changes currentMusic, keep window.currentMusic in sync
+function setCurrentMusicReference(el) {
+  currentMusic = el;
+  window.currentMusic = currentMusic;
+  window.isMusicPlaying = isMusicPlaying;
+  window.isMusicPaused = isMusicPaused;
 }
 
 // Play music track with continuity
 function playMusic(trackId, forceRestart = false) {
-    console.log(`🎵 Requested to play music: ${trackId}, forceRestart: ${forceRestart}`);
-    
-    // If trying to play the same track that's already playing and not forced to restart
-    if (currentMusic && 
-        currentMusic.src && 
-        currentMusic.src.includes(trackId) && 
-        !forceRestart &&
-        trackId !== 'summary') {
-        
-        console.log(`🎵 ${trackId} is already playing, continuing...`);
-        
-        // If it's paused, resume it
-        if (isMusicPaused) {
-            currentMusic.play().then(() => {
-                isMusicPaused = false;
-                isMusicPlaying = true;
-                updateMusicUI();
-                console.log("▶️ Resumed existing track");
-            }).catch(error => {
-                console.error("❌ Failed to resume music:", error);
-            });
-        }
-        return;
-    }
+  console.log(`🎵 Requested to play music: ${trackId}, forceRestart: ${forceRestart}`);
 
-    // If it's a summary track and we're not on a summary screen, don't play it
-    if (trackId === 'summary' && shouldPlayGameMusic()) {
-        console.log("🎵 Not playing summary music on game screen");
-        return;
-    }
-
-    // Save the state of current music before changing (only if not already saved)
-    if (currentMusic && currentMusic.id !== 'summary-music-track' && !pausedMusicState.audioElement) {
-        pausedMusicState = {
-            trackId: getCurrentTrackId(),
-            currentTime: currentMusic.currentTime,
-            paused: isMusicPaused,
-            audioElement: currentMusic
-        };
-        console.log(`💾 Saved music state: ${pausedMusicState.trackId} at ${pausedMusicState.currentTime}s`);
-    }
-
-    // Stop any currently playing music
-    if (currentMusic) {
-        stopMusic();
-    }
-
-    // Don't play if volume is 0
-    if (musicVolume <= 0) {
-        console.log("🔇 Music volume is 0, skipping playback");
-        isMusicPlaying = false;
-        isMusicPaused = false;
-        updateMusicUI();
-        return;
-    }
-
-    // If trackId is 'random', pick a random game track
-    let actualTrackId = trackId;
-    if (trackId === 'random') {
-        if (musicPlaylist.length > 0) {
-            const randomIndex = Math.floor(Math.random() * musicPlaylist.length);
-            actualTrackId = musicPlaylist[randomIndex].id;
-            currentTrackIndex = randomIndex;
-        } else {
-            actualTrackId = 'game1';
-        }
-    }
-
-    const validTracks = musicTracks.filter(track => track.id !== 'demo');
-    if (validTracks.length === 0) {
-        console.error("❌ No valid tracks available to play");
-        return;
-    }
-
-    // Find the track
-    let track = validTracks.find(t => t.id === actualTrackId);
-    
-    // If track not found, use first available
-    if (!track) {
-        track = validTracks[0];
-        console.log(`Track not found, using: ${track.id}`);
-    }
-    
-    // Update current track index for game tracks
-    if (track.type === 'game') {
-        currentTrackIndex = musicPlaylist.findIndex(t => t.id === track.id);
-    }
-
-    console.log(`🎵 Loading track: ${track.name} (${track.file})`);
-
-    // Create new audio element
-    const audioElement = new Audio();
-    
-    // Set IDs for easy identification
-    if (track.type === 'summary') {
-        audioElement.id = 'summary-music-track';
-    } else {
-        audioElement.id = 'game-music-track';
-    }
-    
-    audioElement.src = track.file;
-    audioElement.preload = 'auto';
-    audioElement.volume = musicVolume;
-    
-    // Set loop based on track type and mode
-    if (track.type === 'summary') {
-        audioElement.loop = false; // Summary music should not loop
-    } else {
-        audioElement.loop = (window.config && window.config.musicTrack !== 'random');
-    }
-
-    // Add event listeners
-    audioElement.addEventListener('play', () => {
-        console.log(`▶️ Music started playing: ${track.name}`);
-        isMusicPlaying = true;
-        isMusicPaused = false;
-        updateMusicUI();
-    });
-
-    audioElement.addEventListener('ended', () => {
-        console.log(`⏹️ Music ended: ${track.name}`);
-        
-        if (track.type === 'summary') {
-            // Summary music ended - resume game music if applicable
-            console.log("🎵 Summary music ended");
-            
-            // If we're still on the summary screen, don't auto-resume
-            const activeScreen = document.querySelector('.screen.active');
-            if (activeScreen && activeScreen.id === 'game-over') {
-                console.log("🎵 Still on summary screen, not resuming game music");
-                return;
-            }
-            
-            // Resume previous music
-            resumePreviousMusic();
-        } else if (window.config && window.config.musicTrack === 'random') {
-            // If in random mode, play next random track
-            setTimeout(() => {
-                playNextTrack();
-            }, 1000);
-        } else if (audioElement.loop) {
-            console.log(`🔁 Looping track: ${track.name}`);
-        } else {
-            // If sequential mode, play next track
-            playNextTrack();
-        }
-    });
-
-    audioElement.addEventListener('error', (e) => {
-        console.error(`❌ Music playback error for ${track.id}:`, e.target.error);
-        
-        // Try to play another track if this one fails
-        if (track.type !== 'summary') {
-            playNextTrack();
-        } else {
-            // If summary music fails, resume previous music
-            resumePreviousMusic();
-        }
-    });
-
-    // Try to play the audio
-    // Try to play the audio
-    const playPromise = audioElement.play();
-
-    if (playPromise !== undefined) {
-        playPromise.then(() => {
-            console.log(`🎵 Successfully playing: ${track.name} at ${Math.round(musicVolume * 100)}% volume`);
-            currentMusic = audioElement;
-            isMusicPlaying = true;
-            isMusicPaused = false;
-            updateMusicUI(); // ADD THIS
-            console.log("▶️ Music started playing");
-        }).catch(error => {
-            console.error(`❌ Failed to play music: ${track.id}`, error);
-            isMusicPlaying = false;
-            updateMusicUI(); // ADD THIS
-        });
-    }
-
-    // Store reference to audio element
-    currentMusic = audioElement;
-    updateMusicUI(); // ADD THIS - Immediate UI feedback
-}
-
-// Get current track ID from audio element
-window.getCurrentTrackId = function() {
-    if (!currentMusic || !currentMusic.src) return null;
-    
-    const src = currentMusic.src;
-    const track = musicTracks.find(t => src.includes(t.file));
-    return track ? track.id : null;
-}
-
-// Get current track name
-window.getCurrentTrackName = function() {
-    const trackId = getCurrentTrackId();
-    if (!trackId) return 'No Track';
-    
-    const track = musicTracks.find(t => t.id === trackId);
-    return track ? track.name : 'Unknown Track';
-}
-
-// Resume previously playing music
-function resumePreviousMusic() {
-    console.log("🎵 Attempting to resume previous music...");
-    
-    if (pausedMusicState.trackId && pausedMusicState.audioElement) {
-        console.log(`🎵 Resuming ${pausedMusicState.trackId} from ${pausedMusicState.currentTime}s`);
-        
-        // Don't resume if we're on the summary screen
-        const activeScreen = document.querySelector('.screen.active');
-        if (activeScreen && activeScreen.id === 'game-over') {
-            console.log("🎵 Still on summary screen, not resuming");
-            return;
-        }
-        
-        // Check if we should be playing game music
-        if (!shouldPlayGameMusic()) {
-            console.log("🎵 Not on a game screen, not resuming");
-            return;
-        }
-        
-        // Play the track from where it left off
-        const trackToResume = pausedMusicState.trackId;
-        const resumeTime = pausedMusicState.currentTime;
-        
-        playMusic(trackToResume, true);
-        
-        // Seek to the saved position after a short delay
-        setTimeout(() => {
-            if (currentMusic && currentMusic.readyState > 0) {
-                currentMusic.currentTime = resumeTime;
-                console.log(`🎵 Seeking to ${resumeTime}s`);
-            }
-        }, 100);
-        
-        // Clear the saved state
-        pausedMusicState = {
-            trackId: null,
-            currentTime: 0,
-            paused: false,
-            audioElement: null
-        };
-    } else {
-        console.log("🎵 No previous music state to resume");
-        
-        // Start default game music
-        const activeScreen = document.querySelector('.screen.active');
-        if (activeScreen && shouldPlayGameMusic()) {
-            const trackToPlay = window.config && window.config.musicTrack === 'random' ? 
-                'random' : (window.config ? window.config.musicTrack : 'game1');
-            playMusic(trackToPlay);
-        }
-    }
-}
-
-// Play next track
-window.playNextTrack = function() {
-    if (musicPlaylist.length === 0) {
-        console.log("No tracks in playlist");
-        return;
-    }
-
-    // If music is paused, resume it first
-    if (isMusicPaused && currentMusic) {
-        toggleMusicPlayback();
-        return;
-    }
-
-    // Calculate next index
-    let nextIndex = currentTrackIndex + 1;
-    if (nextIndex >= musicPlaylist.length) {
-        nextIndex = 0; // Loop back to start
-    }
-
-    // Get next track
-    const nextTrack = musicPlaylist[nextIndex];
-    if (nextTrack) {
-        console.log(`⏭️ Playing next track: ${nextTrack.id}`);
-        playMusic(nextTrack.id);
-    }
-}
-
-// Play previous track
-window.playPreviousTrack = function() {
-    if (musicPlaylist.length === 0) {
-        console.log("No tracks in playlist");
-        return;
-    }
-
-    // If music is paused, resume it first
-    if (isMusicPaused && currentMusic) {
-        toggleMusicPlayback();
-        return;
-    }
-
-    // Calculate previous index
-    let prevIndex = currentTrackIndex - 1;
-    if (prevIndex < 0) {
-        prevIndex = musicPlaylist.length - 1; // Loop to end
-    }
-
-    // Get previous track
-    const prevTrack = musicPlaylist[prevIndex];
-    if (prevTrack) {
-        console.log(`⏮️ Playing previous track: ${prevTrack.id}`);
-        playMusic(prevTrack.id);
-    }
-}
-
-// Toggle music play/pause
-window.toggleMusicPlayback = function() {
-    console.log("🎵 Toggling music playback");
-    
-    if (!currentMusic) {
-        // If no music is playing, start with current track or random
-        const trackToPlay = window.config && window.config.musicTrack === 'random' ? 
-            'random' : (window.config ? window.config.musicTrack : 'game1');
-        playMusic(trackToPlay);
-        return;
-    }
-
+  if (currentMusic && currentMusic.src && currentMusic.src.includes(trackId) && !forceRestart && trackId !== 'summary') {
+    console.log(`🎵 ${trackId} is already playing, continuing...`);
     if (isMusicPaused) {
-        // Resume playback
-        currentMusic.play().then(() => {
-            isMusicPaused = false;
-            isMusicPlaying = true;
-            updateMusicUI();
-            console.log("▶️ Music resumed");
-        }).catch(error => {
-            console.error("❌ Failed to resume music:", error);
-        });
-    } else {
-        // Pause playback
-        currentMusic.pause();
-        isMusicPaused = true;
-        isMusicPlaying = false;
-        updateMusicUI();
-        console.log("⏸️ Music paused");
-    }
-}
-
-// Stop current music
-function stopMusic() {
-    if (currentMusic) {
-        console.log("⏹️ Stopping current music");
-        
-        // Don't save state for summary music
-        if (currentMusic.id !== 'summary-music-track') {
-            pausedMusicState = {
-                trackId: getCurrentTrackId(),
-                currentTime: currentMusic.currentTime,
-                paused: isMusicPaused,
-                audioElement: currentMusic
-            };
-            console.log(`💾 Saved music state before stopping: ${pausedMusicState.trackId}`);
-        }
-        
-        currentMusic.pause();
-        currentMusic.currentTime = 0;
-        
-        // Remove event listeners
-        currentMusic.onplay = null;
-        currentMusic.onended = null;
-        currentMusic.onerror = null;
-        currentMusic.oncanplaythrough = null;
-        
-        currentMusic = null;
-        isMusicPlaying = false;
+      currentMusic.play().then(() => {
         isMusicPaused = false;
+        isMusicPlaying = true;
         updateMusicUI();
+      }).catch(err => console.error("❌ Failed to resume existing track:", err));
     }
-}
+    return;
+  }
 
-// Set music volume (0.0 to 1.0)
-window.setMusicVolume = function(volume) {
-    const newVolume = Math.max(0, Math.min(1, volume));
-    console.log(`🔊 Setting music volume to: ${newVolume} (${Math.round(newVolume * 100)}%)`);
-    
-    musicVolume = newVolume;
-    
-    if (currentMusic) {
-        currentMusic.volume = musicVolume;
-    }
-    
-    if (window.config) {
-        window.config.musicVolume = musicVolume;
-        saveSettings();
-    }
-}
+  if (trackId === 'summary' && shouldPlayGameMusic()) {
+    console.log("🎵 Not playing summary music on game screen");
+    return;
+  }
 
-// Set UI/sound effects volume (0.0 to 1.0)
-window.setUIVolume = function(volume) {
-    const newVolume = Math.max(0, Math.min(1, volume));
-    console.log(`🔊 Setting UI volume to: ${newVolume} (${Math.round(newVolume * 100)}%)`);
-    
-    uiVolume = newVolume;
-    
-    if (window.config) {
-        window.config.uiVolume = uiVolume;
-        saveSettings();
-    }
-}
+  if (currentMusic && currentMusic.id !== 'summary-music-track' && !pausedMusicState.audioElement) {
+    pausedMusicState = {
+      trackId: window.getCurrentTrackId ? window.getCurrentTrackId() : null,
+      currentTime: currentMusic.currentTime || 0,
+      paused: isMusicPaused,
+      audioElement: currentMusic
+    };
+    console.log(`💾 Saved music state: ${pausedMusicState.trackId} at ${pausedMusicState.currentTime}s`);
+  }
 
-// Play UI sound effect
-window.playSound = function(type) {
-    if (uiVolume <= 0) {
-        console.log("🔇 UI volume is 0, skipping sound effect");
+  // Stop current music
+  if (currentMusic) {
+    stopMusic();
+  }
+
+  if (musicVolume <= 0) {
+    console.log("🔇 Music volume is 0, skipping playback");
+    isMusicPlaying = false;
+    isMusicPaused = false;
+    updateMusicUI();
+    return;
+  }
+
+  let actualTrackId = trackId;
+  if (trackId === 'random') {
+    if (musicPlaylist.length > 0) {
+      const randomIndex = Math.floor(Math.random() * musicPlaylist.length);
+      actualTrackId = musicPlaylist[randomIndex].id;
+      currentTrackIndex = randomIndex;
+    } else {
+      actualTrackId = 'game1';
+    }
+  }
+
+  const validTracks = musicTracks.filter(track => track.id !== 'demo');
+  if (validTracks.length === 0) {
+    console.error("❌ No valid tracks available to play");
+    return;
+  }
+
+  let track = validTracks.find(t => t.id === actualTrackId);
+  if (!track) {
+    track = validTracks[0];
+  }
+
+  if (track.type === 'game') {
+    currentTrackIndex = musicPlaylist.findIndex(t => t.id === track.id);
+  }
+
+  console.log(`🎵 Loading track: ${track.name} (${track.file})`);
+
+  const audioElement = new Audio();
+  audioElement.preload = 'auto';
+  audioElement.src = track.file;
+  audioElement.volume = musicVolume;
+
+  if (track.type === 'summary') audioElement.id = 'summary-music-track';
+  else audioElement.id = 'game-music-track';
+
+  if (track.type === 'summary') audioElement.loop = false;
+  else audioElement.loop = (window.config && window.config.musicTrack !== 'random');
+
+  audioElement.addEventListener('play', () => {
+    console.log(`▶️ Music started playing: ${track.name}`);
+    isMusicPlaying = true;
+    isMusicPaused = false;
+    setCurrentMusicReference(audioElement);
+    updateMusicUI();
+  });
+
+  audioElement.addEventListener('ended', () => {
+    console.log(`⏹️ Music ended: ${track.name}`);
+    if (track.type === 'summary') {
+      const activeScreen = document.querySelector('.screen.active');
+      if (activeScreen && activeScreen.id === 'game-over') {
         return;
+      }
+      resumePreviousMusic();
+    } else if (window.config && window.config.musicTrack === 'random') {
+      setTimeout(() => playNextTrack(), 800);
+    } else if (audioElement.loop) {
+      // do nothing (looping)
+    } else {
+      playNextTrack();
     }
-    
-    if (!audioContext) {
-        initAudioContext();
+  });
+
+  audioElement.addEventListener('error', (e) => {
+    console.error(`❌ Music playback error for ${track.id}:`, e);
+    if (track.type !== 'summary') playNextTrack();
+    else resumePreviousMusic();
+  });
+
+  // start playback (may reject due to autoplay policies)
+  const promise = audioElement.play();
+  setCurrentMusicReference(audioElement);
+  if (promise !== undefined) {
+    promise.then(() => {
+      isMusicPlaying = true;
+      isMusicPaused = false;
+      setCurrentMusicReference(audioElement);
+      updateMusicUI();
+      console.log(`🎵 Successfully playing: ${track.name}`);
+    }).catch(error => {
+      console.error(`❌ Failed to play music: ${track.id}`, error);
+      isMusicPlaying = false;
+      isMusicPaused = true;
+      updateMusicUI();
+    });
+  } else {
+    // no promise returned — update UI
+    updateMusicUI();
+  }
+}
+
+// Provide getCurrentTrackId and name
+window.getCurrentTrackId = function() {
+  if (!currentMusic || !currentMusic.src) return null;
+  const src = currentMusic.src;
+  const track = musicTracks.find(t => src.includes(t.file));
+  return track ? track.id : null;
+};
+window.getCurrentTrackName = function() {
+  const id = window.getCurrentTrackId();
+  if (!id) return 'No Track';
+  const t = musicTracks.find(x => x.id === id);
+  return t ? t.name : 'Unknown Track';
+};
+
+function resumePreviousMusic() {
+  console.log("🎵 Attempting to resume previous music...");
+  if (pausedMusicState.trackId && pausedMusicState.audioElement) {
+    const activeScreen = document.querySelector('.screen.active');
+    if (activeScreen && activeScreen.id === 'game-over') {
+      console.log("🎵 Still on summary screen, not resuming");
+      return;
     }
-    
-    if (!audioContext) {
-        console.error("❌ Audio Context not available for sound effects");
-        return;
+    if (!shouldPlayGameMusic()) {
+      console.log("🎵 Not on a game screen, not resuming");
+      return;
     }
-    
+    const trackToResume = pausedMusicState.trackId;
+    const resumeTime = pausedMusicState.currentTime;
+    playMusic(trackToResume, true);
+    setTimeout(() => {
+      if (currentMusic && currentMusic.readyState > 0) {
+        try { currentMusic.currentTime = resumeTime; } catch(e) {}
+      }
+    }, 150);
+    pausedMusicState = { trackId: null, currentTime: 0, paused: false, audioElement: null };
+  } else {
+    console.log("🎵 No previous music state to resume");
+    const activeScreen = document.querySelector('.screen.active');
+    if (activeScreen && shouldPlayGameMusic()) {
+      const trackToPlay = window.config && window.config.musicTrack === 'random' ? 'random' : (window.config ? window.config.musicTrack : 'game1');
+      playMusic(trackToPlay);
+    }
+  }
+}
+
+window.playNextTrack = function() {
+  if (musicPlaylist.length === 0) return;
+  if (isMusicPaused && currentMusic) {
+    toggleMusicPlayback();
+    return;
+  }
+  let nextIndex = currentTrackIndex + 1;
+  if (nextIndex >= musicPlaylist.length) nextIndex = 0;
+  const nextTrack = musicPlaylist[nextIndex];
+  if (nextTrack) playMusic(nextTrack.id);
+};
+
+window.playPreviousTrack = function() {
+  if (musicPlaylist.length === 0) return;
+  if (isMusicPaused && currentMusic) {
+    toggleMusicPlayback();
+    return;
+  }
+  let prevIndex = currentTrackIndex - 1;
+  if (prevIndex < 0) prevIndex = musicPlaylist.length - 1;
+  const prevTrack = musicPlaylist[prevIndex];
+  if (prevTrack) playMusic(prevTrack.id);
+};
+
+window.toggleMusicPlayback = function() {
+  console.log("🎵 Toggling music playback");
+  if (!currentMusic) {
+    const trackToPlay = window.config && window.config.musicTrack === 'random' ? 'random' : (window.config ? window.config.musicTrack : 'game1');
+    playMusic(trackToPlay);
+    return;
+  }
+  if (isMusicPaused) {
+    currentMusic.play().then(() => {
+      isMusicPaused = false;
+      isMusicPlaying = true;
+      updateMusicUI();
+    }).catch(err => console.error("❌ Failed to resume music:", err));
+  } else {
+    currentMusic.pause();
+    isMusicPaused = true;
+    isMusicPlaying = false;
+    updateMusicUI();
+  }
+};
+
+function stopMusic() {
+  if (currentMusic) {
+    console.log("⏹️ Stopping current music");
+    if (currentMusic.id !== 'summary-music-track') {
+      pausedMusicState = {
+        trackId: window.getCurrentTrackId ? window.getCurrentTrackId() : null,
+        currentTime: currentMusic.currentTime || 0,
+        paused: isMusicPaused,
+        audioElement: currentMusic
+      };
+    }
     try {
-        const settings = SOUND_SETTINGS[type] || { baseFreq: 600, type: 'sine' };
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.value = settings.baseFreq;
-        oscillator.type = settings.type;
-        
-        gainNode.gain.setValueAtTime(uiVolume * 0.3, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-        
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.2);
-        
-        console.log(`🔊 Played ${type} sound effect`);
-        
-    } catch (error) {
-        console.error("❌ Error playing sound effect:", error);
-    }
+      currentMusic.pause();
+      currentMusic.currentTime = 0;
+    } catch (e) {}
+    currentMusic.onplay = null;
+    currentMusic.onended = null;
+    currentMusic.onerror = null;
+    currentMusic = null;
+    window.currentMusic = null;
+    isMusicPlaying = false;
+    isMusicPaused = false;
+    updateMusicUI();
+  }
 }
 
-// In audio.js, replace the playLinkSound function with this:
+window.setMusicVolume = function(volume) {
+  const newVolume = Math.max(0, Math.min(1, volume));
+  console.log(`🔊 Setting music volume to: ${newVolume}`);
+  musicVolume = newVolume;
+  if (currentMusic) currentMusic.volume = musicVolume;
+  if (window.config) { 
+    window.config.musicVolume = musicVolume; 
+    if (typeof window.saveSettings === 'function') window.saveSettings(); 
+  }
+  
+  // Update the slider display
+  const musicVolumeSlider = document.getElementById('music-volume-slider');
+  const musicVolumeValue = document.getElementById('music-volume-value');
+  if (musicVolumeSlider) musicVolumeSlider.value = Math.round(newVolume * 100);
+  if (musicVolumeValue) musicVolumeValue.textContent = Math.round(newVolume * 100) + '%';
+};
+
+window.setUIVolume = function(volume) {
+  const newVolume = Math.max(0, Math.min(1, volume));
+  console.log(`🔊 Setting UI volume to: ${newVolume}`);
+  uiVolume = newVolume;
+  if (window.config) { 
+    window.config.uiVolume = uiVolume; 
+    if (typeof window.saveSettings === 'function') window.saveSettings(); 
+  }
+  
+  // Update the slider display
+  const uiVolumeSlider = document.getElementById('ui-volume-slider');
+  const uiVolumeValue = document.getElementById('ui-volume-value');
+  if (uiVolumeSlider) uiVolumeSlider.value = Math.round(newVolume * 100);
+  if (uiVolumeValue) uiVolumeValue.textContent = Math.round(newVolume * 100) + '%';
+};
+
+window.playSound = function(type) {
+  if (uiVolume <= 0) return;
+  if (!audioContext) initAudioContext();
+  if (!audioContext) return;
+  try {
+    const settings = SOUND_SETTINGS[type] || { baseFreq: 600, type: 'sine' };
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    oscillator.frequency.value = settings.baseFreq;
+    oscillator.type = settings.type;
+    gainNode.gain.setValueAtTime(uiVolume * 0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.2);
+  } catch (error) {
+    console.error("❌ Error playing sound effect:", error);
+  }
+};
 
 window.playLinkSound = function(pathLength) {
-    if (uiVolume <= 0 || pathLength < 2) return;
-    
-    if (!audioContext) {
-        initAudioContext();
+  if (uiVolume <= 0 || pathLength < 2) return;
+  if (!audioContext) initAudioContext();
+  if (!audioContext) return;
+  try {
+    const now = audioContext.currentTime;
+    const notes = [261.63, 293.66, 329.63, 392.00, 440.00, 493.88, 523.25];
+    const noteIndex = Math.min(pathLength - 2, notes.length - 1);
+    const frequency = notes[noteIndex];
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    oscillator.frequency.value = frequency;
+    oscillator.type = 'sine';
+    const duration = 0.12 + (pathLength * 0.02);
+    gainNode.gain.setValueAtTime(0, now);
+    gainNode.gain.linearRampToValueAtTime(uiVolume * 0.45, now + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    if (pathLength >= 4) {
+      const osc2 = audioContext.createOscillator();
+      const g2 = audioContext.createGain();
+      osc2.connect(g2);
+      g2.connect(audioContext.destination);
+      osc2.frequency.value = frequency * 2;
+      osc2.type = 'triangle';
+      g2.gain.setValueAtTime(0, now);
+      g2.gain.linearRampToValueAtTime(uiVolume * 0.18, now + 0.01);
+      g2.gain.exponentialRampToValueAtTime(0.001, now + duration);
+      osc2.start(now);
+      osc2.stop(now + duration);
     }
-    
-    if (!audioContext) {
-        console.error("❌ Audio Context not available for link sound");
-        return;
-    }
-    
-    try {
-        const now = audioContext.currentTime;
-        
-        // Musical notes for a satisfying progression (C major scale)
-        const notes = [261.63, 293.66, 329.63, 392.00, 440.00, 493.88, 523.25];
-        const noteIndex = Math.min(pathLength - 2, notes.length - 1);
-        const frequency = notes[noteIndex];
-        
-        // Main oscillator
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.value = frequency;
-        oscillator.type = 'sine';
-        
-        // Duration based on path length (longer words = longer sound)
-        const duration = 0.15 + (pathLength * 0.02);
-        
-        // Quick attack, gentle release
-        gainNode.gain.setValueAtTime(0, now);
-        gainNode.gain.linearRampToValueAtTime(uiVolume * 0.5, now + 0.02);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
-        
-        // Add a second oscillator for richness (octave above)
-        if (pathLength >= 4) {
-            const oscillator2 = audioContext.createOscillator();
-            const gainNode2 = audioContext.createGain();
-            
-            oscillator2.connect(gainNode2);
-            gainNode2.connect(audioContext.destination);
-            
-            oscillator2.frequency.value = frequency * 2;
-            oscillator2.type = 'triangle';
-            
-            gainNode2.gain.setValueAtTime(0, now);
-            gainNode2.gain.linearRampToValueAtTime(uiVolume * 0.2, now + 0.02);
-            gainNode2.gain.exponentialRampToValueAtTime(0.001, now + duration);
-            
-            oscillator2.start(now);
-            oscillator2.stop(now + duration);
-        }
-        
-        // Add a subtle click at the beginning for tactile feedback
-        const clickOsc = audioContext.createOscillator();
-        const clickGain = audioContext.createGain();
-        
-        clickOsc.connect(clickGain);
-        clickGain.connect(audioContext.destination);
-        
-        clickOsc.frequency.value = 800;
-        clickOsc.type = 'square';
-        
-        clickGain.gain.setValueAtTime(uiVolume * 0.3, now);
-        clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-        
-        clickOsc.start(now);
-        clickOsc.stop(now + 0.05);
-        
-        oscillator.start(now);
-        oscillator.stop(now + duration);
-        
-        console.log(`🔊 Played link sound for path length ${pathLength} at ${Math.round(frequency)}Hz`);
-        
-    } catch (error) {
-        console.error("❌ Error playing link sound:", error);
-    }
+    const clickOsc = audioContext.createOscillator();
+    const clickGain = audioContext.createGain();
+    clickOsc.connect(clickGain);
+    clickGain.connect(audioContext.destination);
+    clickOsc.frequency.value = 800;
+    clickOsc.type = 'square';
+    clickGain.gain.setValueAtTime(uiVolume * 0.25, now);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+    clickOsc.start(now);
+    clickOsc.stop(now + 0.04);
+    oscillator.start(now);
+    oscillator.stop(now + duration);
+  } catch (error) {
+    console.error("❌ Error playing link sound:", error);
+  }
 };
 
-// Play word complete sound - NEW FUNCTION
 window.playWordCompleteSound = function(wordLength, score) {
-    if (uiVolume <= 0) return;
-    
-    if (!audioContext) {
-        initAudioContext();
+  if (uiVolume <= 0) return;
+  if (!audioContext) initAudioContext();
+  if (!audioContext) return;
+  try {
+    const now = audioContext.currentTime;
+    const baseFreq = 540 + (wordLength * 12);
+    const duration = 0.28 + (wordLength * 0.04);
+    const o1 = audioContext.createOscillator();
+    const g1 = audioContext.createGain();
+    o1.connect(g1);
+    g1.connect(audioContext.destination);
+    o1.frequency.setValueAtTime(baseFreq, now);
+    o1.frequency.exponentialRampToValueAtTime(baseFreq * 1.8, now + duration * 0.25);
+    o1.type = 'sine';
+    g1.gain.setValueAtTime(0, now);
+    g1.gain.linearRampToValueAtTime(uiVolume * 0.6, now + 0.04);
+    g1.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    const o2 = audioContext.createOscillator();
+    const g2 = audioContext.createGain();
+    o2.connect(g2);
+    g2.connect(audioContext.destination);
+    o2.frequency.setValueAtTime(baseFreq * 1.5, now);
+    o2.type = 'triangle';
+    g2.gain.setValueAtTime(0, now);
+    g2.gain.linearRampToValueAtTime(uiVolume * 0.3, now + 0.04);
+    g2.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    o1.start(now);
+    o2.start(now);
+    o1.stop(now + duration);
+    o2.stop(now + duration);
+    if (score > 20) {
+      const clickTime = now + 0.02;
+      const clickGain = audioContext.createGain();
+      const clickOsc = audioContext.createOscillator();
+      clickOsc.connect(clickGain);
+      clickGain.connect(audioContext.destination);
+      clickOsc.frequency.value = 1200;
+      clickOsc.type = 'square';
+      clickGain.gain.setValueAtTime(uiVolume * 0.28, clickTime);
+      clickGain.gain.exponentialRampToValueAtTime(0.01, clickTime + 0.08);
+      clickOsc.start(clickTime);
+      clickOsc.stop(clickTime + 0.08);
     }
-    
-    if (!audioContext) {
-        console.error("❌ Audio Context not available for word complete sound");
-        return;
-    }
-    
-    try {
-        const now = audioContext.currentTime;
-        const baseFreq = 600;
-        const duration = 0.3 + (wordLength * 0.05);
-        
-        // Main oscillator
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        // Frequency sweep up for rewarding feel
-        oscillator.frequency.setValueAtTime(baseFreq, now);
-        oscillator.frequency.exponentialRampToValueAtTime(baseFreq * 2, now + duration * 0.3);
-        oscillator.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, now + duration);
-        oscillator.type = 'sine';
-        
-        // Volume envelope
-        gainNode.gain.setValueAtTime(0, now);
-        gainNode.gain.linearRampToValueAtTime(uiVolume * 0.6, now + 0.05);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration);
-        
-        // Harmony oscillator for richer sound
-        const oscillator2 = audioContext.createOscillator();
-        const gainNode2 = audioContext.createGain();
-        
-        oscillator2.connect(gainNode2);
-        gainNode2.connect(audioContext.destination);
-        
-        oscillator2.frequency.setValueAtTime(baseFreq * 1.5, now);
-        oscillator2.frequency.exponentialRampToValueAtTime(baseFreq * 3, now + duration * 0.3);
-        oscillator2.type = 'triangle';
-        
-        gainNode2.gain.setValueAtTime(0, now);
-        gainNode2.gain.linearRampToValueAtTime(uiVolume * 0.3, now + 0.05);
-        gainNode2.gain.exponentialRampToValueAtTime(0.01, now + duration);
-        
-        // Start both oscillators
-        oscillator.start(now);
-        oscillator2.start(now);
-        oscillator.stop(now + duration);
-        oscillator2.stop(now + duration);
-        
-        // Add a percussion-like click at the beginning for extra feedback
-        if (score > 20) {
-            const clickTime = now + 0.02;
-            const clickGain = audioContext.createGain();
-            const clickOsc = audioContext.createOscillator();
-            
-            clickOsc.connect(clickGain);
-            clickGain.connect(audioContext.destination);
-            
-            clickOsc.frequency.value = 1200;
-            clickOsc.type = 'square';
-            
-            clickGain.gain.setValueAtTime(uiVolume * 0.3, clickTime);
-            clickGain.gain.exponentialRampToValueAtTime(0.01, clickTime + 0.1);
-            
-            clickOsc.start(clickTime);
-            clickOsc.stop(clickTime + 0.1);
-        }
-        
-    } catch (error) {
-        console.error("❌ Error playing word complete sound:", error);
-    }
-}
+  } catch (error) {
+    console.error("❌ Error playing word complete sound:", error);
+  }
+};
 
-// Set game track
 window.setGameTrack = function(track) {
-    console.log(`🎵 Setting game track to: ${track}`);
-    
-    if (window.config) {
-        window.config.musicTrack = track;
-        saveSettings();
-    }
-    
-    // Update music player UI
-    updateMusicUI();
-    
-    // Only play the track if music is not already playing
-    if (musicVolume > 0 && !isMusicPlaying) {
-        playMusic(track);
-    }
-}
+  console.log(`🎵 Setting game track to: ${track}`);
+  if (window.config) { 
+    window.config.musicTrack = track; 
+    if (typeof window.saveSettings === 'function') window.saveSettings(); 
+  }
+  updateMusicUI();
+  if (musicVolume > 0 && !isMusicPlaying) playMusic(track);
+};
 
-// Set game mode (random or specific track)
 window.setGameMode = function(mode) {
-    console.log(`🎵 Setting game mode to: ${mode}`);
-    
-    if (mode === 'random') {
-        setGameTrack('random');
-    } else {
-        // If it's a track ID, set that track
-        const track = musicTracks.find(t => t.id === mode);
-        if (track) {
-            setGameTrack(track.id);
-        }
-    }
-    
-    updateMusicUI();
-}
+  console.log(`🎵 Setting game mode to: ${mode}`);
+  if (mode === 'random') setGameTrack('random');
+  else {
+    const track = musicTracks.find(t => t.id === mode);
+    if (track) setGameTrack(track.id);
+  }
+  updateMusicUI();
+};
 
 window.getRandomTrack = function() {
-    if (musicPlaylist.length > 0) {
-        return musicPlaylist[Math.floor(Math.random() * musicPlaylist.length)].id;
-    }
-    return 'game1';
-}
-
-// Initialize audio system
-function initAudio() {
-    console.log("🎵 Initializing audio system...");
-    
-    // Initialize audio context on first user interaction
-    document.addEventListener('click', function initOnClick() {
-        console.log("👆 User interaction detected, initializing audio context...");
-        initAudioContext();
-        document.removeEventListener('click', initOnClick);
-    }, { once: true });
-    
-    // Discover music tracks
-    discoverMusicTracks().then(() => {
-        console.log("✅ Audio system initialized successfully");
-        console.log("🎵 Available tracks:", musicTracks.map(t => ({id: t.id, name: t.name})));
-        
-        // Make functions globally available
-        window.playMusic = playMusic;
-        window.stopMusic = stopMusic;
-        window.playSound = playSound;
-        window.playLinkSound = playLinkSound;
-        window.playWordCompleteSound = playWordCompleteSound;
-        window.setMusicVolume = setMusicVolume;
-        window.setUIVolume = setUIVolume;
-        window.setGameTrack = setGameTrack;
-        window.setGameMode = setGameMode;
-        window.playNextTrack = playNextTrack;
-        window.playPreviousTrack = playPreviousTrack;
-        window.toggleMusicPlayback = toggleMusicPlayback;
-        window.getRandomTrack = getRandomTrack;
-        window.getCurrentTrackId = getCurrentTrackId;
-        window.getCurrentTrackName = getCurrentTrackName;
-        window.isMusicPlaying = isMusicPlaying;
-        window.isMusicPaused = isMusicPaused;
-        window.resumePreviousMusic = resumePreviousMusic;
-        window.shouldPlayGameMusic = shouldPlayGameMusic;
-        window.updateMusicUI = updateMusicUI;
-        
-        console.log("✅ Audio functions registered globally");
-        
-        // IMPROVED: Initial UI update with proper timing
-        setTimeout(() => {
-            updateMusicUI();
-            console.log("🎵 Initial UI update complete");
-        }, 100);
-        
-        // Start music on main menu if volume is not 0 and music is not already playing
-        const currentScreen = document.querySelector('.screen.active');
-        if (currentScreen && currentScreen.id === 'main-menu') {
-            if (window.config && window.config.musicVolume > 0 && !isMusicPlaying) {
-                setTimeout(() => {
-                    // Wait a bit more to ensure everything is ready
-                    setTimeout(() => {
-                        if (config.musicTrack === 'random') {
-                            playMusic('random');
-                        } else {
-                            playMusic(config.musicTrack || 'game1');
-                        }
-                        console.log("🎵 Initial music started");
-                    }, 300);
-                }, 500);
-            }
-        }
-        
-    }).catch(error => {
-        console.error("❌ Failed to initialize audio system:", error);
-    });
-}
-
-// Quick initialization fix
-window.addEventListener('DOMContentLoaded', function() {
-    console.log("📄 DOM Content Loaded - Audio init starting");
-    
-    // Give DOM time to fully load
-    setTimeout(() => {
-        initAudio();
-        console.log("✅ Audio initialization scheduled");
-        
-        // Force initial UI update after a delay
-        setTimeout(() => {
-            if (typeof window.updateMusicUI === 'function') {
-                window.updateMusicUI();
-                console.log("🔄 Forced initial UI update");
-            }
-        }, 1000);
-    }, 300);
-});
-
-// Ensure functions are available early
-window.ensureAudioFunctionsAvailable = function() {
-    if (!window.toggleMusicPlayback) window.toggleMusicPlayback = function() {
-        console.log("Audio not initialized yet");
-    };
-    if (!window.playNextTrack) window.playNextTrack = function() {
-        console.log("Audio not initialized yet");
-    };
-    if (!window.setGameMode) window.setGameMode = function(mode) {
-        console.log("Audio not initialized yet");
-    };
+  const list = musicPlaylist.length ? musicPlaylist : musicTracks.filter(t => t.type === 'game');
+  if (!list.length) return 'game1';
+  return list[Math.floor(Math.random() * list.length)].id;
 };
 
-// Call it immediately
-window.ensureAudioFunctionsAvailable();
+// Load and apply audio settings from config
+window.loadAudioSettings = function() {
+  console.log("🔊 Loading audio settings from config");
+  
+  if (window.config) {
+    // Apply volumes
+    if (typeof window.setMusicVolume === 'function') {
+      window.setMusicVolume(window.config.musicVolume || 0.5);
+    }
+    if (typeof window.setUIVolume === 'function') {
+      window.setUIVolume(window.config.uiVolume || 0.7);
+    }
+    
+    // Update UI sliders immediately
+    const uiVolumeSlider = document.getElementById('ui-volume-slider');
+    const uiVolumeValue = document.getElementById('ui-volume-value');
+    const musicVolumeSlider = document.getElementById('music-volume-slider');
+    const musicVolumeValue = document.getElementById('music-volume-value');
+    
+    if (uiVolumeSlider && uiVolumeValue) {
+      const uiVol = Math.round((window.config.uiVolume || 0.7) * 100);
+      uiVolumeSlider.value = uiVol;
+      uiVolumeValue.textContent = uiVol + '%';
+    }
+    
+    if (musicVolumeSlider && musicVolumeValue) {
+      const musicVol = Math.round((window.config.musicVolume || 0.5) * 100);
+      musicVolumeSlider.value = musicVol;
+      musicVolumeValue.textContent = musicVol + '%';
+    }
+    
+    console.log("🔊 Audio settings loaded:", {
+      musicVolume: window.config.musicVolume,
+      uiVolume: window.config.uiVolume
+    });
+  }
+};
 
-// Also update on window load
-window.addEventListener('load', function() {
-    console.log("🎵 Window fully loaded - Final UI update");
+function initAudio() {
+  console.log("🎵 Initializing audio system...");
+
+  function initOnce() {
+    initAudioContext();
+    document.removeEventListener('click', initOnce);
+    document.removeEventListener('touchstart', initOnce);
+  }
+
+  document.addEventListener('click', initOnce, { once: true, passive: true });
+  document.addEventListener('touchstart', initOnce, { once: true, passive: true });
+
+  discoverMusicTracks().then(() => {
+    console.log("✅ Audio system initialized");
+    // expose functions globally
+    window.playMusic = playMusic;
+    window.stopMusic = stopMusic;
+    window.playSound = playSound;
+    window.playLinkSound = playLinkSound;
+    window.playWordCompleteSound = playWordCompleteSound;
+    window.setMusicVolume = setMusicVolume;
+    window.setUIVolume = setUIVolume;
+    window.setGameTrack = setGameTrack;
+    window.setGameMode = setGameMode;
+    window.playNextTrack = window.playNextTrack;
+    window.playPreviousTrack = window.playPreviousTrack;
+    window.toggleMusicPlayback = toggleMusicPlayback;
+    window.getRandomTrack = getRandomTrack;
+    window.getCurrentTrackId = window.getCurrentTrackId;
+    window.getCurrentTrackName = window.getCurrentTrackName;
+    window.resumePreviousMusic = resumePreviousMusic;
+    window.shouldPlayGameMusic = shouldPlayGameMusic;
+    window.updateMusicUI = window.updateMusicUI;
+    window.loadAudioSettings = window.loadAudioSettings;
+
+    // Setup volume slider event listeners
+    const uiVolumeSlider = document.getElementById('ui-volume-slider');
+    const musicVolumeSlider = document.getElementById('music-volume-slider');
+    
+    if (uiVolumeSlider) {
+      uiVolumeSlider.addEventListener('input', function() {
+        const value = this.value / 100;
+        setUIVolume(value);
+      });
+      
+      // Set initial value from config if available
+      if (window.config && window.config.uiVolume) {
+        uiVolumeSlider.value = Math.round(window.config.uiVolume * 100);
+      }
+    }
+    
+    if (musicVolumeSlider) {
+      musicVolumeSlider.addEventListener('input', function() {
+        const value = this.value / 100;
+        setMusicVolume(value);
+      });
+      
+      // Set initial value from config if available
+      if (window.config && window.config.musicVolume) {
+        musicVolumeSlider.value = Math.round(window.config.musicVolume * 100);
+      }
+    }
+
+    // Load audio settings from config
     setTimeout(() => {
-        if (typeof window.updateMusicUI === 'function') {
-            window.updateMusicUI();
-            console.log("✅ Final music UI update complete");
-        }
-    }, 2000);
+      if (typeof window.loadAudioSettings === 'function') {
+        window.loadAudioSettings();
+      }
+    }, 100);
+    
+    // initial UI update
+    setTimeout(() => updateMusicUI(), 120);
+  }).catch(err => console.error("❌ Failed initializing audio system:", err));
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  console.log("📄 DOM Loaded - scheduling audio init");
+  setTimeout(() => initAudio(), 300);
+  // Force final UI update after full load
+  setTimeout(() => { 
+    if (typeof window.updateMusicUI === 'function') window.updateMusicUI();
+    // Ensure volume sliders are set correctly
+    setTimeout(() => {
+      if (typeof window.loadAudioSettings === 'function') window.loadAudioSettings();
+    }, 500);
+  }, 2000);
 });
+
+// Ensure basic functions exist early
+window.ensureAudioFunctionsAvailable = function() {
+  if (!window.toggleMusicPlayback) window.toggleMusicPlayback = function() { console.log("Audio not initialized yet"); };
+  if (!window.playNextTrack) window.playNextTrack = function() { console.log("Audio not initialized yet"); };
+  if (!window.setGameMode) window.setGameMode = function(mode) { console.log("Audio not initialized yet"); };
+  if (!window.setMusicVolume) window.setMusicVolume = function(vol) { console.log("Audio not initialized yet"); };
+  if (!window.setUIVolume) window.setUIVolume = function(vol) { console.log("Audio not initialized yet"); };
+};
+window.ensureAudioFunctionsAvailable();
