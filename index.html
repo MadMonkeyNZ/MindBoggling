@@ -1,238 +1,247 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Boggle Party</title>
     <link rel="stylesheet" href="style.css">
+    <meta name="theme-color" content="#0f172a">
 </head>
-
 <body>
-  <div id="app">
-    <div id="loading-screen" class="screen">
-      <div class="loading-content">
-        <div class="loading-title">Boggle Party</div>
-        <div class="loading-subtitle">Loading dictionary...</div>
-        <div class="loading-bar-container">
-          <div id="loading-bar" class="loading-bar"></div>
+    <div id="app">
+        <div id="loading-screen" class="screen">
+            <div class="loading-content">
+                <div class="loading-title">Boggle Party</div>
+                <div class="loading-subtitle">Loading dictionary...</div>
+                <div class="loading-bar-container">
+                    <div id="loading-bar" class="loading-bar"></div>
+                </div>
+                <div id="loading-percentage" class="loading-percentage">0%</div>
+                <div id="loading-status" class="loading-status">Initializing...</div>
+            </div>
         </div>
-        <div id="loading-percentage" class="loading-percentage">0%</div>
-        <div id="loading-status" class="loading-status">Initializing...</div>
-      </div>
+
+        <div id="main-menu" class="screen active">
+            <div class="main-menu-content">
+                <div class="title-container">
+                    <div class="title">Boggle Party</div>
+                    <div class="subtitle">Find words, score points, have fun!</div>
+                </div>
+                
+                <div class="highscores-container">
+                    <div class="highscore-box">
+                        <div class="highscore-label">Daily High</div>
+                        <div id="daily-highscore" class="highscore-value">0</div>
+                    </div>
+                    <div class="highscore-box">
+                        <div class="highscore-label">All-Time High</div>
+                        <div id="alltime-highscore" class="highscore-value">0</div>
+                    </div>
+                </div>
+                
+                <div class="menu-buttons">
+                    <button class="menu-btn primary" onclick="startGame()">
+                        🚀 Start Game
+                    </button>
+                </div>
+                
+                <div class="settings-container">
+                    <div class="settings-section">
+                        <div class="section-title">Game Settings</div>
+                        
+                        <div class="setting-group">
+                            <div class="setting-label">Grid Size</div>
+                            <div class="toggle-group">
+                                <button class="toggle-btn size-btn active" data-size="4" onclick="setGridSize(4)">4×4</button>
+                                <button class="toggle-btn size-btn" data-size="5" onclick="setGridSize(5)">5×5</button>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <div class="setting-label">Time Limit</div>
+                            <div class="toggle-group time-group">
+                                <button class="toggle-btn time-btn active" data-time="30" onclick="setTimeLimit(30)">30s</button>
+                                <button class="toggle-btn time-btn" data-time="60" onclick="setTimeLimit(60)">60s</button>
+                                <button class="toggle-btn time-btn" data-time="90" onclick="setTimeLimit(90)">90s</button>
+                                <button class="toggle-btn time-btn" data-time="120" onclick="setTimeLimit(120)">2m</button>
+                                <button class="toggle-btn time-btn" data-time="180" onclick="setTimeLimit(180)">3m</button>
+                                <button class="toggle-btn time-btn" data-time="0" onclick="setTimeLimit(0)">∞</button>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <div class="setting-label">Min Word Length</div>
+                            <div class="toggle-group">
+                                <button class="toggle-btn length-btn active" data-length="3" onclick="setMinLength(3)">3+</button>
+                                <button class="toggle-btn length-btn" data-length="4" onclick="setMinLength(4)">4+</button>
+                                <button class="toggle-btn length-btn" data-length="5" onclick="setMinLength(5)">5+</button>
+                                <button class="toggle-btn length-btn" data-length="6" onclick="setMinLength(6)">6+</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <div class="section-title">Audio Settings</div>
+                        
+                        <div class="setting-group">
+                            <div class="setting-label">Sound Effects</div>
+                            <div class="slider-group">
+                                <input type="range" id="ui-volume-slider" class="volume-slider" min="0" max="100" value="70">
+                                <span id="ui-volume-value" class="slider-value">70%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <div class="setting-label">Background Music</div>
+                            <div class="slider-group">
+                                <input type="range" id="music-volume-slider" class="volume-slider" min="0" max="100" value="50">
+                                <span id="music-volume-value" class="slider-value">50%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="radio-player">
+                    <div class="radio-display">
+                        <div class="radio-title">Background Music</div>
+                        <div class="track-info">
+                            <div class="track-icon">🎵</div>
+                            <div class="track-details">
+                                <div id="current-track-name" class="track-name">Loading Music...</div>
+                                <div id="track-mode" class="track-mode">Random Play</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="radio-controls">
+                        <button class="radio-btn" onclick="playPreviousTrack()" title="Previous Track">
+                            <span class="btn-icon">⏮</span>
+                        </button>
+                        <button id="play-pause-btn" class="radio-btn play-btn" onclick="window.toggleMusicPlayback ? window.toggleMusicPlayback() : toggleMusic()" title="Play/Pause">
+                            <span class="btn-icon">▶️</span>
+                        </button>
+                        <button class="radio-btn" onclick="playNextTrack()" title="Next Track">
+                            <span class="btn-icon">⏭</span>
+                        </button>
+                        <button class="radio-btn" onclick="window.setGameMode ? window.setGameMode('random') : setGameMode('random')" title="Random Play">
+                            <span class="btn-icon">🔀</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-ui" class="screen">
+            <div id="top-bar">
+                <div class="game-music-controls">
+                    <div class="game-track-info">
+                        <span class="game-track-icon">🎵</span>
+                        <span id="game-track-name" class="game-track-name">Loading...</span>
+                    </div>
+                    <div class="game-music-buttons">
+                        <button class="game-music-btn" onclick="playPreviousTrack()" title="Previous Track">
+                            ⏮
+                        </button>
+                        <button id="game-play-pause-btn" class="game-music-btn" onclick="toggleMusicPlayback()" title="Play/Pause">
+                            ▶️
+                        </button>
+                        <button class="game-music-btn" onclick="playNextTrack()" title="Next Track">
+                            ⏭
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="hud-box">
+                    <div class="hud-lbl">Score</div>
+                    <div id="score" class="hud-val">0</div>
+                </div>
+                <div class="hud-box">
+                    <div class="hud-lbl">Word</div>
+                    <div id="current-word" class="hud-val"></div>
+                </div>
+                <div class="hud-box">
+                    <div class="hud-lbl">Time</div>
+                    <div id="time" class="hud-val">30</div>
+                </div>
+                <button id="quit-btn" onclick="quitGame()">Quit</button>
+            </div>
+            
+            <div id="words-progress">
+                <div class="progress-header">
+                    <span class="progress-label">Words Found</span>
+                    <span id="progress-stats" class="progress-stats">0</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+            </div>
+            
+            <div id="board-wrap">
+                <canvas id="lineCanvas"></canvas>
+                <div id="board"></div>
+            </div>
+        </div>
+
+        <div id="game-over" class="screen">
+            <div class="game-over-content">
+                <div class="game-over-title">Game Over!</div>
+                
+                <div class="final-score-container">
+                    <div id="final-score" class="final-score">0</div>
+                    <div id="new-record-badge" class="record-badge">🏆 NEW RECORD!</div>
+                </div>
+                
+                <div id="score-comparison" class="score-comparison">
+                    <!-- Score comparison will be dynamically inserted here -->
+                </div>
+                
+                <div class="stats">
+                    <div class="stat-box">
+                        <div id="stat-words" class="stat-value">0</div>
+                        <div class="stat-label">Words Found</div>
+                    </div>
+                    <div class="stat-box">
+                        <div id="stat-daily" class="stat-value">0</div>
+                        <div class="stat-label">Daily Best</div>
+                    </div>
+                    <div class="stat-box">
+                        <div id="stat-current-settings" class="stat-value">0</div>
+                        <div class="stat-label">Settings Best</div>
+                    </div>
+                    <div class="stat-box">
+                        <div id="stat-alltime" class="stat-value">0</div>
+                        <div class="stat-label">All-Time Best</div>
+                    </div>
+                </div>
+                
+                <div class="word-length-chart">
+                    <div class="word-chart-header">Word Length Distribution</div>
+                    <div id="word-chart-container" class="word-chart-container"></div>
+                </div>
+                
+                <div class="game-board-section">
+                    <div class="game-board-header">Game Board</div>
+                    <div id="game-over-board-wrap" class="game-board-wrap">
+                        <canvas id="game-over-lineCanvas"></canvas>
+                        <div id="game-over-board" class="game-board"></div>
+                    </div>
+                </div>
+                
+                <div class="word-list-container">
+                    <div class="word-list-header">All Possible Words</div>
+                    <div id="word-list" class="word-list"></div>
+                </div>
+                
+                <button class="menu-btn primary" onclick="playAgain()">Play Again</button>
+                <button class="menu-btn" onclick="showScreen('main-menu')">Main Menu</button>
+            </div>
+        </div>
     </div>
 
-    <div id="main-menu" class="screen active">
-      <div class="main-menu-content">
-        <div class="title-container">
-          <div class="title">Boggle Party</div>
-          <div class="subtitle">Find words, score points, have fun!</div>
-        </div>
+    <canvas id="particleCanvas"></canvas>
 
-        <div class="highscores-container">
-          <div class="highscore-box">
-            <div class="highscore-label" id="daily-highscore-label">Daily Best</div>
-            <div id="daily-highscore" class="highscore-value">0</div>
-          </div>
-          <div class="highscore-box">
-            <div class="highscore-label" id="alltime-highscore-label">All-Time Best</div>
-            <div id="alltime-highscore" class="highscore-value">0</div>
-          </div>
-        </div>
-
-        <div class="menu-buttons">
-          <button class="menu-btn primary" onclick="startGame()">
-            🚀 Start Game
-          </button>
-        </div>
-
-        <div class="settings-container">
-          <div class="settings-section">
-            <div class="section-title">Game Settings</div>
-
-            <div class="setting-group">
-              <div class="setting-label">Grid Size</div>
-              <div class="toggle-group">
-                <button class="toggle-btn size-btn active" data-size="4" onclick="setGridSize(4)">4×4</button>
-                <button class="toggle-btn size-btn" data-size="5" onclick="setGridSize(5)">5×5</button>
-              </div>
-            </div>
-
-            <div class="setting-group">
-              <div class="setting-label">Time Limit</div>
-              <div class="toggle-group time-group">
-                <button class="toggle-btn time-btn active" data-time="30" onclick="setTimeLimit(30)">30s</button>
-                <button class="toggle-btn time-btn" data-time="60" onclick="setTimeLimit(60)">60s</button>
-                <button class="toggle-btn time-btn" data-time="90" onclick="setTimeLimit(90)">90s</button>
-                <button class="toggle-btn time-btn" data-time="120" onclick="setTimeLimit(120)">2m</button>
-                <button class="toggle-btn time-btn" data-time="180" onclick="setTimeLimit(180)">3m</button>
-                <button class="toggle-btn time-btn" data-time="0" onclick="setTimeLimit(0)">∞</button>
-              </div>
-            </div>
-
-            <div class="setting-group">
-              <div class="setting-label">Min Word Length</div>
-              <div class="toggle-group">
-                <button class="toggle-btn length-btn active" data-length="3" onclick="setMinLength(3)">3+</button>
-                <button class="toggle-btn length-btn" data-length="4" onclick="setMinLength(4)">4+</button>
-                <button class="toggle-btn length-btn" data-length="5" onclick="setMinLength(5)">5+</button>
-                <button class="toggle-btn length-btn" data-length="6" onclick="setMinLength(6)">6+</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="settings-section">
-            <div class="section-title">Audio Settings</div>
-
-            <div class="setting-group">
-              <div class="setting-label">Sound Effects</div>
-              <div class="slider-group">
-                <input type="range" id="ui-volume-slider" class="volume-slider" min="0" max="100" value="70">
-                <span id="ui-volume-value" class="slider-value">70%</span>
-              </div>
-            </div>
-
-            <div class="setting-group">
-              <div class="setting-label">Background Music</div>
-              <div class="slider-group">
-                <input type="range" id="music-volume-slider" class="volume-slider" min="0" max="100" value="50">
-                <span id="music-volume-value" class="slider-value">50%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="radio-player">
-          <div class="radio-display">
-            <div class="radio-title">Background Music</div>
-            <div class="track-info">
-              <div class="track-icon">🎵</div>
-              <div class="track-details">
-                <div id="current-track-name" class="track-name">Loading Music...</div>
-                <div id="track-mode" class="track-mode">Random Play</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="radio-controls">
-            <button class="radio-btn" onclick="playPreviousTrack()" title="Previous Track">
-              <span class="btn-icon">⏮</span>
-            </button>
-            <button id="play-pause-btn" class="radio-btn play-btn" onclick="toggleMusicPlayback()" title="Play/Pause">
-              <span class="btn-icon">▶</span>
-            </button>
-            <button class="radio-btn" onclick="playNextTrack()" title="Next Track">
-              <span class="btn-icon">⏭</span>
-            </button>
-            <button class="radio-btn" onclick="setGameMode('random')" title="Random Play">
-              <span class="btn-icon">🔀</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="game-ui" class="screen">
-      <div id="top-bar">
-        <div class="game-music-controls">
-          <div class="game-track-info">
-            <button id="game-play-pause-btn" class="game-music-btn-simple" onclick="toggleMusicPlayback()" title="Play/Pause">
-              <span class="btn-icon">▶️</span>
-            </button>
-            <span id="game-track-name" class="game-track-name">Loading...</span>
-          </div>
-        </div>
-
-        <div class="hud-box">
-          <div class="hud-lbl">Score</div>
-          <div id="score" class="hud-val">0</div>
-        </div>
-        <div class="hud-box">
-          <div class="hud-lbl">Word</div>
-          <div id="current-word" class="hud-val"></div>
-        </div>
-        <div class="hud-box">
-          <div class="hud-lbl">Time</div>
-          <div id="time" class="hud-val">30</div>
-        </div>
-        <button id="quit-btn" onclick="quitGame()">Quit</button>
-      </div>
-
-      <div id="words-progress">
-        <div class="progress-header">
-          <span class="progress-label">Words Found</span>
-          <span id="progress-stats" class="progress-stats">0</span>
-        </div>
-        <div class="progress-bar">
-          <div id="progress-fill" class="progress-fill"></div>
-        </div>
-      </div>
-
-      <div id="board-wrap">
-        <canvas id="lineCanvas"></canvas>
-        <div id="board"></div>
-      </div>
-    </div>
-
-    <div id="game-over" class="screen">
-      <div class="game-over-content">
-        <div class="game-over-title">Game Over!</div>
-
-        <div class="final-score-container">
-          <div id="final-score" class="final-score">0</div>
-          <div id="new-record-badge" class="record-badge">🏆 NEW RECORD!</div>
-        </div>
-
-        <div id="score-comparison" class="score-comparison"></div>
-
-        <div class="stats">
-          <div class="stat-box">
-            <div id="stat-words" class="stat-value">0</div>
-            <div class="stat-label">Words Found</div>
-          </div>
-          <div class="stat-box">
-            <div id="stat-daily" class="stat-value">0</div>
-            <div class="stat-label" id="daily-label">Daily Score Best</div>
-          </div>
-          <div class="stat-box">
-            <div id="stat-current-settings" class="stat-value">0</div>
-            <div class="stat-label" id="settings-label">Settings Score Best</div>
-          </div>
-          <div class="stat-box">
-            <div id="stat-alltime" class="stat-value">0</div>
-            <div class="stat-label" id="alltime-label">All-Time Score Best</div>
-          </div>
-        </div>
-
-        <div class="word-length-chart">
-          <div class="word-chart-header">Word Length Distribution</div>
-          <div id="word-chart-container" class="word-chart-container"></div>
-        </div>
-
-        <div class="game-board-section">
-          <div class="game-board-header">Game Board</div>
-          <div id="game-over-board-wrap" class="game-board-wrap">
-            <canvas id="game-over-lineCanvas"></canvas>
-            <div id="game-over-board" class="game-board"></div>
-          </div>
-        </div>
-
-        <div class="word-list-container">
-          <div class="word-list-header">All Possible Words</div>
-          <div id="word-list" class="word-list"></div>
-        </div>
-
-        <button class="menu-btn primary" onclick="playAgain()">Play Again</button>
-        <button class="menu-btn" onclick="showScreen('main-menu')">Main Menu</button>
-      </div>
-    </div>
-  </div>
-
-  <canvas id="particleCanvas"></canvas>
-
-  <script src="audio.js"></script>
-  <script src="game-core.js"></script>
-  <script src="screens.js"></script>
-  <script src="mobile.js"></script>
+    <script src="audio.js"></script>
+    <script src="game-core.js"></script>
+    <script src="screens.js"></script>
 </body>
 </html>
