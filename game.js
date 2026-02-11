@@ -314,8 +314,18 @@ async function loadDictionary() {
 }
 
 async function loadFallbackDictionary() {
-    // Fallback dictionary code remains the same (from previous version)
-    // ... (keeping it concise since it's long)
+    // Fallback dictionary
+    const fallbackWords = [
+        "THE", "AND", "FOR", "ARE", "BUT", "NOT", "YOU", "ALL", "ANY", "CAN", "HAD", "HAS", "HIM", "HIS", "HER", "ITS", "NOW", "OUR", "SEE", "TWO", "WAY", "WHO", "DID", "GET", "LET", "MAN", "MAT", "OUT", "PUT", "RAN", "RUN", "SAY", "SHE", "SIT", "TOO", "USE", "YES", "YET", "ASK", "BAD", "BAT", "BED", "BET", "BIG", "BOX", "BOY", "BUS", "BUY", "CAR", "CAT", "CUP", "CUT", "DAY", "DOG", "EAR", "EAT", "EGG", "EYE", "FAR", "FEW", "FLY", "FUN", "GOT", "HAT", "HOT", "HOW", "INK", "JAR", "JOB", "KEY", "KIT", "LAW", "LAY", "LEG", "LIE", "LOW", "MAP", "MAY", "MIX", "MOM", "MUD", "NET", "NEW", "NUT", "OFF", "OLD", "ONE", "OWN", "PAY", "PEN", "PET", "PIE", "PIG", "POT", "RAT", "RED", "ROW", "RUG", "SAD", "SEA", "SET", "SIX", "SKY", "SON", "SUN", "TAX", "TEA", "TEN", "TIE", "TOE", "TOP", "TOY", "TRY", "VAN", "WAR", "WET", "WIN", "WHY", "ZOO"
+    ];
+    
+    for (let word of fallbackWords) {
+        dictionaryTrie.insert(word);
+        dictionarySet.add(word);
+    }
+    
+    gameState.dictionaryLoaded = true;
+    gameState.dictionarySize = fallbackWords.length;
 }
 
 // ==================== WORD VALIDATION ====================
@@ -464,7 +474,7 @@ function findLongestWord(words) {
 
 // ==================== INITIALIZATION ====================
 
-// DOM Elements (same as before)
+// DOM Elements
 const elements = {
     mainMenu: document.getElementById('main-menu'),
     gameUI: document.getElementById('game-ui'),
@@ -486,17 +496,15 @@ const elements = {
     newRecordBadge: document.getElementById('new-record-badge'),
     bestScoreElement: document.getElementById('best-score'),
     totalWordsElement: document.getElementById('total-words'),
-    longestWordElement: document.getElementById('longest-word'),
-    totalPointsElement: document.getElementById('total-points'),
     percentageFoundElement: document.getElementById('percentage-found'),
-    summaryBoard: document.getElementById('summary-board'),
-    wordChart: document.getElementById('word-chart'),
-    foundWordsSummary: document.getElementById('found-words-summary'),
     playAgainButton: document.getElementById('play-again'),
     backToMenuButton: document.getElementById('back-to-menu'),
     loadingBar: document.querySelector('.loading-bar'),
     loadingPercentage: document.querySelector('.loading-percentage'),
-    loadingStatus: document.getElementById('loading-status')
+    loadingStatus: document.getElementById('loading-status'),
+    // New elements for summary board
+    summaryBoard: document.getElementById('summary-board'),
+    longestWordLabel: document.getElementById('longest-word-label')
 };
 
 async function initializeGame() {
@@ -1161,206 +1169,157 @@ function updateSummaryScreen() {
     let finalScore;
     let finalPercentage;
     
+    let totalFoundScore = 0;
+    gameState.wordsFound.forEach(score => {
+        totalFoundScore += score;
+    });
+
     if (gameState.isEndlessMode) {
-        // For endless mode, score is the percentage found
-        let totalFoundScore = 0;
-        gameState.wordsFound.forEach(score => {
-            totalFoundScore += score;
-        });
-        
         finalPercentage = gameState.totalPossibleScore > 0 ? 
             Math.round((totalFoundScore / gameState.totalPossibleScore) * 100) : 0;
         finalScore = finalPercentage;
-        
-        elements.finalScoreElement.textContent = '0%';
-        setTimeout(() => {
-            elements.finalScoreElement.textContent = `${finalPercentage}%`;
-            elements.finalScoreElement.style.transform = 'scale(1.2)';
-            setTimeout(() => elements.finalScoreElement.style.transform = 'scale(1)', 300);
-        }, 200);
+        elements.finalScoreElement.textContent = `${finalPercentage}%`;
     } else {
         finalScore = gameState.score;
-        elements.finalScoreElement.textContent = '0';
-        setTimeout(() => {
-            elements.finalScoreElement.textContent = finalScore;
-            elements.finalScoreElement.style.transform = 'scale(1.2)';
-            setTimeout(() => elements.finalScoreElement.style.transform = 'scale(1)', 300);
-        }, 200);
+        elements.finalScoreElement.textContent = finalScore;
     }
     
-    // Calculate stats
-    let longestFoundWord = '';
-    let totalFoundScore = 0;
-    gameState.wordsFound.forEach((score, word) => {
-        totalFoundScore += score;
-        if (word.length > longestFoundWord.length) {
-            longestFoundWord = word;
-        }
-    });
+    // Update Stats
+    if(elements.totalWordsElement) elements.totalWordsElement.textContent = `${gameState.wordsFound.size} / ${gameState.allPossibleWords.size}`;
+    const percentage = gameState.totalPossibleScore > 0 ? 
+        Math.round((totalFoundScore / gameState.totalPossibleScore) * 100) : 0;
+    if(elements.percentageFoundElement) elements.percentageFoundElement.textContent = `${percentage}%`;
     
-    const stats = [
-        { element: elements.totalWordsElement, value: gameState.wordsFound.size },
-        { element: elements.longestWordElement, value: longestFoundWord || '-' },
-        { element: elements.totalPointsElement, value: totalFoundScore },
-        { element: elements.percentageFoundElement, value: `${Math.round((gameState.wordsFound.size / gameState.allPossibleWords.size) * 100)}%` }
-    ];
-    
-    stats.forEach((stat, index) => {
-        setTimeout(() => {
-            stat.element.textContent = stat.value;
-            stat.element.style.transform = 'translateY(-10px)';
-            stat.element.style.opacity = '0';
-            setTimeout(() => {
-                stat.element.style.transform = 'translateY(0)';
-                stat.element.style.opacity = '1';
-            }, 10);
-        }, 300 + (index * 100));
-    });
-    
-    // Update high score
+    // Update High Score logic
     const highScoreKey = gameState.isEndlessMode ? 
         `boggle_endless_${gameState.gridSize}x${gameState.gridSize}` :
         `boggle_highscore_${gameState.gridSize}x${gameState.gridSize}`;
     
     let currentHighScore = localStorage.getItem(highScoreKey);
+    let isRecord = false;
     
     if (gameState.isEndlessMode) {
-        // Parse percentage high score (e.g., "85%")
         const currentPercentage = currentHighScore ? parseInt(currentHighScore) : 0;
         if (finalPercentage > currentPercentage) {
             localStorage.setItem(highScoreKey, `${finalPercentage}%`);
-            setTimeout(() => {
-                elements.newRecordBadge.style.display = 'block';
-                elements.newRecordBadge.style.animation = 'trophyBounce 1s ease infinite';
-                elements.newRecordBadge.innerHTML = '<i class="fas fa-trophy"></i> Best %!';
-            }, 800);
+            isRecord = true;
             elements.bestScoreElement.textContent = `${finalPercentage}%`;
         } else {
-            elements.newRecordBadge.style.display = 'none';
             elements.bestScoreElement.textContent = currentHighScore || '0%';
         }
     } else {
-        // Normal mode high score
         const currentScore = parseInt(currentHighScore) || 0;
         if (finalScore > currentScore) {
             localStorage.setItem(highScoreKey, finalScore.toString());
-            setTimeout(() => {
-                elements.newRecordBadge.style.display = 'block';
-                elements.newRecordBadge.style.animation = 'trophyBounce 1s ease infinite';
-            }, 800);
+            isRecord = true;
             elements.bestScoreElement.textContent = finalScore;
         } else {
-            elements.newRecordBadge.style.display = 'none';
             elements.bestScoreElement.textContent = currentScore;
         }
     }
+
+    elements.newRecordBadge.style.display = isRecord ? 'block' : 'none';
+    if(isRecord) elements.newRecordBadge.style.animation = 'trophyBounce 1s ease infinite';
     
     loadHighScores();
+    renderUnifiedResults();
     
+    // === NEW: Render the summary board with highlighted longest word ===
     renderSummaryBoard();
-    renderFoundWordsSummary();
-    renderAllPossibleWords();
 }
 
+// === NEW FUNCTION: Renders the static board on the summary screen and highlights the longest word path ===
 function renderSummaryBoard() {
     if (!elements.summaryBoard) return;
     
     elements.summaryBoard.innerHTML = '';
     elements.summaryBoard.style.gridTemplateColumns = `repeat(${gameState.gridSize}, 1fr)`;
     
+    // Create a set of indices that belong to the longest word path for quick lookup
+    const longestPathIndices = new Set(gameState.longestWordPath.map(tile => tile.index));
+    
     gameState.board.forEach((letter, index) => {
         const tile = document.createElement('div');
-        tile.className = 'game-over-tile';
-        
-        // Check if this tile is part of the longest word
-        const isLongestWordTile = gameState.longestWordPath.some(cell => cell.index === index);
-        if (isLongestWordTile) {
-            tile.classList.add('longest-word');
+        tile.className = 'tile';
+        if (longestPathIndices.has(index)) {
+            tile.classList.add('highlight-longest');
         }
         
-        tile.textContent = letter;
-        tile.style.animation = `fadeInUp 0.5s ease ${index * 0.05}s both`;
+        const content = document.createElement('div');
+        content.className = 'tile-content';
+        content.textContent = letter;
+        tile.appendChild(content);
+        
+        // No hitbox, no event listeners – purely static
         elements.summaryBoard.appendChild(tile);
     });
-}
-
-function renderFoundWordsSummary() {
-    if (!elements.foundWordsSummary) return;
     
-    elements.foundWordsSummary.innerHTML = '';
-    const foundWords = Array.from(gameState.wordsFound.entries())
-        .sort((a, b) => b[0].length - a[0].length || a[0].localeCompare(b[0]));
-    
-    if (foundWords.length === 0) {
-        elements.foundWordsSummary.innerHTML = '<div class="no-words">No words found</div>';
-    } else {
-        foundWords.forEach(([word, score], index) => {
-            setTimeout(() => {
-                const el = document.createElement('div');
-                el.className = 'word-item found';
-                el.innerHTML = `${word}<span class="word-score">+${score}</span>`;
-                el.style.animation = 'slideInRight 0.4s ease both';
-                elements.foundWordsSummary.appendChild(el);
-            }, index * 50);
-        });
+    // Update the longest word label
+    if (elements.longestWordLabel) {
+        elements.longestWordLabel.textContent = gameState.longestWord || '—';
     }
 }
 
-function renderAllPossibleWords() {
-    // Create container for all words display
-    let allWordsContainer = document.querySelector('.all-words-container');
-    if (!allWordsContainer) {
-        allWordsContainer = document.createElement('div');
-        allWordsContainer.className = 'all-words-container';
+function renderUnifiedResults() {
+    const container = document.getElementById('results-grid');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    const allWords = Array.from(gameState.allPossibleWords.keys());
+    
+    // Group by Length
+    const wordsByLength = {};
+    let maxLength = 0;
+    let minLength = 99;
+
+    allWords.forEach(word => {
+        const len = word.length;
+        if (!wordsByLength[len]) wordsByLength[len] = [];
+        wordsByLength[len].push(word);
+        if (len > maxLength) maxLength = len;
+        if (len < minLength) minLength = len;
+    });
+
+    // Iterate Longest -> Shortest
+    for (let len = maxLength; len >= minLength; len--) {
+        if (!wordsByLength[len]) continue;
+
+        const words = wordsByLength[len].sort();
         
-        // Insert before game-over-actions
-        const gameOverActions = document.querySelector('.game-over-actions');
-        if (gameOverActions) {
-            gameOverActions.parentNode.insertBefore(allWordsContainer, gameOverActions);
-        }
-    }
-    
-    allWordsContainer.innerHTML = `
-        <h3 class="all-words-header">
-            <i class="fas fa-list-ol"></i> All Possible Words (${gameState.allPossibleWords.size})
-        </h3>
-        <div class="all-words-grid" id="all-words-grid"></div>
-    `;
-    
-    const allWordsGrid = document.getElementById('all-words-grid');
-    const allWords = Array.from(gameState.allPossibleWords.entries())
-        .sort((a, b) => b[0].length - a[0].length || a[0].localeCompare(b[0]));
-    
-    allWords.forEach(([word, data], index) => {
-        setTimeout(() => {
-            const el = document.createElement('div');
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'word-length-group';
+        
+        const foundInGroup = words.filter(w => gameState.wordsFound.has(w)).length;
+        
+        const header = document.createElement('div');
+        header.className = 'group-header';
+        header.innerHTML = `
+            <span>${len} Letters</span>
+            <span>${foundInGroup}/${words.length}</span>
+        `;
+        groupDiv.appendChild(header);
+
+        const wordListDiv = document.createElement('div');
+        wordListDiv.className = 'group-words';
+
+        words.forEach((word, index) => {
             const isFound = gameState.wordsFound.has(word);
             const isLongest = word === gameState.longestWord;
             
-            el.className = `word-detail-item ${isFound ? 'found' : 'missed'} ${isLongest ? 'longest' : ''}`;
+            const pill = document.createElement('span');
+            pill.className = `word-pill ${isFound ? 'found' : 'missed'} ${isLongest ? 'longest-highlight' : ''}`;
+            pill.textContent = word;
             
-            if (isLongest) {
-                el.innerHTML = `
-                    <div class="longest-word-label">Longest</div>
-                    ${word}
-                    <span class="word-length">${word.length}</span>
-                `;
-            } else {
-                el.innerHTML = `
-                    ${word}
-                    <span class="word-length">${word.length}</span>
-                `;
-            }
-            
-            el.style.animation = 'slideInRight 0.4s ease both';
-            el.style.animationDelay = `${index * 0.02}s`;
-            
-            // Tooltip with score
-            el.title = `Score: ${data.score}${isFound ? ' ✓' : ''}`;
-            
-            allWordsGrid.appendChild(el);
-        }, index * 20);
-    });
+            pill.style.animation = 'fadeIn 0.3s ease forwards';
+            pill.style.animationDelay = `${index * 0.01}s`;
+
+            wordListDiv.appendChild(pill);
+        });
+
+        groupDiv.appendChild(wordListDiv);
+        container.appendChild(groupDiv);
+    }
 }
 
 // ==================== START THE GAME ====================
