@@ -22,10 +22,8 @@ const CONFIG = {
         'S': 1, 'T': 1, 'U': 1, 'V': 4, 'W': 4, 'X': 8, 'Y': 4, 'Z': 10
     },
     
-    // Dictionary URL - Official Scrabble dictionary
     DICT_URL: "https://raw.githubusercontent.com/redbo/scrabble/master/dictionary.txt",
     
-    // Note frequencies for sound effects (Hz)
     NOTE_FREQUENCIES: {
         C4: 261.63,
         D4: 293.66,
@@ -41,27 +39,53 @@ const CONFIG = {
 };
 
 // ==================== SOUND MANAGER ====================
-
 class SoundManager {
     constructor() {
         this.audioContext = null;
         this.masterVolume = 0.3;
         this.soundEnabled = true;
-        this.init();
+        this.isResumed = false;
+        
+        // Listen for the first user gesture to resume audio
+        const resumeOnFirstClick = () => {
+            this.resume();
+            document.removeEventListener('click', resumeOnFirstClick);
+            document.removeEventListener('touchstart', resumeOnFirstClick);
+        };
+        document.addEventListener('click', resumeOnFirstClick);
+        document.addEventListener('touchstart', resumeOnFirstClick);
     }
     
-    init() {
-        try {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            console.log("Audio context initialized");
-        } catch (e) {
-            console.warn("Web Audio API not supported, sound disabled");
-            this.soundEnabled = false;
+    // Create and resume the audio context (must be called after user gesture)
+    resume() {
+        if (this.isResumed) return;
+        if (!this.audioContext) {
+            try {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log("Audio context initialized");
+            } catch (e) {
+                console.warn("Web Audio API not supported, sound disabled");
+                this.soundEnabled = false;
+                return;
+            }
+        }
+        if (this.audioContext.state === 'suspended') {
+            this.audioContext.resume().then(() => {
+                console.log("Audio context resumed");
+                this.isResumed = true;
+            }).catch(e => console.warn("Failed to resume audio context:", e));
+        } else {
+            this.isResumed = true;
         }
     }
     
     playNote(frequency, duration = 0.2, type = 'sine', volume = 0.3) {
-        if (!this.soundEnabled || !this.audioContext) return;
+        if (!this.soundEnabled) return;
+        if (!this.audioContext) {
+            // Not ready yet – silently ignore (first play will be after gesture)
+            return;
+        }
+        if (this.audioContext.state !== 'running') return;
         
         const oscillator = this.audioContext.createOscillator();
         const gainNode = this.audioContext.createGain();
@@ -79,7 +103,6 @@ class SoundManager {
         oscillator.start(this.audioContext.currentTime);
         oscillator.stop(this.audioContext.currentTime + duration);
         
-        // Visual indicator for sound
         this.showSoundIndicator(type === 'sine' ? 'correct' : 'incorrect');
     }
     
@@ -88,7 +111,6 @@ class SoundManager {
     }
     
     playTileConnect(step) {
-        // Play ascending notes as word grows
         const notes = [CONFIG.NOTE_FREQUENCIES.C4, CONFIG.NOTE_FREQUENCIES.D4, 
                       CONFIG.NOTE_FREQUENCIES.E4, CONFIG.NOTE_FREQUENCIES.F4,
                       CONFIG.NOTE_FREQUENCIES.G4, CONFIG.NOTE_FREQUENCIES.A4,
@@ -98,7 +120,6 @@ class SoundManager {
     }
     
     playWordValid() {
-        // Celebration arpeggio
         const notes = [
             CONFIG.NOTE_FREQUENCIES.C5,
             CONFIG.NOTE_FREQUENCIES.E5,
@@ -116,13 +137,11 @@ class SoundManager {
     }
     
     playWordInvalid() {
-        // Lower pitch, sad sound
         this.playNote(CONFIG.NOTE_FREQUENCIES.C4, 0.3, 'square', 0.2);
         this.showSoundIndicator('incorrect');
     }
     
     playWordDuplicate() {
-        // Different sound for duplicates
         this.playNote(CONFIG.NOTE_FREQUENCIES.A4, 0.25, 'triangle', 0.2);
         this.showSoundIndicator('incorrect');
     }
@@ -151,13 +170,12 @@ class SoundManager {
     toggleSound(enabled) {
         this.soundEnabled = enabled;
         if (enabled && !this.audioContext) {
-            this.init();
+            // Will be created on first user gesture
         }
     }
 }
 
 // ==================== DICTIONARY STRUCTURES ====================
-
 class TrieNode {
     constructor() {
         this.children = new Map();
@@ -217,13 +235,11 @@ class Trie {
     }
 }
 
-// Global dictionary structures
 let dictionaryTrie = new Trie();
 let dictionarySet = new Set();
 let soundManager = new SoundManager();
 
 // ==================== GAME STATE ====================
-
 let gameState = {
     gridSize: 4,
     timeLimit: 180,
@@ -234,7 +250,7 @@ let gameState = {
     wordsFound: new Map(),
     currentWord: "",
     selectedTiles: [],
-    allPossibleWords: new Map(), // word -> score
+    allPossibleWords: new Map(),
     isDragging: false,
     board: [],
     timerInterval: null,
@@ -251,7 +267,6 @@ let gameState = {
 };
 
 // ==================== DICTIONARY LOADING ====================
-
 async function loadDictionary() {
     console.log("Loading dictionary...");
     updateLoadingProgress(20, "Loading dictionary...");
@@ -314,7 +329,6 @@ async function loadDictionary() {
 }
 
 async function loadFallbackDictionary() {
-    // Fallback dictionary
     const fallbackWords = [
         "THE", "AND", "FOR", "ARE", "BUT", "NOT", "YOU", "ALL", "ANY", "CAN", "HAD", "HAS", "HIM", "HIS", "HER", "ITS", "NOW", "OUR", "SEE", "TWO", "WAY", "WHO", "DID", "GET", "LET", "MAN", "MAT", "OUT", "PUT", "RAN", "RUN", "SAY", "SHE", "SIT", "TOO", "USE", "YES", "YET", "ASK", "BAD", "BAT", "BED", "BET", "BIG", "BOX", "BOY", "BUS", "BUY", "CAR", "CAT", "CUP", "CUT", "DAY", "DOG", "EAR", "EAT", "EGG", "EYE", "FAR", "FEW", "FLY", "FUN", "GOT", "HAT", "HOT", "HOW", "INK", "JAR", "JOB", "KEY", "KIT", "LAW", "LAY", "LEG", "LIE", "LOW", "MAP", "MAY", "MIX", "MOM", "MUD", "NET", "NEW", "NUT", "OFF", "OLD", "ONE", "OWN", "PAY", "PEN", "PET", "PIE", "PIG", "POT", "RAT", "RED", "ROW", "RUG", "SAD", "SEA", "SET", "SIX", "SKY", "SON", "SUN", "TAX", "TEA", "TEN", "TIE", "TOE", "TOP", "TOY", "TRY", "VAN", "WAR", "WET", "WIN", "WHY", "ZOO"
     ];
@@ -329,7 +343,6 @@ async function loadFallbackDictionary() {
 }
 
 // ==================== WORD VALIDATION ====================
-
 function isValidWord(word) {
     const cleanWord = word.toUpperCase();
     
@@ -375,14 +388,13 @@ function calculateWordScore(word) {
     }
     
     if (word.length >= 8) {
-        score += word.length * 3; // Bonus for very long words
+        score += word.length * 3;
     }
     
     return score;
 }
 
 // ==================== BOARD ANALYSIS ====================
-
 function findAllPossibleWords() {
     if (!gameState.dictionaryLoaded) return new Map();
     
@@ -390,34 +402,29 @@ function findAllPossibleWords() {
     const gridSize = gameState.gridSize;
     const board = gameState.board;
     
-    // Convert flat board array to 2D grid
     const grid = [];
     for (let i = 0; i < gridSize; i++) {
         grid.push(board.slice(i * gridSize, (i + 1) * gridSize));
     }
     
-    // Directions for adjacency
     const directions = [
         [-1, -1], [-1, 0], [-1, 1],
         [0, -1],           [0, 1],
         [1, -1],  [1, 0],  [1, 1]
     ];
     
-    // Depth-first search to find words
     function dfs(row, col, visited, currentWord, path) {
         visited[row][col] = true;
         const letter = grid[row][col];
         currentWord += letter;
         path.push({row, col, index: row * gridSize + col});
         
-        // Check if current prefix is valid
         if (!isValidPrefix(currentWord)) {
             visited[row][col] = false;
             path.pop();
             return;
         }
         
-        // Check if word is valid and long enough
         if (currentWord.length >= gameState.minWordLength && isValidWord(currentWord)) {
             const score = calculateWordScore(currentWord);
             if (!words.has(currentWord) || score > words.get(currentWord).score) {
@@ -428,7 +435,6 @@ function findAllPossibleWords() {
             }
         }
         
-        // Explore all neighbors
         for (const [dr, dc] of directions) {
             const newRow = row + dr;
             const newCol = col + dc;
@@ -440,12 +446,10 @@ function findAllPossibleWords() {
             }
         }
         
-        // Backtrack
         visited[row][col] = false;
         path.pop();
     }
     
-    // Start DFS from every cell
     for (let row = 0; row < gridSize; row++) {
         for (let col = 0; col < gridSize; col++) {
             const visited = Array(gridSize).fill().map(() => Array(gridSize).fill(false));
@@ -473,8 +477,6 @@ function findLongestWord(words) {
 }
 
 // ==================== INITIALIZATION ====================
-
-// DOM Elements
 const elements = {
     mainMenu: document.getElementById('main-menu'),
     gameUI: document.getElementById('game-ui'),
@@ -491,7 +493,6 @@ const elements = {
     quitButton: document.getElementById('quit-btn'),
     board: document.getElementById('board'),
     currentWordElement: document.getElementById('current-word'),
-    foundWordsList: document.getElementById('found-words-list'),
     finalScoreElement: document.getElementById('final-score'),
     newRecordBadge: document.getElementById('new-record-badge'),
     bestScoreElement: document.getElementById('best-score'),
@@ -502,7 +503,6 @@ const elements = {
     loadingBar: document.querySelector('.loading-bar'),
     loadingPercentage: document.querySelector('.loading-percentage'),
     loadingStatus: document.getElementById('loading-status'),
-    // New elements for summary board
     summaryBoard: document.getElementById('summary-board'),
     longestWordLabel: document.getElementById('longest-word-label')
 };
@@ -512,12 +512,10 @@ async function initializeGame() {
     
     updateLoadingProgress(10, "Loading game assets...");
     
-    // Load sound preferences
     const soundPref = localStorage.getItem('boggle_sound_enabled');
     gameState.soundEnabled = soundPref !== null ? JSON.parse(soundPref) : true;
     soundManager.toggleSound(gameState.soundEnabled);
     
-    // Update sound toggle button in menu
     updateSoundToggle();
     
     updateLoadingProgress(30, "Loading dictionary...");
@@ -558,7 +556,6 @@ function loadHighScores() {
     elements.highscore4x4.textContent = score4x4;
     elements.highscore5x5.textContent = score5x5;
     
-    // Store endless scores for later use
     gameState.endlessHighscore4x4 = endless4x4;
     gameState.endlessHighscore5x5 = endless5x5;
 }
@@ -576,7 +573,6 @@ function updateSoundToggle() {
 }
 
 // ==================== EVENT LISTENERS ====================
-
 function setupEventListeners() {
     elements.startButton.addEventListener('click', () => {
         elements.startButton.style.transform = 'scale(0.95)';
@@ -586,7 +582,6 @@ function setupEventListeners() {
         }, 150);
     });
     
-    // Toggle buttons for game settings
     document.querySelectorAll('.toggle-btn').forEach(button => {
         button.addEventListener('click', function() {
             this.style.transform = 'scale(0.9)';
@@ -594,7 +589,6 @@ function setupEventListeners() {
             
             const group = this.parentElement;
             
-            // Check if this is a sound toggle group
             if (group.classList.contains('sound-group')) {
                 group.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
                 this.classList.add('active');
@@ -606,7 +600,6 @@ function setupEventListeners() {
                 return;
             }
             
-            // Handle other toggle groups
             group.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
             this.classList.add('active');
             
@@ -621,7 +614,6 @@ function setupEventListeners() {
         });
     });
     
-    // Add sound toggle to settings if not exists
     addSoundToggleToSettings();
     
     elements.quitButton.addEventListener('click', quitGame);
@@ -652,7 +644,6 @@ function addSoundToggleToSettings() {
     const settingsContainer = document.querySelector('.settings-container');
     if (!settingsContainer) return;
     
-    // Check if sound toggle already exists
     if (document.querySelector('.sound-group')) return;
     
     const soundSection = document.createElement('div');
@@ -672,7 +663,6 @@ function addSoundToggleToSettings() {
 }
 
 // ==================== SCREEN MANAGEMENT ====================
-
 function switchScreen(screenId) {
     const currentScreen = document.querySelector('.screen.active');
     if (currentScreen) {
@@ -694,7 +684,6 @@ function switchScreen(screenId) {
 }
 
 // ==================== GAME FUNCTIONS ====================
-
 function startGame() {
     console.log("Starting game...");
     
@@ -710,15 +699,12 @@ function startGame() {
     
     gameState.board = generateBoard();
     
-    // Find all possible words
     gameState.allPossibleWords = findAllPossibleWords();
     
-    // Find longest word
     const { longestWord, longestPath } = findLongestWord(gameState.allPossibleWords);
     gameState.longestWord = longestWord;
     gameState.longestWordPath = longestPath;
     
-    // Calculate total possible score
     gameState.totalPossibleScore = 0;
     gameState.allPossibleWords.forEach(data => {
         gameState.totalPossibleScore += data.score;
@@ -731,7 +717,6 @@ function startGame() {
     updateScore();
     elements.currentWordElement.textContent = '';
     elements.currentWordElement.classList.remove('invalid');
-    elements.foundWordsList.innerHTML = '';
     
     if (gameState.isEndlessMode) {
         elements.timerElement.textContent = '∞';
@@ -797,7 +782,6 @@ function updateScore() {
     let displayScore;
     
     if (gameState.isEndlessMode) {
-        // Calculate percentage of total possible score achieved
         let totalFoundScore = 0;
         gameState.wordsFound.forEach(score => {
             totalFoundScore += score;
@@ -808,7 +792,6 @@ function updateScore() {
         
         displayScore = gameState.percentageFound;
         
-        // Update timer display to show percentage
         elements.timerElement.innerHTML = `
             ∞<br>
             <div class="endless-percentage">${gameState.percentageFound}%</div>
@@ -817,7 +800,6 @@ function updateScore() {
         displayScore = gameState.score;
     }
     
-    // Animate score change
     const oldScore = parseInt(elements.scoreElement.textContent) || 0;
     
     if (displayScore > oldScore) {
@@ -834,7 +816,6 @@ function updateScore() {
     elements.scoreElement.textContent = displayScore;
     elements.wordCountElement.textContent = gameState.wordsFound.size;
     
-    // Update progress stats
     const totalPossible = gameState.allPossibleWords.size || 50;
     const foundCount = gameState.wordsFound.size;
     const percentage = Math.min(100, Math.round((foundCount / totalPossible) * 100));
@@ -896,12 +877,10 @@ function stopTimer() {
 }
 
 // ==================== TILE INTERACTION ====================
-
 function getTileAtPosition(x, y) {
     const tiles = document.querySelectorAll('.tile');
     for (const tile of tiles) {
         const rect = tile.getBoundingClientRect();
-        // Changed from 80% to 70% for better diagonal swiping
         const hitboxWidth = rect.width * 0.7;
         const hitboxHeight = rect.height * 0.7;
         const hitboxX = rect.left + (rect.width - hitboxWidth) / 2;
@@ -939,7 +918,6 @@ function handleTileStart(index, event) {
     elements.currentWordElement.textContent = gameState.currentWord;
     elements.currentWordElement.classList.remove('invalid');
     
-    // Play tile select sound
     if (gameState.soundEnabled) {
         soundManager.playTileSelect();
     }
@@ -989,7 +967,6 @@ function handleTileMove(event) {
                 elements.currentWordElement.textContent = gameState.currentWord;
                 elements.currentWordElement.classList.remove('invalid');
                 
-                // Play connection sound with ascending pitch
                 if (gameState.soundEnabled) {
                     soundManager.playTileConnect(gameState.selectedTiles.length);
                 }
@@ -1036,7 +1013,6 @@ function clearSelection() {
 }
 
 // ==================== WORD VALIDATION ====================
-
 function submitWord() {
     if (gameState.selectedTiles.length < gameState.minWordLength) {
         flashTiles('flash-invalid');
@@ -1057,7 +1033,6 @@ function submitWord() {
     
     let word = gameState.currentWord.toUpperCase();
     
-    // Check if word already found
     if (gameState.wordsFound.has(word)) {
         flashTiles('flash-duplicate');
         elements.currentWordElement.style.animation = 'shakeDuplicate 0.5s ease';
@@ -1075,7 +1050,6 @@ function submitWord() {
         return;
     }
     
-    // Check if word is valid
     const isValid = isValidWord(word);
     
     if (!isValid) {
@@ -1096,7 +1070,6 @@ function submitWord() {
         return;
     }
     
-    // Valid word!
     flashTiles('flash-valid');
     elements.currentWordElement.textContent = word;
     elements.currentWordElement.style.color = '#f1f5f9';
@@ -1134,20 +1107,10 @@ function addWord(word) {
     }
     
     updateScore();
-    
-    const wordBadge = document.createElement('div');
-    wordBadge.className = 'word-badge';
-    wordBadge.innerHTML = `${word} <span class="score">+${score}</span>`;
-    wordBadge.style.animation = 'badgePop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-    elements.foundWordsList.appendChild(wordBadge);
-    
-    wordBadge.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    
     clearSelection();
 }
 
 // ==================== GAME OVER ====================
-
 function quitGame() {
     if (confirm('Are you sure you want to quit? Your current progress will be lost.')) {
         endGame();
@@ -1184,13 +1147,11 @@ function updateSummaryScreen() {
         elements.finalScoreElement.textContent = finalScore;
     }
     
-    // Update Stats
     if(elements.totalWordsElement) elements.totalWordsElement.textContent = `${gameState.wordsFound.size} / ${gameState.allPossibleWords.size}`;
     const percentage = gameState.totalPossibleScore > 0 ? 
         Math.round((totalFoundScore / gameState.totalPossibleScore) * 100) : 0;
     if(elements.percentageFoundElement) elements.percentageFoundElement.textContent = `${percentage}%`;
     
-    // Update High Score logic
     const highScoreKey = gameState.isEndlessMode ? 
         `boggle_endless_${gameState.gridSize}x${gameState.gridSize}` :
         `boggle_highscore_${gameState.gridSize}x${gameState.gridSize}`;
@@ -1223,19 +1184,15 @@ function updateSummaryScreen() {
     
     loadHighScores();
     renderUnifiedResults();
-    
-    // === NEW: Render the summary board with highlighted longest word ===
     renderSummaryBoard();
 }
 
-// === NEW FUNCTION: Renders the static board on the summary screen and highlights the longest word path ===
 function renderSummaryBoard() {
     if (!elements.summaryBoard) return;
     
     elements.summaryBoard.innerHTML = '';
     elements.summaryBoard.style.gridTemplateColumns = `repeat(${gameState.gridSize}, 1fr)`;
     
-    // Create a set of indices that belong to the longest word path for quick lookup
     const longestPathIndices = new Set(gameState.longestWordPath.map(tile => tile.index));
     
     gameState.board.forEach((letter, index) => {
@@ -1250,11 +1207,9 @@ function renderSummaryBoard() {
         content.textContent = letter;
         tile.appendChild(content);
         
-        // No hitbox, no event listeners – purely static
         elements.summaryBoard.appendChild(tile);
     });
     
-    // Update the longest word label
     if (elements.longestWordLabel) {
         elements.longestWordLabel.textContent = gameState.longestWord || '—';
     }
@@ -1268,7 +1223,6 @@ function renderUnifiedResults() {
     
     const allWords = Array.from(gameState.allPossibleWords.keys());
     
-    // Group by Length
     const wordsByLength = {};
     let maxLength = 0;
     let minLength = 99;
@@ -1281,7 +1235,6 @@ function renderUnifiedResults() {
         if (len < minLength) minLength = len;
     });
 
-    // Iterate Longest -> Shortest
     for (let len = maxLength; len >= minLength; len--) {
         if (!wordsByLength[len]) continue;
 
@@ -1323,7 +1276,6 @@ function renderUnifiedResults() {
 }
 
 // ==================== START THE GAME ====================
-
 document.addEventListener('DOMContentLoaded', () => {
     switchScreen('loading-screen');
     
