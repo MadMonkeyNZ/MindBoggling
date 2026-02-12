@@ -45,6 +45,7 @@ class SoundManager {
         this.masterVolume = 0.3;
         this.soundEnabled = true;
         this.isResumed = false;
+        this.resumePromise = null;
         
         // Listen for the first user gesture to resume audio
         const resumeOnFirstClick = () => {
@@ -57,35 +58,50 @@ class SoundManager {
     }
     
     // Create and resume the audio context (must be called after user gesture)
+    // Returns a promise that resolves when the context is running.
     resume() {
-        if (this.isResumed) return;
-        if (!this.audioContext) {
-            try {
-                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                console.log("Audio context initialized");
-            } catch (e) {
-                console.warn("Web Audio API not supported, sound disabled");
-                this.soundEnabled = false;
-                return;
+        if (this.isResumed) return Promise.resolve();
+        if (this.resumePromise) return this.resumePromise;
+        
+        this.resumePromise = new Promise((resolve, reject) => {
+            if (!this.audioContext) {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    console.log("Audio context initialized");
+                } catch (e) {
+                    console.warn("Web Audio API not supported, sound disabled");
+                    this.soundEnabled = false;
+                    this.isResumed = true;
+                    resolve();
+                    return;
+                }
             }
-        }
-        if (this.audioContext.state === 'suspended') {
-            this.audioContext.resume().then(() => {
-                console.log("Audio context resumed");
+            
+            if (this.audioContext.state === 'running') {
                 this.isResumed = true;
-            }).catch(e => console.warn("Failed to resume audio context:", e));
-        } else {
-            this.isResumed = true;
-        }
+                resolve();
+            } else if (this.audioContext.state === 'suspended') {
+                this.audioContext.resume().then(() => {
+                    console.log("Audio context resumed");
+                    this.isResumed = true;
+                    resolve();
+                }).catch(e => {
+                    console.warn("Failed to resume audio context:", e);
+                    resolve(); // Still resolve to not block game start
+                });
+            } else {
+                // closed or other state – just resolve
+                this.isResumed = true;
+                resolve();
+            }
+        });
+        
+        return this.resumePromise;
     }
     
     playNote(frequency, duration = 0.2, type = 'sine', volume = 0.3) {
         if (!this.soundEnabled) return;
-        if (!this.audioContext) {
-            // Not ready yet – silently ignore (first play will be after gesture)
-            return;
-        }
-        if (this.audioContext.state !== 'running') return;
+        if (!this.audioContext || this.audioContext.state !== 'running') return;
         
         const oscillator = this.audioContext.createOscillator();
         const gainNode = this.audioContext.createGain();
@@ -574,12 +590,12 @@ function updateSoundToggle() {
 
 // ==================== EVENT LISTENERS ====================
 function setupEventListeners() {
-    elements.startButton.addEventListener('click', () => {
+    elements.startButton.addEventListener('click', async () => {
         elements.startButton.style.transform = 'scale(0.95)';
         setTimeout(() => {
             elements.startButton.style.transform = 'scale(1)';
-            startGame();
         }, 150);
+        await startGame();
     });
     
     document.querySelectorAll('.toggle-btn').forEach(button => {
@@ -617,12 +633,12 @@ function setupEventListeners() {
     addSoundToggleToSettings();
     
     elements.quitButton.addEventListener('click', quitGame);
-    elements.playAgainButton.addEventListener('click', () => {
+    elements.playAgainButton.addEventListener('click', async () => {
         elements.playAgainButton.style.transform = 'scale(0.95)';
         setTimeout(() => {
             elements.playAgainButton.style.transform = 'scale(1)';
-            startGame();
         }, 150);
+        await startGame();
     });
     
     elements.backToMenuButton.addEventListener('click', () => {
@@ -684,8 +700,13 @@ function switchScreen(screenId) {
 }
 
 // ==================== GAME FUNCTIONS ====================
-function startGame() {
+async function startGame() {
     console.log("Starting game...");
+    
+    // Ensure audio is ready (user gesture)
+    if (gameState.soundEnabled) {
+        await soundManager.resume();
+    }
     
     gameState.isPlaying = true;
     gameState.score = 0;
