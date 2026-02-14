@@ -9,7 +9,6 @@
 </head>
 <body>
     <div id="app">
-        <!-- Main Menu -->
         <div id="main-menu" class="screen active">
             <div class="main-menu-content">
                 <div class="title-container">
@@ -79,7 +78,6 @@
             </div>
         </div>
         
-        <!-- Game Screen -->
         <div id="game-ui" class="screen">
             <div id="top-bar">
                 <div class="hud-box">
@@ -120,16 +118,8 @@
                 <div class="current-word-label">Current Word</div>
                 <div id="current-word" class="current-word"></div>
             </div>
-            
-            <div id="found-words" class="found-words-section">
-                <h3><i class="fas fa-list"></i> Found Words</h3>
-                <div id="found-words-list" class="word-list-container">
-                    <!-- Words will appear here -->
-                </div>
-            </div>
         </div>
         
-        <!-- Game Over Screen -->
         <div id="game-over" class="screen">
             <div class="game-over-content">
                 <h2 class="game-over-title">Game Over!</h2>
@@ -144,7 +134,7 @@
                 <div class="score-comparison">
                     <div class="record-message">
                         <i class="fas fa-crown record-icon"></i>
-                        <div class="record-text">Best Score: <span id="best-score">0</span></div>
+                        <div class="record-text">Best: <span id="best-score">0</span></div>
                     </div>
                 </div>
                 
@@ -154,42 +144,24 @@
                         <div class="stat-label">Words Found</div>
                     </div>
                     <div class="stat-box">
-                        <div id="longest-word" class="stat-value">-</div>
-                        <div class="stat-label">Longest Word</div>
-                    </div>
-                    <div class="stat-box">
-                        <div id="total-points" class="stat-value">0</div>
-                        <div class="stat-label">Total Points</div>
-                    </div>
-                    <div class="stat-box">
                         <div id="percentage-found" class="stat-value">0%</div>
                         <div class="stat-label">Completion</div>
                     </div>
                 </div>
-                
-                <div class="game-board-section">
-                    <h3 class="game-board-header">Final Board</h3>
-                    <div class="game-board-wrap">
-                        <div id="summary-board" class="game-board"></div>
+
+                <!-- Summary board with longest word highlighted -->
+                <div class="summary-board-section">
+                    <h3 class="section-title">Longest Word: <span id="longest-word-label"></span></h3>
+                    <div id="summary-board-wrap" class="board-wrap summary-board-wrap">
+                        <div id="summary-board" class="board summary-board"></div>
                     </div>
                 </div>
-                
-                <!-- All Possible Words Section -->
-                <div class="word-length-chart">
-                    <h3 class="word-list-header">Word Length Distribution</h3>
-                    <div id="word-chart" class="word-chart-container">
-                        <!-- Chart will be inserted here -->
-                    </div>
+
+                <div class="results-container">
+                    <h3 class="section-title" style="text-align:center; color:#0ea5e9; margin-bottom:15px;">Word Results</h3>
+                    <div id="results-grid" class="results-grid">
+                        </div>
                 </div>
-                
-                <div class="word-list-container">
-                    <h3 class="word-list-header">Found Words</h3>
-                    <div id="found-words-summary" class="word-grid">
-                        <!-- Found words summary -->
-                    </div>
-                </div>
-                
-                <!-- All Possible Words will be inserted here dynamically -->
                 
                 <div class="game-over-actions">
                     <button id="play-again" class="menu-btn primary">
@@ -202,7 +174,6 @@
             </div>
         </div>
         
-        <!-- Loading Screen -->
         <div id="loading-screen" class="screen">
             <div class="loading-content">
                 <h2 class="loading-title">Loading Game...</h2>
