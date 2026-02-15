@@ -290,6 +290,27 @@ body {
   transform: translateY(-1px);
 }
 
+/* Next track button */
+#next-track-btn {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #94a3b8;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#next-track-btn:hover {
+  background: rgba(255,255,255,0.2);
+  color: #0ea5e9;
+  transform: scale(1.05);
+}
+#next-track-btn:active {
+  transform: scale(0.95);
+}
+
 /* ================= GAME UI ================= */
 #game-ui {
   display: flex;
@@ -523,7 +544,7 @@ body {
     inset 0 2px 4px rgba(255, 255, 255, 0.8),
     inset 0 -2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  overflow: hidden;
+  overflow: visible;  /* Allow smoke to show outside */
   min-height: 60px;
   transform: translateZ(0);
   border: 1px solid rgba(255, 255, 255, 0.5);
@@ -549,6 +570,39 @@ body {
   z-index: 1;
 }
 
+/* Smoke effect for selected multiplier tiles */
+.tile.multiplier-2.selected::after,
+.tile.multiplier-3.selected::after {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.4) 40%, transparent 70%);
+  filter: blur(12px);
+  opacity: 0.7;
+  z-index: -1;
+  animation: smokeDrift 0.8s infinite alternate ease-in-out;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+@keyframes smokeDrift {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+  100% { transform: translate(-5px, -8px) scale(1.5); opacity: 0.9; }
+}
+
+/* Multiplier tile backgrounds */
+.tile.multiplier-2 {
+  background: linear-gradient(145deg, #ffd966, #f9c74f);
+  color: #0f172a;
+  box-shadow: 0 6px 0 #b68b40, inset 0 2px 4px rgba(255,255,255,0.8), inset 0 -2px 4px rgba(0,0,0,0.1);
+}
+
+.tile.multiplier-3 {
+  background: linear-gradient(145deg, #c77dff, #b963f7);
+  color: #0f172a;
+  box-shadow: 0 6px 0 #7b4c9e, inset 0 2px 4px rgba(255,255,255,0.8), inset 0 -2px 4px rgba(0,0,0,0.1);
+}
+
 .tile.hover {
   transform: scale(1.05);
   box-shadow: 0 8px 0 rgba(0, 0, 0, 0.2);
@@ -565,6 +619,28 @@ body {
     inset 0 2px 4px rgba(255, 255, 255, 0.4),
     inset 0 -2px 4px rgba(0, 0, 0, 0.2) !important;
   animation: selectedPulse 2s infinite;
+}
+
+/* Selected multiplier tiles – aggressive fizzy effect + smoke */
+.tile.multiplier-2.selected {
+  background: linear-gradient(145deg, #fbbf24, #f59e0b) !important;
+  animation: fizz 0.4s infinite cubic-bezier(0.25, 0.1, 0.25, 1);
+  box-shadow: 0 0 30px #fbbf24, 0 8px 20px rgba(245,158,11,0.3), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.2) !important;
+}
+
+.tile.multiplier-3.selected {
+  background: linear-gradient(145deg, #d946ef, #c026d3) !important;
+  animation: fizz 0.4s infinite cubic-bezier(0.25, 0.1, 0.25, 1);
+  box-shadow: 0 0 30px #d946ef, 0 8px 20px rgba(217,70,239,0.3), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.2) !important;
+}
+
+@keyframes fizz {
+  0% { transform: scale(1) rotate(0deg); box-shadow: 0 0 20px currentColor, 0 0 10px white; }
+  20% { transform: scale(1.3) rotate(10deg); box-shadow: 0 0 60px currentColor, 0 0 30px white; }
+  40% { transform: scale(1.1) rotate(-8deg); box-shadow: 0 0 40px currentColor, 0 0 20px white; }
+  60% { transform: scale(1.4) rotate(15deg); box-shadow: 0 0 70px currentColor, 0 0 35px white; }
+  80% { transform: scale(1.2) rotate(-12deg); box-shadow: 0 0 50px currentColor, 0 0 25px white; }
+  100% { transform: scale(1) rotate(0deg); box-shadow: 0 0 20px currentColor, 0 0 5px white; }
 }
 
 @keyframes selectedPulse {

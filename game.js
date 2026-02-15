@@ -31,6 +31,24 @@ const CONFIG = {
     }
 };
 
+// Background music tracks – edit these to match your files in the "audio" folder
+const BACKGROUND_TRACKS = [
+    'audio/game1.mp3',
+    'audio/game2.mp3',
+    'audio/game3.mp3',
+    'audio/game4.mp3',
+    'audio/game5.mp3',
+    'audio/game6.mp3',
+    'audio/game7.mp3',
+    'audio/game8.mp3',
+    'audio/game9.mp3',
+    'audio/game10.mp3'
+];
+
+let backgroundMusic = null;
+let musicEnabled = false;
+let currentTrackIndex = 0;
+
 // Multiplier chances: 80% normal, 15% double, 5% triple
 const MULTIPLIER_CHANCES = [
     { value: 1, prob: 0.8 },
@@ -189,6 +207,65 @@ class SoundManager {
     toggleSound(enabled) {
         this.soundEnabled = enabled;
     }
+}
+
+// ==================== BACKGROUND MUSIC ====================
+function initMusic() {
+    if (backgroundMusic) return;
+    backgroundMusic = new Audio();
+    backgroundMusic.loop = true;        // Make tracks loop
+    backgroundMusic.volume = 0.2;
+    loadTrack(currentTrackIndex);
+}
+
+function loadTrack(index) {
+    if (!backgroundMusic) return;
+    if (index < 0 || index >= BACKGROUND_TRACKS.length) index = 0;
+    currentTrackIndex = index;
+    backgroundMusic.src = BACKGROUND_TRACKS[currentTrackIndex];
+    backgroundMusic.load();
+}
+
+function playMusic() {
+    if (!backgroundMusic || !musicEnabled) return;
+    backgroundMusic.play().catch(e => {
+        console.log('Music autoplay blocked – waiting for user interaction', e);
+    });
+}
+
+function pauseMusic() {
+    if (backgroundMusic) backgroundMusic.pause();
+}
+
+function nextTrack() {
+    if (!backgroundMusic) initMusic();
+    currentTrackIndex = (currentTrackIndex + 1) % BACKGROUND_TRACKS.length;
+    loadTrack(currentTrackIndex);
+    if (musicEnabled) playMusic();
+    localStorage.setItem('boggle_music_track', currentTrackIndex);
+    updateMusicToggle();
+}
+
+function toggleMusic(enable) {
+    musicEnabled = enable;
+    localStorage.setItem('boggle_music_enabled', JSON.stringify(musicEnabled));
+    if (musicEnabled) {
+        if (!backgroundMusic) initMusic();
+        playMusic();
+    } else {
+        pauseMusic();
+    }
+    updateMusicToggle();
+}
+
+function updateMusicToggle() {
+    const musicGroup = document.querySelector('.toggle-group.music-group');
+    if (!musicGroup) return;
+    musicGroup.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+    const activeBtn = musicEnabled ?
+        musicGroup.querySelector('.toggle-btn[data-music="on"]') :
+        musicGroup.querySelector('.toggle-btn[data-music="off"]');
+    if (activeBtn) activeBtn.classList.add('active');
 }
 
 // ==================== DICTIONARY STRUCTURES ====================
@@ -594,6 +671,14 @@ async function initializeGame() {
     }
     updatePowerupsToggle();
     
+    // Load background music preference
+    const musicPref = localStorage.getItem('boggle_music_enabled');
+    musicEnabled = musicPref !== null ? JSON.parse(musicPref) : false;
+    const savedTrack = localStorage.getItem('boggle_music_track');
+    if (savedTrack !== null) currentTrackIndex = parseInt(savedTrack) % BACKGROUND_TRACKS.length;
+    initMusic();
+    updateMusicToggle();
+    
     updateLoadingProgress(30, "Loading dictionary...");
     await loadDictionary();
     
@@ -679,6 +764,14 @@ function setupEventListeners() {
                 return;
             }
             
+            if (group.classList.contains('music-group')) {
+                group.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                const musicOn = this.dataset.music === 'on';
+                toggleMusic(musicOn);
+                return;
+            }
+            
             group.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
             this.classList.add('active');
             
@@ -691,6 +784,13 @@ function setupEventListeners() {
                 gameState.minWordLength = parseInt(this.dataset.length);
             }
         });
+    });
+    
+    document.getElementById('next-track-btn').addEventListener('click', () => {
+        nextTrack();
+        const btn = document.getElementById('next-track-btn');
+        btn.style.transform = 'scale(0.9)';
+        setTimeout(() => btn.style.transform = 'scale(1)', 150);
     });
     
     elements.quitButton.addEventListener('click', quitGame);
@@ -763,6 +863,11 @@ async function startGame() {
             soundManager.toggleSound(false);
             updateSoundToggle();
         }
+    }
+    
+    // Try to play background music if enabled
+    if (musicEnabled) {
+        playMusic();
     }
     
     gameState.isPlaying = true;
@@ -866,6 +971,11 @@ function renderBoard() {
         tile.className = 'tile';
         tile.dataset.index = index;
         tile.dataset.multiplier = gameState.tileMultipliers[index];
+        
+        // Add multiplier class if power-ups enabled and multiplier > 1
+        if (gameState.powerupsEnabled && gameState.tileMultipliers[index] > 1) {
+            tile.classList.add(`multiplier-${gameState.tileMultipliers[index]}`);
+        }
         
         const content = document.createElement('div');
         content.className = 'tile-content';
@@ -1042,6 +1152,7 @@ function handleTileMove(event) {
     if (tile) {
         const index = parseInt(tile.dataset.index);
         if (!gameState.selectedTiles.includes(index)) {
+            // New tile – must be adjacent to last tile
             const lastIndex = gameState.selectedTiles[gameState.selectedTiles.length - 1];
             const lastRow = Math.floor(lastIndex / gameState.gridSize);
             const lastCol = lastIndex % gameState.gridSize;
@@ -1066,6 +1177,16 @@ function handleTileMove(event) {
                 elements.currentWordElement.style.transform = 'scale(1.05)';
                 setTimeout(() => elements.currentWordElement.style.transform = 'scale(1)', 100);
             }
+        } else {
+            // Already selected – if it's not the last tile, truncate back to it (deselect after)
+            const lastIndex = gameState.selectedTiles[gameState.selectedTiles.length - 1];
+            if (index !== lastIndex) {
+                truncateSelectionTo(index);
+                // Optional: play a small sound or just let visual update
+                elements.currentWordElement.style.transform = 'scale(1.05)';
+                setTimeout(() => elements.currentWordElement.style.transform = 'scale(1)', 100);
+            }
+            // If it's the last tile, do nothing (already selected)
         }
     }
 }
@@ -1101,6 +1222,29 @@ function clearSelection() {
     gameState.currentWord = "";
     elements.currentWordElement.textContent = '';
     elements.currentWordElement.classList.remove('invalid');
+}
+
+// New function to truncate selection when backtracking
+function truncateSelectionTo(index) {
+    const pos = gameState.selectedTiles.indexOf(index);
+    if (pos === -1) return; // shouldn't happen
+
+    // Remove tiles after this position
+    const toRemove = gameState.selectedTiles.slice(pos + 1);
+    toRemove.forEach(idx => {
+        const tile = document.querySelector(`.tile[data-index="${idx}"]`);
+        if (tile) {
+            tile.classList.remove('selected');
+            tile.style.transform = 'scale(1)';
+        }
+    });
+
+    // Update selectedTiles array
+    gameState.selectedTiles = gameState.selectedTiles.slice(0, pos + 1);
+
+    // Rebuild currentWord from remaining tiles
+    gameState.currentWord = gameState.selectedTiles.map(idx => gameState.board[idx]).join('');
+    elements.currentWordElement.textContent = gameState.currentWord;
 }
 
 // ==================== WORD SUBMISSION ====================
@@ -1580,6 +1724,13 @@ function useShuffle() {
         setTimeout(() => {
             tile.style.transform = '';
             tile.querySelector('.tile-content').textContent = gameState.board[idx];
+            
+            // Update multiplier classes
+            tile.classList.remove('multiplier-2', 'multiplier-3');
+            if (gameState.powerupsEnabled && gameState.tileMultipliers[idx] > 1) {
+                tile.classList.add(`multiplier-${gameState.tileMultipliers[idx]}`);
+            }
+            
             // Re-add multiplier badge if needed
             const badge = tile.querySelector('.tile-multiplier');
             if (gameState.powerupsEnabled && gameState.tileMultipliers[idx] > 1) {
@@ -1636,6 +1787,8 @@ function quitGame() {
 function endGame() {
     stopTimer();
     gameState.isPlaying = false;
+    // Optionally pause background music when game ends (or keep playing – your choice)
+    // pauseMusic(); // uncomment if you want music to stop when game ends
     
     document.getElementById('game-ui').style.opacity = '0';
     setTimeout(() => {
