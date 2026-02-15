@@ -39,14 +39,7 @@ class SoundManager {
         this.soundEnabled = true;
         this.isResumed = false;
         this.resumePromise = null;
-        
-        const resumeOnFirstClick = () => {
-            this.resume();
-            document.removeEventListener('click', resumeOnFirstClick);
-            document.removeEventListener('touchstart', resumeOnFirstClick);
-        };
-        document.addEventListener('click', resumeOnFirstClick);
-        document.addEventListener('touchstart', resumeOnFirstClick);
+        // Removed global click/touch listeners – they caused hangs on mobile.
     }
     
     resume() {
@@ -73,12 +66,18 @@ class SoundManager {
                 this.audioContext.resume().then(() => {
                     this.isResumed = true;
                     resolve();
-                }).catch(() => resolve());
+                }).catch(e => {
+                    console.warn("Failed to resume audio context:", e);
+                    // Still resolve so game doesn't hang
+                    resolve();
+                });
             } else {
+                // closed or other state
                 this.isResumed = true;
                 resolve();
             }
         });
+        
         return this.resumePromise;
     }
     
@@ -213,7 +212,7 @@ let gameState = {
     wordsFound: new Map(),
     currentWord: "",
     selectedTiles: [],
-    allPossibleWords: new Map(),      // will be populated asynchronously
+    allPossibleWords: new Map(),
     isDragging: false,
     board: [],
     timerInterval: null,
@@ -227,8 +226,8 @@ let gameState = {
     isEndlessMode: false,
     percentageFound: 0,
     soundEnabled: true,
-    analysisComplete: false,           // new flag
-    maxWordLength: 0                   // will be set after dictionary load
+    analysisComplete: false,
+    maxWordLength: 0
 };
 
 // ==================== DICTIONARY LOADING ====================
@@ -270,7 +269,6 @@ async function loadDictionary() {
             }
         }
         
-        // Determine maximum word length for pruning
         gameState.maxWordLength = 0;
         dictionarySet.forEach(word => {
             if (word.length > gameState.maxWordLength) gameState.maxWordLength = word.length;
@@ -338,7 +336,6 @@ function findAllPossibleWords() {
     const gridSize = gameState.gridSize;
     const board = gameState.board;
     
-    // Build 2D grid
     const grid = [];
     for (let i = 0; i < gridSize; i++) {
         grid.push(board.slice(i * gridSize, (i + 1) * gridSize));
@@ -350,11 +347,9 @@ function findAllPossibleWords() {
         [1,-1],  [1,0],  [1,1]
     ];
     
-    // Prune search: don't explore paths longer than the longest dictionary word
     const maxDepth = gameState.maxWordLength;
     
     function dfs(row, col, visited, currentWord, path) {
-        // Stop if we've exceeded max possible length
         if (currentWord.length > maxDepth) {
             visited[row][col] = false;
             path.pop();
@@ -415,7 +410,7 @@ function findLongestWord(words) {
     return { longestWord, longestPath };
 }
 
-// ==================== TARGETED BOARD SEARCH (for early submissions) ====================
+// ==================== TARGETED BOARD SEARCH ====================
 function isWordOnBoard(word) {
     const gridSize = gameState.gridSize;
     const board = gameState.board;
@@ -440,10 +435,8 @@ function isWordOnBoard(word) {
         const cellLetter = grid[row][col];
         const targetChar = target[idx];
         
-        // Handle QU vs Q
         if (cellLetter === 'QU') {
             if (target[idx] !== 'Q' || idx+1 >= target.length || target[idx+1] !== 'U') return false;
-            // consume QU as two characters
             visited[row][col] = true;
             for (const [dr, dc] of directions) {
                 if (search(row+dr, col+dc, idx+2, visited)) {
@@ -638,7 +631,7 @@ function addSoundToggleToSettings() {
 function switchScreen(screenId) {
     const currentScreen = document.querySelector('.screen.active');
     if (currentScreen) {
-        currentScreen.classList.remove('active');   // immediate removal to unblock touches
+        currentScreen.classList.remove('active');
         currentScreen.style.transform = 'translateY(20px)';
         currentScreen.style.opacity = '0';
     }
@@ -660,7 +653,22 @@ function switchScreen(screenId) {
 async function startGame() {
     console.log("Starting game...");
     
-    if (gameState.soundEnabled) await soundManager.resume();
+    // Resume audio if sound is enabled – with a safety timeout
+    if (gameState.soundEnabled) {
+        try {
+            // Race resume against a 1-second timeout to avoid hanging
+            await Promise.race([
+                soundManager.resume(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Audio resume timeout')), 1000))
+            ]);
+        } catch (e) {
+            console.warn("Audio resume failed or timed out, disabling sound for this session", e);
+            gameState.soundEnabled = false;
+            soundManager.toggleSound(false);
+            // Update the toggle UI to reflect that sound is now off
+            updateSoundToggle();
+        }
+    }
     
     gameState.isPlaying = true;
     gameState.score = 0;
@@ -668,17 +676,17 @@ async function startGame() {
     gameState.selectedTiles = [];
     gameState.currentWord = "";
     gameState.isDragging = false;
-    gameState.allPossibleWords.clear();    // start empty
+    gameState.allPossibleWords.clear();
     gameState.lastScoreTime = 0;
     gameState.isEndlessMode = gameState.timeLimit === 0;
-    gameState.analysisComplete = false;    // analysis not done yet
+    gameState.analysisComplete = false;
     
     gameState.board = generateBoard();
     
     // Show board immediately
     renderBoard();
     switchScreen('game-ui');
-    updateScore();   // shows 0/0 or analyzing message
+    updateScore();
     
     if (gameState.isEndlessMode) {
         elements.timerElement.innerHTML = '∞<br><div class="endless-percentage">0%</div>';
@@ -709,7 +717,7 @@ function analyzeBoardAsync() {
     });
     
     gameState.analysisComplete = true;
-    updateScore();   // refresh progress stats
+    updateScore();
     console.log(`Analysis complete: ${gameState.allPossibleWords.size} possible words`);
 }
 
@@ -782,7 +790,6 @@ function updateScore() {
     elements.scoreElement.textContent = displayScore;
     elements.wordCountElement.textContent = gameState.wordsFound.size;
     
-    // Progress stats – show analysis status
     const totalPossible = gameState.analysisComplete ? gameState.allPossibleWords.size : '?';
     const foundCount = gameState.wordsFound.size;
     elements.progressStats.textContent = `${foundCount}/${totalPossible}`;
@@ -790,7 +797,7 @@ function updateScore() {
         const percentage = Math.min(100, Math.round((foundCount / gameState.allPossibleWords.size) * 100));
         elements.progressFill.style.width = `${percentage}%`;
     } else {
-        elements.progressFill.style.width = '0%'; // or a pulsing "analyzing" style
+        elements.progressFill.style.width = '0%';
     }
 }
 
@@ -977,7 +984,6 @@ function submitWord() {
     
     let word = gameState.currentWord.toUpperCase();
     
-    // Check duplicates first
     if (gameState.wordsFound.has(word)) {
         flashTiles('flash-duplicate');
         elements.currentWordElement.style.animation = 'shakeDuplicate 0.5s ease';
@@ -991,40 +997,27 @@ function submitWord() {
         return;
     }
     
-    // If analysis is complete, we can trust allPossibleWords
+    let valid;
     if (gameState.analysisComplete) {
-        if (!gameState.allPossibleWords.has(word)) {
-            // Not a valid board word
-            flashTiles('flash-invalid');
-            elements.currentWordElement.textContent = word;
-            elements.currentWordElement.style.color = '#ef4444';
-            elements.currentWordElement.classList.add('invalid');
-            if (gameState.soundEnabled) soundManager.playWordInvalid();
-            setTimeout(() => {
-                elements.currentWordElement.style.color = '#f1f5f9';
-                elements.currentWordElement.classList.remove('invalid');
-            }, 400);
-            clearSelection();
-            return;
-        }
+        valid = gameState.allPossibleWords.has(word);
     } else {
-        // Analysis not done – do a targeted board search
-        if (!isValidWord(word) || !isWordOnBoard(word)) {
-            flashTiles('flash-invalid');
-            elements.currentWordElement.textContent = word;
-            elements.currentWordElement.style.color = '#ef4444';
-            elements.currentWordElement.classList.add('invalid');
-            if (gameState.soundEnabled) soundManager.playWordInvalid();
-            setTimeout(() => {
-                elements.currentWordElement.style.color = '#f1f5f9';
-                elements.currentWordElement.classList.remove('invalid');
-            }, 400);
-            clearSelection();
-            return;
-        }
+        valid = isValidWord(word) && isWordOnBoard(word);
     }
     
-    // Valid word
+    if (!valid) {
+        flashTiles('flash-invalid');
+        elements.currentWordElement.textContent = word;
+        elements.currentWordElement.style.color = '#ef4444';
+        elements.currentWordElement.classList.add('invalid');
+        if (gameState.soundEnabled) soundManager.playWordInvalid();
+        setTimeout(() => {
+            elements.currentWordElement.style.color = '#f1f5f9';
+            elements.currentWordElement.classList.remove('invalid');
+        }, 400);
+        clearSelection();
+        return;
+    }
+    
     flashTiles('flash-valid');
     elements.currentWordElement.textContent = word;
     elements.currentWordElement.style.color = '#f1f5f9';
@@ -1038,7 +1031,7 @@ function flashTiles(className) {
         const tile = document.querySelector(`.tile[data-index="${index}"]`);
         if (tile) {
             tile.classList.remove('flash-valid', 'flash-invalid', 'flash-duplicate');
-            void tile.offsetWidth; // force reflow
+            void tile.offsetWidth;
             tile.classList.add(className);
             setTimeout(() => tile.classList.remove(className), 500);
         }
@@ -1046,7 +1039,6 @@ function flashTiles(className) {
 }
 
 function addWord(word) {
-    // If analysis is complete, use the precomputed score; otherwise calculate on the fly
     let score;
     if (gameState.analysisComplete && gameState.allPossibleWords.has(word)) {
         score = gameState.allPossibleWords.get(word).score;
