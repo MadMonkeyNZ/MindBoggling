@@ -1,4 +1,4 @@
-// Boggle Game - Optimized for Mobile (asynchronous word-finding)
+// Boggle Game - Full Feature: Multipliers, Combo, Time Bonuses, Earnable Power-ups, Time-Based Streak, Score Milestones
 
 const CONFIG = {
     DICE_4x4: [
@@ -27,9 +27,16 @@ const CONFIG = {
     NOTE_FREQUENCIES: {
         C4:261.63, D4:293.66, E4:329.63, F4:349.23,
         G4:392.00, A4:440.00, B4:493.88, C5:523.25,
-        D5:587.33, E5:659.25
+        D5:587.33, E5:659.25, C6:1046.50
     }
 };
+
+// Multiplier chances: 80% normal, 15% double, 5% triple
+const MULTIPLIER_CHANCES = [
+    { value: 1, prob: 0.8 },
+    { value: 2, prob: 0.15 },
+    { value: 3, prob: 0.05 }
+];
 
 // ==================== SOUND MANAGER ====================
 class SoundManager {
@@ -39,7 +46,6 @@ class SoundManager {
         this.soundEnabled = true;
         this.isResumed = false;
         this.resumePromise = null;
-        // Removed global click/touch listeners – they caused hangs on mobile.
     }
     
     resume() {
@@ -68,11 +74,9 @@ class SoundManager {
                     resolve();
                 }).catch(e => {
                     console.warn("Failed to resume audio context:", e);
-                    // Still resolve so game doesn't hang
                     resolve();
                 });
             } else {
-                // closed or other state
                 this.isResumed = true;
                 resolve();
             }
@@ -82,21 +86,30 @@ class SoundManager {
     }
     
     playNote(frequency, duration = 0.2, type = 'sine', volume = 0.3) {
+        // Guard against NaN or invalid values
         if (!this.soundEnabled) return;
         if (!this.audioContext || this.audioContext.state !== 'running') return;
+        if (typeof frequency !== 'number' || isNaN(frequency) || frequency <= 0) return;
+        if (typeof volume !== 'number' || isNaN(volume)) volume = 0.3;
+        const finalVolume = volume * this.masterVolume;
+        if (isNaN(finalVolume)) return;
         
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
-        oscillator.frequency.value = frequency;
-        oscillator.type = type;
-        gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(volume * this.masterVolume, this.audioContext.currentTime + 0.01);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + duration);
-        oscillator.start(this.audioContext.currentTime);
-        oscillator.stop(this.audioContext.currentTime + duration);
-        this.showSoundIndicator(type === 'sine' ? 'correct' : 'incorrect');
+        try {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            oscillator.frequency.value = frequency;
+            oscillator.type = type;
+            gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(finalVolume, this.audioContext.currentTime + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + duration);
+            oscillator.start(this.audioContext.currentTime);
+            oscillator.stop(this.audioContext.currentTime + duration);
+            this.showSoundIndicator(type === 'sine' ? 'correct' : 'incorrect');
+        } catch (e) {
+            console.warn("Audio play error:", e);
+        }
     }
     
     playTileSelect() {
@@ -129,6 +142,33 @@ class SoundManager {
     playWordDuplicate() {
         this.playNote(CONFIG.NOTE_FREQUENCIES.A4, 0.25, 'triangle', 0.2);
         this.showSoundIndicator('incorrect');
+    }
+    
+    playWordHigherScore() {
+        // A short happy melody for a higher‑score duplicate
+        const notes = [CONFIG.NOTE_FREQUENCIES.E5, CONFIG.NOTE_FREQUENCIES.G5, CONFIG.NOTE_FREQUENCIES.C5];
+        notes.forEach((note, index) => {
+            setTimeout(() => this.playNote(note, 0.15, 'sine', 0.2), index * 120);
+        });
+        this.showSoundIndicator('correct');
+    }
+    
+    playPowerupUnlock() {
+        // Joyful fanfare – louder and longer
+        const notes = [
+            CONFIG.NOTE_FREQUENCIES.C5,
+            CONFIG.NOTE_FREQUENCIES.E5,
+            CONFIG.NOTE_FREQUENCIES.G5,
+            CONFIG.NOTE_FREQUENCIES.C6
+        ];
+        notes.forEach((note, index) => {
+            setTimeout(() => this.playNote(note, 0.3, 'sine', 0.5), index * 200);
+        });
+    }
+    
+    playBombDrop() {
+        // Low rumble for bomb
+        this.playNote(110, 0.5, 'sawtooth', 0.2);
     }
     
     showSoundIndicator(type) {
@@ -204,7 +244,7 @@ let soundManager = new SoundManager();
 // ==================== GAME STATE ====================
 let gameState = {
     gridSize: 4,
-    timeLimit: 180,
+    timeLimit: 120,
     minWordLength: 3,
     isPlaying: false,
     timeLeft: 0,
@@ -227,7 +267,35 @@ let gameState = {
     percentageFound: 0,
     soundEnabled: true,
     analysisComplete: false,
-    maxWordLength: 0
+    maxWordLength: 0,
+    // New features
+    powerupsEnabled: true,
+    tileMultipliers: [],       // parallel to board
+    combo: 0,
+    comboMultiplier: 1,
+    wordsFoundCount: 0,        // total words found (for shuffle unlock)
+    powerups: {
+        hint: 0,
+        vowelBomb: 0,
+        consonantBomb: 0,
+        shuffle: 0
+    },
+    // Track power-up usage
+    powerupsUsed: {
+        hint: 0,
+        vowelBomb: 0,
+        consonantBomb: 0,
+        shuffle: 0
+    },
+    totalTimeBonus: 0,          // seconds added by time bonuses
+    longestWordFound: "",       // longest word actually found
+    bombPlacementMode: null,   // 'vowel' or 'consonant' or null
+    bombHighlightCells: [],    // indices of current highlight
+    streakTimer: null,
+    streakTimeout: 5000,       // base 5 seconds
+    lastWordTime: 0,
+    scoreMilestone: 100,       // bonus every 100 points
+    nextScoreBonus: 100,
 };
 
 // ==================== DICTIONARY LOADING ====================
@@ -497,17 +565,34 @@ const elements = {
     loadingPercentage: document.querySelector('.loading-percentage'),
     loadingStatus: document.getElementById('loading-status'),
     summaryBoard: document.getElementById('summary-board'),
-    longestWordLabel: document.getElementById('longest-word-label')
+    longestWordLabel: document.getElementById('longest-word-label'),
+    // New power-up summary elements
+    powerupSummary: document.getElementById('powerup-summary'),
+    hintUsed: document.getElementById('powerup-hint-used'),
+    vowelUsed: document.getElementById('powerup-vowel-used'),
+    consonantUsed: document.getElementById('powerup-consonant-used'),
+    shuffleUsed: document.getElementById('powerup-shuffle-used'),
+    timeBonusTotal: document.getElementById('time-bonus-total'),
+    longestWordFound: document.getElementById('longest-word-found'),
+    foundWordsList: document.getElementById('found-words-list')
 };
 
 async function initializeGame() {
     console.log("Initializing Boggle game...");
     updateLoadingProgress(10, "Loading game assets...");
     
+    // Load sound preference
     const soundPref = localStorage.getItem('boggle_sound_enabled');
     gameState.soundEnabled = soundPref !== null ? JSON.parse(soundPref) : true;
     soundManager.toggleSound(gameState.soundEnabled);
     updateSoundToggle();
+    
+    // Load power-ups preference
+    const powerupsPref = localStorage.getItem('boggle_powerups_enabled');
+    if (powerupsPref !== null) {
+        gameState.powerupsEnabled = JSON.parse(powerupsPref);
+    }
+    updatePowerupsToggle();
     
     updateLoadingProgress(30, "Loading dictionary...");
     await loadDictionary();
@@ -550,6 +635,17 @@ function updateSoundToggle() {
     }
 }
 
+function updatePowerupsToggle() {
+    const toggleGroup = document.querySelector('.toggle-group.powerups-group');
+    if (toggleGroup) {
+        toggleGroup.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = gameState.powerupsEnabled ? 
+            toggleGroup.querySelector('.toggle-btn[data-powerups="on"]') :
+            toggleGroup.querySelector('.toggle-btn[data-powerups="off"]');
+        if (activeBtn) activeBtn.classList.add('active');
+    }
+}
+
 // ==================== EVENT LISTENERS ====================
 function setupEventListeners() {
     elements.startButton.addEventListener('click', async () => {
@@ -575,6 +671,14 @@ function setupEventListeners() {
                 return;
             }
             
+            if (group.classList.contains('powerups-group')) {
+                group.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                gameState.powerupsEnabled = this.dataset.powerups === 'on';
+                localStorage.setItem('boggle_powerups_enabled', JSON.stringify(gameState.powerupsEnabled));
+                return;
+            }
+            
             group.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
             this.classList.add('active');
             
@@ -589,7 +693,6 @@ function setupEventListeners() {
         });
     });
     
-    addSoundToggleToSettings();
     elements.quitButton.addEventListener('click', quitGame);
     elements.playAgainButton.addEventListener('click', async () => {
         elements.playAgainButton.style.transform = 'scale(0.95)';
@@ -606,25 +709,20 @@ function setupEventListeners() {
     });
     
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && gameState.isPlaying) clearSelection();
+        if (e.key === 'Escape' && gameState.isPlaying) {
+            if (gameState.bombPlacementMode) {
+                exitBombMode();
+            } else {
+                clearSelection();
+            }
+        }
     });
-}
 
-function addSoundToggleToSettings() {
-    const settingsContainer = document.querySelector('.settings-container');
-    if (!settingsContainer || document.querySelector('.sound-group')) return;
-    
-    const soundSection = document.createElement('div');
-    soundSection.className = 'setting-group';
-    soundSection.innerHTML = `
-        <label class="setting-label">Sound Effects</label>
-        <div class="toggle-group sound-group">
-            <button class="toggle-btn ${gameState.soundEnabled ? 'active' : ''}" data-sound="on">On</button>
-            <button class="toggle-btn ${!gameState.soundEnabled ? 'active' : ''}" data-sound="off">Off</button>
-        </div>
-    `;
-    const settingsSection = document.querySelector('.settings-section');
-    if (settingsSection) settingsSection.appendChild(soundSection);
+    // Power-up buttons
+    document.getElementById('hint-btn').addEventListener('click', useHint);
+    document.getElementById('vowel-bomb-btn').addEventListener('click', () => enterBombMode('vowel'));
+    document.getElementById('consonant-bomb-btn').addEventListener('click', () => enterBombMode('consonant'));
+    document.getElementById('shuffle-btn').addEventListener('click', useShuffle);
 }
 
 // ==================== SCREEN MANAGEMENT ====================
@@ -653,19 +751,16 @@ function switchScreen(screenId) {
 async function startGame() {
     console.log("Starting game...");
     
-    // Resume audio if sound is enabled – with a safety timeout
     if (gameState.soundEnabled) {
         try {
-            // Race resume against a 1-second timeout to avoid hanging
             await Promise.race([
                 soundManager.resume(),
                 new Promise((_, reject) => setTimeout(() => reject(new Error('Audio resume timeout')), 1000))
             ]);
         } catch (e) {
-            console.warn("Audio resume failed or timed out, disabling sound for this session", e);
+            console.warn("Audio resume failed, disabling sound for this session", e);
             gameState.soundEnabled = false;
             soundManager.toggleSound(false);
-            // Update the toggle UI to reflect that sound is now off
             updateSoundToggle();
         }
     }
@@ -680,13 +775,36 @@ async function startGame() {
     gameState.lastScoreTime = 0;
     gameState.isEndlessMode = gameState.timeLimit === 0;
     gameState.analysisComplete = false;
+    gameState.combo = 0;
+    gameState.comboMultiplier = 1;
+    gameState.wordsFoundCount = 0;
+    gameState.bombPlacementMode = null;
+    gameState.bombHighlightCells = [];
+    gameState.nextScoreBonus = gameState.scoreMilestone;
+    gameState.lastWordTime = Date.now();
+    // Reset power-up usage stats
+    gameState.powerupsUsed = { hint: 0, vowelBomb: 0, consonantBomb: 0, shuffle: 0 };
+    gameState.totalTimeBonus = 0;
+    gameState.longestWordFound = "";
+    
+    if (gameState.streakTimer) clearTimeout(gameState.streakTimer);
+    startStreakTimer();
+    
+    // Reset power-ups if enabled (start at zero)
+    if (gameState.powerupsEnabled) {
+        gameState.powerups = { hint: 0, vowelBomb: 0, consonantBomb: 0, shuffle: 0 };
+        document.getElementById('powerups-container').style.display = 'flex';
+        updatePowerupButtons();
+    } else {
+        document.getElementById('powerups-container').style.display = 'none';
+    }
     
     gameState.board = generateBoard();
     
-    // Show board immediately
     renderBoard();
     switchScreen('game-ui');
     updateScore();
+    updateComboDisplay();
     
     if (gameState.isEndlessMode) {
         elements.timerElement.innerHTML = '∞<br><div class="endless-percentage">0%</div>';
@@ -698,36 +816,45 @@ async function startGame() {
         startTimer();
     }
     
-    // Run heavy word-finding asynchronously
     setTimeout(() => analyzeBoardAsync(), 50);
 }
 
-function analyzeBoardAsync() {
-    console.time('findAllPossibleWords');
-    gameState.allPossibleWords = findAllPossibleWords();
-    console.timeEnd('findAllPossibleWords');
-    
-    const { longestWord, longestPath } = findLongestWord(gameState.allPossibleWords);
-    gameState.longestWord = longestWord;
-    gameState.longestWordPath = longestPath;
-    
-    gameState.totalPossibleScore = 0;
-    gameState.allPossibleWords.forEach(data => {
-        gameState.totalPossibleScore += data.score;
-    });
-    
-    gameState.analysisComplete = true;
-    updateScore();
-    console.log(`Analysis complete: ${gameState.allPossibleWords.size} possible words`);
+function startStreakTimer() {
+    if (!gameState.powerupsEnabled) return;
+    if (gameState.streakTimer) clearTimeout(gameState.streakTimer);
+    gameState.streakTimer = setTimeout(() => {
+        // Combo expires
+        gameState.combo = 0;
+        gameState.comboMultiplier = 1;
+        updateComboDisplay();
+        if (gameState.soundEnabled) soundManager.playNote(220, 0.2, 'square'); // sad sound
+    }, gameState.streakTimeout);
 }
 
 function generateBoard() {
     const diceSet = gameState.gridSize === 4 ? CONFIG.DICE_4x4 : CONFIG.DICE_5x5;
     const shuffledDice = [...diceSet].sort(() => Math.random() - 0.5);
-    return shuffledDice.map(die => {
+    const board = shuffledDice.map(die => {
         const face = die[Math.floor(Math.random() * die.length)];
         return face === 'Q' ? 'QU' : face;
     });
+    
+    // Generate multipliers if power-ups enabled
+    if (gameState.powerupsEnabled) {
+        gameState.tileMultipliers = board.map(() => {
+            const rand = Math.random();
+            let cumulative = 0;
+            for (let m of MULTIPLIER_CHANCES) {
+                cumulative += m.prob;
+                if (rand < cumulative) return m.value;
+            }
+            return 1;
+        });
+    } else {
+        gameState.tileMultipliers = board.map(() => 1);
+    }
+    
+    return board;
 }
 
 function renderBoard() {
@@ -738,11 +865,20 @@ function renderBoard() {
         const tile = document.createElement('div');
         tile.className = 'tile';
         tile.dataset.index = index;
+        tile.dataset.multiplier = gameState.tileMultipliers[index];
         
         const content = document.createElement('div');
         content.className = 'tile-content';
         content.textContent = letter;
         tile.appendChild(content);
+        
+        // Add multiplier badge if >1
+        if (gameState.powerupsEnabled && gameState.tileMultipliers[index] > 1) {
+            const badge = document.createElement('div');
+            badge.className = 'tile-multiplier';
+            badge.textContent = `${gameState.tileMultipliers[index]}x`;
+            tile.appendChild(badge);
+        }
         
         const hitbox = document.createElement('div');
         hitbox.className = 'tile-hitbox';
@@ -968,6 +1104,14 @@ function clearSelection() {
 }
 
 // ==================== WORD SUBMISSION ====================
+function getWordMultiplier(selectedIndices) {
+    let multiplier = 1;
+    selectedIndices.forEach(idx => {
+        multiplier *= gameState.tileMultipliers[idx] || 1;
+    });
+    return multiplier;
+}
+
 function submitWord() {
     if (gameState.selectedTiles.length < gameState.minWordLength) {
         flashTiles('flash-invalid');
@@ -978,25 +1122,62 @@ function submitWord() {
             elements.currentWordElement.style.color = '#f1f5f9';
             elements.currentWordElement.classList.remove('invalid');
         }, 400);
+        // Do NOT reset combo
         clearSelection();
         return;
     }
     
     let word = gameState.currentWord.toUpperCase();
+    let baseScore = calculateWordScore(word);
+    let finalScore = baseScore;
+    let tileMult = 1;
     
-    if (gameState.wordsFound.has(word)) {
-        flashTiles('flash-duplicate');
-        elements.currentWordElement.style.animation = 'shakeDuplicate 0.5s ease';
-        elements.currentWordElement.style.color = '#8b5cf6';
-        if (gameState.soundEnabled) soundManager.playWordDuplicate();
-        setTimeout(() => {
-            elements.currentWordElement.style.animation = '';
-            elements.currentWordElement.style.color = '#f1f5f9';
-        }, 500);
-        clearSelection();
-        return;
+    if (gameState.powerupsEnabled) {
+        tileMult = getWordMultiplier(gameState.selectedTiles);
+        finalScore = Math.round(baseScore * tileMult);
+        finalScore = Math.round(finalScore * gameState.comboMultiplier);
     }
     
+    // Check for duplicate (already found)
+    if (gameState.wordsFound.has(word)) {
+        const oldScore = gameState.wordsFound.get(word);
+        // In power-up mode, we allow re-finding if the new score is higher
+        if (gameState.powerupsEnabled && finalScore > oldScore) {
+            // Higher score duplicate – flash gold and update
+            flashTiles('flash-higher-score');
+            elements.currentWordElement.textContent = word;
+            elements.currentWordElement.style.color = '#fbbf24';
+            if (gameState.soundEnabled) soundManager.playWordHigherScore();
+            
+            // Update score: add the difference
+            const diff = finalScore - oldScore;
+            gameState.wordsFound.set(word, finalScore);
+            gameState.score += diff;
+            
+            // Track longest word (if this word is longer than current longest)
+            if (word.length > gameState.longestWordFound.length) {
+                gameState.longestWordFound = word;
+            }
+            
+            updateScore();
+            clearSelection();
+            return;
+        } else {
+            // Normal duplicate – flash purple, do NOT reset combo
+            flashTiles('flash-duplicate');
+            elements.currentWordElement.style.animation = 'shakeDuplicate 0.5s ease';
+            elements.currentWordElement.style.color = '#8b5cf6';
+            if (gameState.soundEnabled) soundManager.playWordDuplicate();
+            setTimeout(() => {
+                elements.currentWordElement.style.animation = '';
+                elements.currentWordElement.style.color = '#f1f5f9';
+            }, 500);
+            clearSelection();
+            return;
+        }
+    }
+    
+    // Check validity
     let valid;
     if (gameState.analysisComplete) {
         valid = gameState.allPossibleWords.has(word);
@@ -1014,23 +1195,25 @@ function submitWord() {
             elements.currentWordElement.style.color = '#f1f5f9';
             elements.currentWordElement.classList.remove('invalid');
         }, 400);
+        // Do NOT reset combo
         clearSelection();
         return;
     }
     
+    // Valid new word
     flashTiles('flash-valid');
     elements.currentWordElement.textContent = word;
     elements.currentWordElement.style.color = '#f1f5f9';
     if (gameState.soundEnabled) soundManager.playWordValid();
     
-    addWord(word);
+    addWord(word, finalScore, tileMult);
 }
 
 function flashTiles(className) {
     gameState.selectedTiles.forEach(index => {
         const tile = document.querySelector(`.tile[data-index="${index}"]`);
         if (tile) {
-            tile.classList.remove('flash-valid', 'flash-invalid', 'flash-duplicate');
+            tile.classList.remove('flash-valid', 'flash-invalid', 'flash-duplicate', 'flash-higher-score');
             void tile.offsetWidth;
             tile.classList.add(className);
             setTimeout(() => tile.classList.remove(className), 500);
@@ -1038,22 +1221,409 @@ function flashTiles(className) {
     });
 }
 
-function addWord(word) {
-    let score;
-    if (gameState.analysisComplete && gameState.allPossibleWords.has(word)) {
-        score = gameState.allPossibleWords.get(word).score;
-    } else {
-        score = calculateWordScore(word);
-    }
+// ==================== RANDOM POWER-UP UNLOCK ====================
+function unlockRandomPowerup() {
+    const powerupTypes = ['hint', 'vowelBomb', 'consonantBomb', 'shuffle'];
+    const randomType = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
+    gameState.powerups[randomType] = (gameState.powerups[randomType] || 0) + 1;
+    celebratePowerup(randomType);
+    updatePowerupButtons();
+}
+
+// ==================== ADD WORD ====================
+function addWord(word, finalScore, tileMult) {
+    gameState.wordsFound.set(word, finalScore);
+    gameState.wordsFoundCount++;
     
-    gameState.wordsFound.set(word, score);
+    // Track longest word found
+    if (word.length > gameState.longestWordFound.length) {
+        gameState.longestWordFound = word;
+    }
     
     if (!gameState.isEndlessMode) {
-        gameState.score += score;
+        gameState.score += finalScore;
+        
+        // Score milestone time bonus
+        if (gameState.score >= gameState.nextScoreBonus) {
+            const bonusSeconds = 5;
+            gameState.timeLeft += bonusSeconds;
+            gameState.totalTimeBonus += bonusSeconds;
+            updateTimerDisplay();
+            showTimeBonus(bonusSeconds);
+            gameState.nextScoreBonus += gameState.scoreMilestone;
+        }
     }
     
+    // Award random power-ups based on triggers
+    if (gameState.powerupsEnabled) {
+        // Trigger: word length >=6
+        if (word.length >= 6) {
+            unlockRandomPowerup();
+        }
+        // Trigger: word length >=8
+        if (word.length >= 8) {
+            unlockRandomPowerup();
+        }
+        // Trigger: every 10 words found
+        if (gameState.wordsFoundCount % 10 === 0) {
+            unlockRandomPowerup();
+        }
+    }
+    
+    // Update streak timer and combo
+    if (gameState.powerupsEnabled) {
+        // Increase combo (only on valid new words)
+        gameState.combo++;
+        // Trigger: combo milestones
+        if (gameState.combo === 3 || gameState.combo === 5) {
+            unlockRandomPowerup();
+        }
+        if (gameState.combo >= 3) gameState.comboMultiplier = 1.5;
+        if (gameState.combo >= 5) gameState.comboMultiplier = 2;
+        
+        // Extend timer based on word length
+        const extraTime = Math.max(0, word.length - 5) * 1000; // +1 sec per letter over 5
+        gameState.streakTimeout = 5000 + extraTime;
+        gameState.lastWordTime = Date.now();
+        startStreakTimer();
+        
+        // Extra multiplier for long words
+        if (word.length >= 6) {
+            gameState.comboMultiplier += 0.1;
+            if (gameState.comboMultiplier > 3) gameState.comboMultiplier = 3;
+        }
+    }
+    
+    updateComboDisplay();
     updateScore();
     clearSelection();
+}
+
+function showTimeBonus(seconds) {
+    const popup = document.createElement('div');
+    popup.className = 'time-bonus-popup';
+    popup.textContent = `+${seconds} sec!`;
+    document.body.appendChild(popup);
+    setTimeout(() => popup.remove(), 1000);
+}
+
+function updateComboDisplay() {
+    if (!gameState.powerupsEnabled) {
+        const comboEl = document.getElementById('combo-meter');
+        if (comboEl) comboEl.style.display = 'none';
+        return;
+    }
+    let comboEl = document.getElementById('combo-meter');
+    if (!comboEl) {
+        comboEl = document.createElement('div');
+        comboEl.id = 'combo-meter';
+        document.getElementById('top-bar').appendChild(comboEl);
+    }
+    comboEl.style.display = 'inline-block';
+    if (gameState.combo >= 2) {
+        comboEl.textContent = `🔥 Combo x${gameState.comboMultiplier}`;
+        comboEl.classList.add('combo-active');
+    } else {
+        comboEl.textContent = '';
+        comboEl.classList.remove('combo-active');
+    }
+}
+
+// ==================== POWER-UPS ====================
+function updatePowerupButtons() {
+    const container = document.getElementById('powerups-container');
+    if (!container) return;
+    const btns = {
+        hint: document.getElementById('hint-btn'),
+        vowelBomb: document.getElementById('vowel-bomb-btn'),
+        consonantBomb: document.getElementById('consonant-bomb-btn'),
+        shuffle: document.getElementById('shuffle-btn')
+    };
+    for (let [key, btn] of Object.entries(btns)) {
+        if (btn) {
+            const count = gameState.powerups[key] || 0;
+            btn.disabled = count === 0;
+            const span = btn.querySelector('.count');
+            if (span) span.textContent = count;
+        }
+    }
+}
+
+function celebratePowerup(type) {
+    const btn = document.getElementById(type + '-btn');
+    if (!btn) return;
+    btn.classList.add('powerup-unlock');
+    setTimeout(() => btn.classList.remove('powerup-unlock'), 500);
+    if (gameState.soundEnabled) soundManager.playPowerupUnlock();
+    
+    // Show "+1" popup
+    const popup = document.createElement('div');
+    popup.className = 'powerup-popup';
+    popup.textContent = '+1';
+    const rect = btn.getBoundingClientRect();
+    popup.style.left = rect.left + rect.width/2 + 'px';
+    popup.style.top = rect.top + 'px';
+    document.body.appendChild(popup);
+    setTimeout(() => popup.remove(), 800);
+}
+
+function useHint() {
+    if (!gameState.isPlaying || gameState.powerups.hint === 0) return;
+    if (!gameState.analysisComplete) {
+        alert("Still analyzing board, try again in a moment.");
+        return;
+    }
+
+    const unplayed = Array.from(gameState.allPossibleWords.keys())
+        .filter(word => !gameState.wordsFound.has(word));
+    if (unplayed.length === 0) {
+        alert("No more words to hint!");
+        return;
+    }
+
+    const word = unplayed[Math.floor(Math.random() * unplayed.length)];
+    const path = gameState.allPossibleWords.get(word).path;
+
+    // Hint duration scales with word length (base 1000ms + 200ms per letter over 5)
+    const hintDuration = 1000 + Math.max(0, word.length - 5) * 200;
+
+    path.forEach((tile, idx) => {
+        const tileEl = document.querySelector(`.tile[data-index="${tile.index}"]`);
+        if (tileEl) {
+            setTimeout(() => {
+                tileEl.classList.add('hint-flash');
+                setTimeout(() => tileEl.classList.remove('hint-flash'), hintDuration);
+            }, idx * 50);
+        }
+    });
+
+    elements.currentWordElement.textContent = word;
+    elements.currentWordElement.style.color = '#fbbf24';
+    setTimeout(() => {
+        elements.currentWordElement.textContent = gameState.currentWord;
+        elements.currentWordElement.style.color = '';
+    }, hintDuration + 200);
+
+    gameState.powerups.hint--;
+    gameState.powerupsUsed.hint++;
+    updatePowerupButtons();
+    if (gameState.soundEnabled) soundManager.playNote(392, 0.3, 'sine');
+}
+
+function enterBombMode(type) {
+    if (!gameState.isPlaying || gameState.powerups[type + 'Bomb'] === 0) return;
+    if (gameState.bombPlacementMode) {
+        exitBombMode();
+        return;
+    }
+    gameState.bombPlacementMode = type;
+    document.body.classList.add('bomb-mode');
+    // Add event listeners for hover and click on board
+    const boardEl = document.getElementById('board');
+    boardEl.addEventListener('mousemove', bombHover);
+    boardEl.addEventListener('click', bombDrop);
+    boardEl.addEventListener('touchmove', bombHover, { passive: false });
+    boardEl.addEventListener('touchstart', bombDrop);
+}
+
+function exitBombMode() {
+    gameState.bombPlacementMode = null;
+    document.body.classList.remove('bomb-mode');
+    clearBombHighlight();
+    const boardEl = document.getElementById('board');
+    boardEl.removeEventListener('mousemove', bombHover);
+    boardEl.removeEventListener('click', bombDrop);
+    boardEl.removeEventListener('touchmove', bombHover);
+    boardEl.removeEventListener('touchstart', bombDrop);
+}
+
+function bombHover(e) {
+    if (!gameState.bombPlacementMode) return;
+    e.preventDefault(); // for touch
+    const tile = e.target.closest('.tile');
+    if (!tile) return;
+    const index = parseInt(tile.dataset.index);
+    const size = gameState.gridSize;
+    const row = Math.floor(index / size);
+    const col = index % size;
+    if (row >= size-1 || col >= size-1) return; // can't place 2x2 at edge
+    
+    const indices = [
+        row * size + col,
+        row * size + col + 1,
+        (row + 1) * size + col,
+        (row + 1) * size + col + 1
+    ];
+    clearBombHighlight();
+    indices.forEach(idx => {
+        const t = document.querySelector(`.tile[data-index="${idx}"]`);
+        if (t) t.classList.add('bomb-target');
+    });
+    gameState.bombHighlightCells = indices;
+}
+
+function clearBombHighlight() {
+    gameState.bombHighlightCells.forEach(idx => {
+        const t = document.querySelector(`.tile[data-index="${idx}"]`);
+        if (t) t.classList.remove('bomb-target');
+    });
+    gameState.bombHighlightCells = [];
+}
+
+function bombDrop(e) {
+    if (!gameState.bombPlacementMode || gameState.bombHighlightCells.length === 0) return;
+    e.preventDefault();
+    const type = gameState.bombPlacementMode;
+    const indices = gameState.bombHighlightCells;
+    
+    // Apply bomb (letter change)
+    const vowels = ['A','E','I','O','U'];
+    const consonants = ['R','S','T','N','L','C','D','M','P','B','G','F'];
+    indices.forEach(idx => {
+        if (type === 'vowel') {
+            gameState.board[idx] = vowels[Math.floor(Math.random() * vowels.length)];
+        } else {
+            gameState.board[idx] = consonants[Math.floor(Math.random() * consonants.length)];
+        }
+        // Keep existing multiplier
+    });
+    
+    // Animate tiles – staggered letter update (existing)
+    indices.forEach((idx, i) => {
+        const tile = document.querySelector(`.tile[data-index="${idx}"]`);
+        if (tile) {
+            setTimeout(() => {
+                tile.classList.add('bomb-drop');
+                tile.querySelector('.tile-content').textContent = gameState.board[idx];
+                setTimeout(() => tile.classList.remove('bomb-drop'), 400);
+            }, i * 50);
+        }
+    });
+
+    // ===== DIRECTIONAL SHAKE & RIPPLE =====
+    const size = gameState.gridSize;
+    const topLeftIdx = indices[0];
+    const r = Math.floor(topLeftIdx / size);
+    const c = topLeftIdx % size;
+    const bombCenterRow = r + 0.5;
+    const bombCenterCol = c + 0.5;
+
+    const allTiles = document.querySelectorAll('.tile');
+    allTiles.forEach(tile => {
+        const idx = parseInt(tile.dataset.index);
+        const row = Math.floor(idx / size);
+        const col = idx % size;
+
+        const dx = col - bombCenterCol;
+        const dy = row - bombCenterRow;
+
+        // Determine primary direction
+        let dirClass = '';
+        if (Math.abs(dx) > Math.abs(dy)) {
+            dirClass = dx > 0 ? 'bomb-shake-right' : 'bomb-shake-left';
+        } else {
+            dirClass = dy > 0 ? 'bomb-shake-down' : 'bomb-shake-up';
+        }
+
+        // Remove any previous shake classes and inline delay
+        tile.classList.remove('bomb-shake-right', 'bomb-shake-left', 'bomb-shake-up', 'bomb-shake-down');
+        tile.style.animationDelay = '';
+
+        // Set new class with ripple delay (distance-based)
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const delay = distance * 0.05; // seconds
+        tile.style.animationDelay = `${delay}s`;
+        tile.classList.add(dirClass);
+
+        // Also add bomb-drop class for the four affected tiles (extra effect)
+        if (indices.includes(idx)) {
+            tile.classList.add('bomb-drop');
+        }
+    });
+
+    // Clean up after animation completes (600ms matches longest shake)
+    setTimeout(() => {
+        allTiles.forEach(tile => {
+            tile.classList.remove('bomb-shake-right', 'bomb-shake-left', 'bomb-shake-up', 'bomb-shake-down', 'bomb-drop');
+            tile.style.animationDelay = '';
+        });
+    }, 600);
+    
+    // Decrement power-up and track usage
+    gameState.powerups[type + 'Bomb']--;
+    gameState.powerupsUsed[type + 'Bomb']++;
+    updatePowerupButtons();
+    if (gameState.soundEnabled) soundManager.playBombDrop();
+    
+    exitBombMode();
+    clearSelection();
+    setTimeout(() => analyzeBoardAsync(), 500);
+}
+
+function useShuffle() {
+    if (!gameState.isPlaying || gameState.powerups.shuffle === 0) return;
+
+    // Shuffle the board array
+    for (let i = gameState.board.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [gameState.board[i], gameState.board[j]] = [gameState.board[j], gameState.board[i]];
+        if (gameState.tileMultipliers) {
+            [gameState.tileMultipliers[i], gameState.tileMultipliers[j]] = [gameState.tileMultipliers[j], gameState.tileMultipliers[i]];
+        }
+    }
+
+    // Animate shuffle (spin effect)
+    const tiles = document.querySelectorAll('.tile');
+    tiles.forEach((tile, idx) => {
+        tile.style.transition = 'transform 0.3s ease';
+        tile.style.transform = 'rotate(360deg) scale(0.8)';
+        setTimeout(() => {
+            tile.style.transform = '';
+            tile.querySelector('.tile-content').textContent = gameState.board[idx];
+            // Re-add multiplier badge if needed
+            const badge = tile.querySelector('.tile-multiplier');
+            if (gameState.powerupsEnabled && gameState.tileMultipliers[idx] > 1) {
+                if (!badge) {
+                    const newBadge = document.createElement('div');
+                    newBadge.className = 'tile-multiplier';
+                    newBadge.textContent = `${gameState.tileMultipliers[idx]}x`;
+                    tile.appendChild(newBadge);
+                } else {
+                    badge.textContent = `${gameState.tileMultipliers[idx]}x`;
+                }
+            } else if (badge) {
+                badge.remove();
+            }
+        }, 150);
+    });
+
+    gameState.powerups.shuffle--;
+    gameState.powerupsUsed.shuffle++;
+    updatePowerupButtons();
+    if (gameState.soundEnabled) soundManager.playNote(330, 0.2, 'sawtooth');
+
+    clearSelection();
+    setTimeout(() => analyzeBoardAsync(), 500);
+}
+
+// ==================== BOARD ANALYSIS ASYNC ====================
+function analyzeBoardAsync() {
+    console.time('findAllPossibleWords');
+    gameState.allPossibleWords = findAllPossibleWords();
+    console.timeEnd('findAllPossibleWords');
+    
+    const { longestWord, longestPath } = findLongestWord(gameState.allPossibleWords);
+    gameState.longestWord = longestWord;
+    gameState.longestWordPath = longestPath;
+    
+    gameState.totalPossibleScore = 0;
+    gameState.allPossibleWords.forEach(data => {
+        gameState.totalPossibleScore += data.score;
+    });
+    
+    gameState.analysisComplete = true;
+    updateScore();
+    console.log(`Analysis complete: ${gameState.allPossibleWords.size} possible words`);
 }
 
 // ==================== GAME OVER ====================
@@ -1127,8 +1697,37 @@ function updateSummaryScreen() {
     if(isRecord) elements.newRecordBadge.style.animation = 'trophyBounce 1s ease infinite';
     
     loadHighScores();
-    renderUnifiedResults();
-    renderSummaryBoard();
+
+    // Show appropriate summary based on power-ups enabled
+    if (gameState.powerupsEnabled) {
+        // Hide classic summary elements
+        document.querySelector('.summary-board-section').style.display = 'none';
+        document.querySelector('.results-container').style.display = 'none';
+        // Show power-up summary
+        elements.powerupSummary.style.display = 'block';
+        
+        // Populate power-up stats
+        elements.hintUsed.textContent = gameState.powerupsUsed.hint;
+        elements.vowelUsed.textContent = gameState.powerupsUsed.vowelBomb;
+        elements.consonantUsed.textContent = gameState.powerupsUsed.consonantBomb;
+        elements.shuffleUsed.textContent = gameState.powerupsUsed.shuffle;
+        elements.timeBonusTotal.textContent = gameState.totalTimeBonus;
+        elements.longestWordFound.textContent = gameState.longestWordFound || '—';
+        
+        // List all found words, sorted longest to shortest
+        const foundWordsArray = Array.from(gameState.wordsFound.keys()).sort((a, b) => b.length - a.length);
+        elements.foundWordsList.innerHTML = foundWordsArray.map(word => 
+            `<span class="word-pill found">${word}</span>`
+        ).join('');
+    } else {
+        // Show classic summary
+        document.querySelector('.summary-board-section').style.display = 'block';
+        document.querySelector('.results-container').style.display = 'block';
+        elements.powerupSummary.style.display = 'none';
+        
+        renderUnifiedResults();
+        renderSummaryBoard();
+    }
 }
 
 function renderSummaryBoard() {

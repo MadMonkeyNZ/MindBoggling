@@ -9,6 +9,7 @@
 </head>
 <body>
     <div id="app">
+        <!-- MAIN MENU -->
         <div id="main-menu" class="screen active">
             <div class="main-menu-content">
                 <div class="title-container">
@@ -73,11 +74,21 @@
                                 <button class="toggle-btn" data-sound="off">Off</button>
                             </div>
                         </div>
+
+                        <!-- POWER-UPS TOGGLE -->
+                        <div class="setting-group">
+                            <label class="setting-label">Power‑ups</label>
+                            <div class="toggle-group powerups-group">
+                                <button class="toggle-btn active" data-powerups="on">On</button>
+                                <button class="toggle-btn" data-powerups="off">Off</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        
+
+        <!-- GAME UI -->
         <div id="game-ui" class="screen">
             <div id="top-bar">
                 <div class="hud-box">
@@ -100,6 +111,8 @@
                 </button>
             </div>
             
+            <!-- Combo Meter (appears dynamically) -->
+            
             <div id="words-progress">
                 <div class="progress-header">
                     <div class="progress-label">Words Found</div>
@@ -118,8 +131,25 @@
                 <div class="current-word-label">Current Word</div>
                 <div id="current-word" class="current-word"></div>
             </div>
+
+            <!-- POWER-UPS CONTAINER -->
+            <div id="powerups-container" class="powerups-container" style="display: none;">
+                <button id="hint-btn" class="powerup-btn" disabled>
+                    <i class="fas fa-lightbulb"></i> Hint <span class="count">1</span>
+                </button>
+                <button id="vowel-bomb-btn" class="powerup-btn" disabled>
+                    <i class="fas fa-water"></i> Vowel <span class="count">1</span>
+                </button>
+                <button id="consonant-bomb-btn" class="powerup-btn" disabled>
+                    <i class="fas fa-mountain"></i> Consonant <span class="count">1</span>
+                </button>
+                <button id="shuffle-btn" class="powerup-btn" disabled>
+                    <i class="fas fa-random"></i> Shuffle <span class="count">1</span>
+                </button>
+            </div>
         </div>
-        
+
+        <!-- GAME OVER SCREEN -->
         <div id="game-over" class="screen">
             <div class="game-over-content">
                 <h2 class="game-over-title">Game Over!</h2>
@@ -149,7 +179,41 @@
                     </div>
                 </div>
 
-                <!-- Summary board with longest word highlighted -->
+                <!-- POWER-UP SUMMARY (shown only when power-ups enabled) -->
+                <div id="powerup-summary" style="display: none;">
+                    <div class="powerup-stats-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 20px 0;">
+                        <div class="stat-box">
+                            <div class="stat-value" id="powerup-hint-used">0</div>
+                            <div class="stat-label">Hints Used</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="powerup-vowel-used">0</div>
+                            <div class="stat-label">Vowel Bombs</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="powerup-consonant-used">0</div>
+                            <div class="stat-label">Consonant Bombs</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="powerup-shuffle-used">0</div>
+                            <div class="stat-label">Shuffles</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="time-bonus-total">0</div>
+                            <div class="stat-label">Extra Time (s)</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="longest-word-found">-</div>
+                            <div class="stat-label">Longest Word</div>
+                        </div>
+                    </div>
+                    <div class="found-words-only">
+                        <h3 style="color: #0ea5e9; margin: 10px 0;">Words You Found</h3>
+                        <div id="found-words-list" class="words-list" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                    </div>
+                </div>
+
+                <!-- Summary board with longest word highlighted (classic mode) -->
                 <div class="summary-board-section">
                     <h3 class="section-title">Longest Word: <span id="longest-word-label"></span></h3>
                     <div id="summary-board-wrap" class="board-wrap summary-board-wrap">
@@ -159,8 +223,7 @@
 
                 <div class="results-container">
                     <h3 class="section-title" style="text-align:center; color:#0ea5e9; margin-bottom:15px;">Word Results</h3>
-                    <div id="results-grid" class="results-grid">
-                        </div>
+                    <div id="results-grid" class="results-grid"></div>
                 </div>
                 
                 <div class="game-over-actions">
@@ -173,7 +236,8 @@
                 </div>
             </div>
         </div>
-        
+
+        <!-- LOADING SCREEN -->
         <div id="loading-screen" class="screen">
             <div class="loading-content">
                 <h2 class="loading-title">Loading Game...</h2>
