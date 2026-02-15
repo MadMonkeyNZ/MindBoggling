@@ -373,6 +373,9 @@ let gameState = {
     lastWordTime: 0,
     scoreMilestone: 100,       // bonus every 100 points
     nextScoreBonus: 100,
+    // Persistent hint
+    hintedWord: null,
+    hintedPath: [],
 };
 
 // ==================== DICTIONARY LOADING ====================
@@ -950,6 +953,9 @@ async function startGame() {
     gameState.powerupsUsed = { hint: 0, vowelBomb: 0, consonantBomb: 0, shuffle: 0 };
     gameState.totalTimeBonus = 0;
     gameState.longestWordFound = "";
+    // Reset persistent hint
+    gameState.hintedWord = null;
+    gameState.hintedPath = [];
     
     if (gameState.streakTimer) clearTimeout(gameState.streakTimer);
     startStreakTimer();
@@ -1376,6 +1382,11 @@ function submitWord() {
                 gameState.longestWordFound = word;
             }
             
+            // If this word was hinted, clear the hint
+            if (gameState.hintedWord === word) {
+                clearHint();
+            }
+            
             updateScore();
             clearSelection();
             return;
@@ -1511,6 +1522,11 @@ function addWord(word, finalScore, tileMult) {
         }
     }
     
+    // If this word was hinted, clear the hint
+    if (gameState.hintedWord === word) {
+        clearHint();
+    }
+    
     updateComboDisplay();
     updateScore();
     clearSelection();
@@ -1571,6 +1587,17 @@ function celebratePowerup(type) {
     setTimeout(() => popup.remove(), 800);
 }
 
+function clearHint() {
+    if (gameState.hintedPath.length) {
+        gameState.hintedPath.forEach(idx => {
+            const tile = document.querySelector(`.tile[data-index="${idx}"]`);
+            if (tile) tile.classList.remove('hint-persistent');
+        });
+    }
+    gameState.hintedWord = null;
+    gameState.hintedPath = [];
+}
+
 function useHint() {
     if (!gameState.isPlaying || gameState.powerups.hint === 0) return;
     if (!gameState.analysisComplete) {
@@ -1586,27 +1613,26 @@ function useHint() {
     }
 
     const word = unplayed[Math.floor(Math.random() * unplayed.length)];
-    const path = gameState.allPossibleWords.get(word).path;
+    const path = gameState.allPossibleWords.get(word).path.map(t => t.index);
 
-    // Hint duration scales with word length (base 1000ms + 200ms per letter over 5)
-    const hintDuration = 1000 + Math.max(0, word.length - 5) * 200;
+    // Clear previous hint
+    clearHint();
 
-    path.forEach((tile, idx) => {
-        const tileEl = document.querySelector(`.tile[data-index="${tile.index}"]`);
-        if (tileEl) {
-            setTimeout(() => {
-                tileEl.classList.add('hint-flash');
-                setTimeout(() => tileEl.classList.remove('hint-flash'), hintDuration);
-            }, idx * 50);
-        }
+    // Apply persistent hint
+    gameState.hintedWord = word;
+    gameState.hintedPath = path;
+    path.forEach(idx => {
+        const tileEl = document.querySelector(`.tile[data-index="${idx}"]`);
+        if (tileEl) tileEl.classList.add('hint-persistent');
     });
 
+    // Briefly show the word
     elements.currentWordElement.textContent = word;
     elements.currentWordElement.style.color = '#fbbf24';
     setTimeout(() => {
         elements.currentWordElement.textContent = gameState.currentWord;
         elements.currentWordElement.style.color = '';
-    }, hintDuration + 200);
+    }, 2000);
 
     gameState.powerups.hint--;
     gameState.powerupsUsed.hint++;
@@ -1686,6 +1712,7 @@ function clearBombHighlight() {
 function bombDrop(e) {
     if (!gameState.bombPlacementMode || gameState.bombHighlightCells.length === 0) return;
     e.preventDefault();
+    e.stopPropagation(); // Prevent tile selection from firing
     const type = gameState.bombPlacementMode;
     const indices = gameState.bombHighlightCells;
     
@@ -1865,6 +1892,9 @@ function endGame() {
     gameState.isPlaying = false;
     // Optionally pause background music when game ends (or keep playing – your choice)
     // pauseMusic(); // uncomment if you want music to stop when game ends
+    
+    // Clear any persistent hint
+    clearHint();
     
     document.getElementById('game-ui').style.opacity = '0';
     setTimeout(() => {
