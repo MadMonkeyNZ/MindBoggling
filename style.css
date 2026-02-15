@@ -407,6 +407,7 @@ body {
   transform: translateY(0) scale(0.98);
 }
 
+/* ================= PROGRESS BAR (hidden in power-up mode) ================= */
 #words-progress {
   margin: 8px auto;
   padding: 10px 12px;
@@ -476,6 +477,78 @@ body {
   100% { transform: translateX(100%); }
 }
 
+/* ================= POWER-UP TILES (replaces progress bar) ================= */
+#powerup-tiles {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 8px auto;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  max-width: 400px;
+  width: 100%;
+  animation: slideUp 0.5s ease 0.1s both;
+}
+
+.powerup-tile {
+  flex: 1;
+  aspect-ratio: 1 / 1;
+  background: linear-gradient(145deg, #334155, #1e293b);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1rem;
+  color: #f1f5f9;
+  box-shadow: 0 4px 0 #0f172a;
+  transition: all 0.1s ease;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.powerup-tile:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #0f172a;
+}
+
+.powerup-tile.disabled {
+  opacity: 0.3;
+  filter: grayscale(0.8);
+  pointer-events: none;
+}
+
+.powerup-tile .icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.powerup-tile .count {
+  font-size: 0.8rem;
+  background: rgba(255,255,255,0.2);
+  border-radius: 12px;
+  padding: 2px 6px;
+  margin-top: 2px;
+}
+
+/* Specific tile styles */
+.powerup-tile.hint {
+  border-color: #fbbf24;
+}
+.powerup-tile.vowelBomb {
+  border-color: #60a5fa;
+}
+.powerup-tile.consonantBomb {
+  border-color: #f87171;
+}
+.powerup-tile.shuffle {
+  border-color: #c084fc;
+}
+
 /* ================= BOARD & TILES ================= */
 #board-wrap {
   position: relative;
@@ -509,23 +582,30 @@ body {
   transition: transform 0.2s;
 }
 
-/* Screen shake for bomb */
-#board.board-shake {
-  animation: bombScreenShake 0.5s ease-out;
+/* Bomb explosion overlay */
+#board.exploding {
+  position: relative;
+}
+#board.exploding::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,100,0,0.9) 0%, rgba(255,200,0,0.6) 40%, transparent 70%);
+  z-index: 10;
+  pointer-events: none;
+  animation: explosion 0.6s ease-out forwards;
 }
 
-@keyframes bombScreenShake {
-  0% { transform: translate(0, 0); }
-  10% { transform: translate(5px, -3px); }
-  20% { transform: translate(-5px, 3px); }
-  30% { transform: translate(4px, -2px); }
-  40% { transform: translate(-4px, 2px); }
-  50% { transform: translate(3px, -1px); }
-  60% { transform: translate(-3px, 1px); }
-  70% { transform: translate(2px, -1px); }
-  80% { transform: translate(-2px, 1px); }
-  90% { transform: translate(1px, 0); }
-  100% { transform: translate(0, 0); }
+@keyframes explosion {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
+  30% { opacity: 1; transform: translate(-50%, -50%) scale(1.5); }
+  70% { opacity: 0.7; transform: translate(-50%, -50%) scale(2.2); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(3); }
 }
 
 .tile {
@@ -544,7 +624,7 @@ body {
     inset 0 2px 4px rgba(255, 255, 255, 0.8),
     inset 0 -2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  overflow: visible;  /* Allow smoke to show outside */
+  overflow: visible;
   min-height: 60px;
   transform: translateZ(0);
   border: 1px solid rgba(255, 255, 255, 0.5);
@@ -570,24 +650,29 @@ body {
   z-index: 1;
 }
 
-/* Smoke effect for selected multiplier tiles */
+/* Lightning arcs for selected multiplier tiles */
 .tile.multiplier-2.selected::after,
 .tile.multiplier-3.selected::after {
   content: '';
   position: absolute;
-  inset: -20px;
-  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.4) 40%, transparent 70%);
-  filter: blur(12px);
-  opacity: 0.7;
+  inset: -10px;
+  background: 
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 0, 0.8) 0%, transparent 25%),
+    radial-gradient(circle at 80% 70%, rgba(255, 255, 0, 0.8) 0%, transparent 25%),
+    radial-gradient(circle at 40% 80%, rgba(255, 200, 0, 0.6) 0%, transparent 30%),
+    radial-gradient(circle at 60% 20%, rgba(255, 200, 0, 0.6) 0%, transparent 30%);
+  filter: blur(3px);
+  opacity: 0.9;
   z-index: -1;
-  animation: smokeDrift 0.8s infinite alternate ease-in-out;
-  pointer-events: none;
   border-radius: 50%;
+  animation: lightningFlicker 0.15s infinite alternate ease-in-out;
+  mix-blend-mode: screen;
+  pointer-events: none;
 }
 
-@keyframes smokeDrift {
-  0% { transform: translate(0, 0) scale(1); opacity: 0.5; }
-  100% { transform: translate(-5px, -8px) scale(1.5); opacity: 0.9; }
+@keyframes lightningFlicker {
+  0% { opacity: 0.7; transform: scale(1) rotate(0deg); filter: blur(2px); }
+  100% { opacity: 1; transform: scale(1.3) rotate(10deg); filter: blur(4px); }
 }
 
 /* Multiplier tile backgrounds */
@@ -621,26 +706,26 @@ body {
   animation: selectedPulse 2s infinite;
 }
 
-/* Selected multiplier tiles – aggressive fizzy effect + smoke */
+/* Selected multiplier tiles – aggressive fizzy effect + lightning */
 .tile.multiplier-2.selected {
   background: linear-gradient(145deg, #fbbf24, #f59e0b) !important;
-  animation: fizz 0.4s infinite cubic-bezier(0.25, 0.1, 0.25, 1);
+  animation: fizz 0.3s infinite cubic-bezier(0.25, 0.1, 0.25, 1);
   box-shadow: 0 0 30px #fbbf24, 0 8px 20px rgba(245,158,11,0.3), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.2) !important;
 }
 
 .tile.multiplier-3.selected {
   background: linear-gradient(145deg, #d946ef, #c026d3) !important;
-  animation: fizz 0.4s infinite cubic-bezier(0.25, 0.1, 0.25, 1);
+  animation: fizz 0.3s infinite cubic-bezier(0.25, 0.1, 0.25, 1);
   box-shadow: 0 0 30px #d946ef, 0 8px 20px rgba(217,70,239,0.3), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.2) !important;
 }
 
 @keyframes fizz {
-  0% { transform: scale(1) rotate(0deg); box-shadow: 0 0 20px currentColor, 0 0 10px white; }
-  20% { transform: scale(1.3) rotate(10deg); box-shadow: 0 0 60px currentColor, 0 0 30px white; }
-  40% { transform: scale(1.1) rotate(-8deg); box-shadow: 0 0 40px currentColor, 0 0 20px white; }
-  60% { transform: scale(1.4) rotate(15deg); box-shadow: 0 0 70px currentColor, 0 0 35px white; }
-  80% { transform: scale(1.2) rotate(-12deg); box-shadow: 0 0 50px currentColor, 0 0 25px white; }
-  100% { transform: scale(1) rotate(0deg); box-shadow: 0 0 20px currentColor, 0 0 5px white; }
+  0% { transform: scale(1) rotate(0deg); box-shadow: 0 0 20px currentColor; }
+  20% { transform: scale(1.3) rotate(10deg); box-shadow: 0 0 60px currentColor; }
+  40% { transform: scale(1.1) rotate(-8deg); box-shadow: 0 0 40px currentColor; }
+  60% { transform: scale(1.4) rotate(15deg); box-shadow: 0 0 70px currentColor; }
+  80% { transform: scale(1.2) rotate(-12deg); box-shadow: 0 0 50px currentColor; }
+  100% { transform: scale(1) rotate(0deg); box-shadow: 0 0 20px currentColor; }
 }
 
 @keyframes selectedPulse {
@@ -739,94 +824,12 @@ body {
   100% { opacity: 0; transform: translate(-50%, -60px); }
 }
 
-/* ================= POWER-UPS ================= */
-.powerups-container {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin: 10px 0;
-  flex-wrap: wrap;
+/* ================= POWER-UPS (original buttons, hidden now) ================= */
+#powerups-container {
+  display: none; /* hidden by default, shown only if needed */
 }
 
-.powerup-btn {
-  background: linear-gradient(145deg, #2d3748, #1a202c);
-  border: 1px solid rgba(255,255,255,0.1);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 30px;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  box-shadow: 0 4px 0 #0b0f17;
-  transition: all 0.1s ease;
-  cursor: pointer;
-}
-
-.powerup-btn:active:not(:disabled) {
-  transform: translateY(3px);
-  box-shadow: 0 1px 0 #0b0f17;
-}
-
-.powerup-btn:disabled {
-  opacity: 0.4;
-  filter: grayscale(0.6);
-  cursor: not-allowed;
-}
-
-.powerup-btn .count {
-  background: rgba(255,255,255,0.2);
-  border-radius: 12px;
-  padding: 2px 8px;
-  font-size: 0.8rem;
-}
-
-#hint-btn { border-color: #fbbf24; }
-#vowel-bomb-btn { border-color: #60a5fa; }
-#consonant-bomb-btn { border-color: #f87171; }
-#shuffle-btn { border-color: #c084fc; }
-
-/* Enhanced power-up unlock animation */
-.powerup-btn.powerup-unlock {
-  animation: unlockBlast 0.5s ease;
-}
-@keyframes unlockBlast {
-  0% { transform: scale(1); box-shadow: 0 0 0 0 gold; }
-  30% { transform: scale(1.5); background: gold; color: black; box-shadow: 0 0 30px gold; }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 gold; }
-}
-
-.powerup-popup {
-  position: fixed;
-  font-size: 2rem;
-  font-weight: bold;
-  color: gold;
-  text-shadow: 0 0 20px orange;
-  pointer-events: none;
-  z-index: 1000;
-  animation: floatUp 0.8s ease-out forwards;
-}
-@keyframes floatUp {
-  0% { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(-80px) scale(1.5); }
-}
-
-/* Hint flash animation - extended duration */
-.tile.hint-flash {
-  animation: hintPulse 1s ease; /* base 1s, can be overridden by JS */
-  box-shadow: 0 0 20px #fbbf24, 0 0 40px #f59e0b !important;
-  z-index: 25;
-}
-@keyframes hintPulse {
-  0% { transform: scale(1); }
-  20% { transform: scale(1.1); background: #fbbf24; color: black; }
-  40% { transform: scale(1.05); }
-  60% { transform: scale(1.1); }
-  80% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-}
-
-/* Bomb target highlight */
+/* ================= BOMB TARGET HIGHLIGHT ================= */
 .tile.bomb-target {
   box-shadow: 0 0 0 3px #f59e0b, 0 0 20px #f59e0b;
   transform: scale(1.02);

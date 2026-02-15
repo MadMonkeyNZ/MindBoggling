@@ -651,7 +651,10 @@ const elements = {
     shuffleUsed: document.getElementById('powerup-shuffle-used'),
     timeBonusTotal: document.getElementById('time-bonus-total'),
     longestWordFound: document.getElementById('longest-word-found'),
-    foundWordsList: document.getElementById('found-words-list')
+    foundWordsList: document.getElementById('found-words-list'),
+    // Power-up tiles container
+    powerupTiles: document.getElementById('powerup-tiles'),
+    wordsProgress: document.getElementById('words-progress')
 };
 
 async function initializeGame() {
@@ -818,11 +821,8 @@ function setupEventListeners() {
         }
     });
 
-    // Power-up buttons
-    document.getElementById('hint-btn').addEventListener('click', useHint);
-    document.getElementById('vowel-bomb-btn').addEventListener('click', () => enterBombMode('vowel'));
-    document.getElementById('consonant-bomb-btn').addEventListener('click', () => enterBombMode('consonant'));
-    document.getElementById('shuffle-btn').addEventListener('click', useShuffle);
+    // Power-up buttons (original, now handled by tiles)
+    // We'll keep them but they won't be visible in power-up mode
 }
 
 // ==================== SCREEN MANAGEMENT ====================
@@ -845,6 +845,65 @@ function switchScreen(screenId) {
         newScreen.style.transform = 'translateY(0)';
         newScreen.style.opacity = '1';
     }, 200);
+}
+
+// ==================== POWER-UP TILES ====================
+function createPowerupTiles() {
+    if (!elements.powerupTiles) return;
+    elements.powerupTiles.innerHTML = `
+        <div class="powerup-tile hint" data-powerup="hint">
+            <div class="icon">💡</div>
+            <div class="count">0</div>
+        </div>
+        <div class="powerup-tile vowelBomb" data-powerup="vowelBomb">
+            <div class="icon">AIO</div>
+            <div class="count">0</div>
+        </div>
+        <div class="powerup-tile consonantBomb" data-powerup="consonantBomb">
+            <div class="icon">XYZ</div>
+            <div class="count">0</div>
+        </div>
+        <div class="powerup-tile shuffle" data-powerup="shuffle">
+            <div class="icon">🔄</div>
+            <div class="count">0</div>
+        </div>
+    `;
+
+    // Add click listeners
+    elements.powerupTiles.querySelectorAll('.powerup-tile').forEach(tile => {
+        tile.addEventListener('click', (e) => {
+            const powerup = tile.dataset.powerup;
+            if (powerup === 'hint') useHint();
+            else if (powerup === 'vowelBomb') enterBombMode('vowel');
+            else if (powerup === 'consonantBomb') enterBombMode('consonant');
+            else if (powerup === 'shuffle') useShuffle();
+        });
+    });
+}
+
+function updatePowerupTiles() {
+    if (!elements.powerupTiles) return;
+    const tiles = {
+        hint: elements.powerupTiles.querySelector('.powerup-tile.hint .count'),
+        vowelBomb: elements.powerupTiles.querySelector('.powerup-tile.vowelBomb .count'),
+        consonantBomb: elements.powerupTiles.querySelector('.powerup-tile.consonantBomb .count'),
+        shuffle: elements.powerupTiles.querySelector('.powerup-tile.shuffle .count')
+    };
+    if (tiles.hint) tiles.hint.textContent = gameState.powerups.hint || 0;
+    if (tiles.vowelBomb) tiles.vowelBomb.textContent = gameState.powerups.vowelBomb || 0;
+    if (tiles.consonantBomb) tiles.consonantBomb.textContent = gameState.powerups.consonantBomb || 0;
+    if (tiles.shuffle) tiles.shuffle.textContent = gameState.powerups.shuffle || 0;
+
+    // Enable/disable based on count
+    elements.powerupTiles.querySelectorAll('.powerup-tile').forEach(tile => {
+        const powerup = tile.dataset.powerup;
+        const count = gameState.powerups[powerup] || 0;
+        if (count === 0) {
+            tile.classList.add('disabled');
+        } else {
+            tile.classList.remove('disabled');
+        }
+    });
 }
 
 // ==================== GAME FUNCTIONS ====================
@@ -898,10 +957,22 @@ async function startGame() {
     // Reset power-ups if enabled (start at zero)
     if (gameState.powerupsEnabled) {
         gameState.powerups = { hint: 0, vowelBomb: 0, consonantBomb: 0, shuffle: 0 };
-        document.getElementById('powerups-container').style.display = 'flex';
-        updatePowerupButtons();
+        // Hide progress bar, show power-up tiles
+        if (elements.wordsProgress) elements.wordsProgress.style.display = 'none';
+        if (!elements.powerupTiles) {
+            // Create container if not exists
+            const container = document.createElement('div');
+            container.id = 'powerup-tiles';
+            elements.gameUI.insertBefore(container, elements.boardWrap);
+            elements.powerupTiles = container;
+        }
+        createPowerupTiles();
+        elements.powerupTiles.style.display = 'flex';
+        updatePowerupTiles();
     } else {
-        document.getElementById('powerups-container').style.display = 'none';
+        // Show progress bar, hide power-up tiles
+        if (elements.wordsProgress) elements.wordsProgress.style.display = 'block';
+        if (elements.powerupTiles) elements.powerupTiles.style.display = 'none';
     }
     
     gameState.board = generateBoard();
@@ -1036,14 +1107,17 @@ function updateScore() {
     elements.scoreElement.textContent = displayScore;
     elements.wordCountElement.textContent = gameState.wordsFound.size;
     
-    const totalPossible = gameState.analysisComplete ? gameState.allPossibleWords.size : '?';
-    const foundCount = gameState.wordsFound.size;
-    elements.progressStats.textContent = `${foundCount}/${totalPossible}`;
-    if (gameState.analysisComplete && gameState.allPossibleWords.size > 0) {
-        const percentage = Math.min(100, Math.round((foundCount / gameState.allPossibleWords.size) * 100));
-        elements.progressFill.style.width = `${percentage}%`;
-    } else {
-        elements.progressFill.style.width = '0%';
+    if (!gameState.powerupsEnabled) {
+        // Update progress bar only in classic mode
+        const totalPossible = gameState.analysisComplete ? gameState.allPossibleWords.size : '?';
+        const foundCount = gameState.wordsFound.size;
+        elements.progressStats.textContent = `${foundCount}/${totalPossible}`;
+        if (gameState.analysisComplete && gameState.allPossibleWords.size > 0) {
+            const percentage = Math.min(100, Math.round((foundCount / gameState.allPossibleWords.size) * 100));
+            elements.progressFill.style.width = `${percentage}%`;
+        } else {
+            elements.progressFill.style.width = '0%';
+        }
     }
 }
 
@@ -1182,7 +1256,6 @@ function handleTileMove(event) {
             const lastIndex = gameState.selectedTiles[gameState.selectedTiles.length - 1];
             if (index !== lastIndex) {
                 truncateSelectionTo(index);
-                // Optional: play a small sound or just let visual update
                 elements.currentWordElement.style.transform = 'scale(1.05)';
                 setTimeout(() => elements.currentWordElement.style.transform = 'scale(1)', 100);
             }
@@ -1371,7 +1444,7 @@ function unlockRandomPowerup() {
     const randomType = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
     gameState.powerups[randomType] = (gameState.powerups[randomType] || 0) + 1;
     celebratePowerup(randomType);
-    updatePowerupButtons();
+    updatePowerupTiles(); // Update tile counts
 }
 
 // ==================== ADD WORD ====================
@@ -1474,39 +1547,26 @@ function updateComboDisplay() {
 }
 
 // ==================== POWER-UPS ====================
-function updatePowerupButtons() {
-    const container = document.getElementById('powerups-container');
-    if (!container) return;
-    const btns = {
-        hint: document.getElementById('hint-btn'),
-        vowelBomb: document.getElementById('vowel-bomb-btn'),
-        consonantBomb: document.getElementById('consonant-bomb-btn'),
-        shuffle: document.getElementById('shuffle-btn')
-    };
-    for (let [key, btn] of Object.entries(btns)) {
-        if (btn) {
-            const count = gameState.powerups[key] || 0;
-            btn.disabled = count === 0;
-            const span = btn.querySelector('.count');
-            if (span) span.textContent = count;
-        }
-    }
-}
-
 function celebratePowerup(type) {
-    const btn = document.getElementById(type + '-btn');
-    if (!btn) return;
-    btn.classList.add('powerup-unlock');
-    setTimeout(() => btn.classList.remove('powerup-unlock'), 500);
+    const tile = elements.powerupTiles?.querySelector(`.powerup-tile.${type}`);
+    if (tile) {
+        tile.classList.add('powerup-unlock');
+        setTimeout(() => tile.classList.remove('powerup-unlock'), 500);
+    }
     if (gameState.soundEnabled) soundManager.playPowerupUnlock();
     
     // Show "+1" popup
     const popup = document.createElement('div');
     popup.className = 'powerup-popup';
     popup.textContent = '+1';
-    const rect = btn.getBoundingClientRect();
-    popup.style.left = rect.left + rect.width/2 + 'px';
-    popup.style.top = rect.top + 'px';
+    const rect = tile?.getBoundingClientRect();
+    if (rect) {
+        popup.style.left = rect.left + rect.width/2 + 'px';
+        popup.style.top = rect.top + 'px';
+    } else {
+        popup.style.left = '50%';
+        popup.style.top = '50%';
+    }
     document.body.appendChild(popup);
     setTimeout(() => popup.remove(), 800);
 }
@@ -1550,7 +1610,7 @@ function useHint() {
 
     gameState.powerups.hint--;
     gameState.powerupsUsed.hint++;
-    updatePowerupButtons();
+    updatePowerupTiles();
     if (gameState.soundEnabled) soundManager.playNote(392, 0.3, 'sine');
 }
 
@@ -1562,12 +1622,12 @@ function enterBombMode(type) {
     }
     gameState.bombPlacementMode = type;
     document.body.classList.add('bomb-mode');
-    // Add event listeners for hover and click on board
+    // Add event listeners for hover and click on board – use passive: false to allow preventDefault
     const boardEl = document.getElementById('board');
     boardEl.addEventListener('mousemove', bombHover);
     boardEl.addEventListener('click', bombDrop);
     boardEl.addEventListener('touchmove', bombHover, { passive: false });
-    boardEl.addEventListener('touchstart', bombDrop);
+    boardEl.addEventListener('touchstart', bombDrop, { passive: false }); // use touchstart for immediate response
 }
 
 function exitBombMode() {
@@ -1584,7 +1644,16 @@ function exitBombMode() {
 function bombHover(e) {
     if (!gameState.bombPlacementMode) return;
     e.preventDefault(); // for touch
-    const tile = e.target.closest('.tile');
+    // Get touch or mouse position to find tile
+    let clientX, clientY;
+    if (e.type === 'touchmove') {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+    }
+    const tile = getTileAtPosition(clientX, clientY);
     if (!tile) return;
     const index = parseInt(tile.dataset.index);
     const size = gameState.gridSize;
@@ -1685,6 +1754,13 @@ function bombDrop(e) {
         }
     });
 
+    // Add explosion overlay
+    const boardEl = document.getElementById('board');
+    boardEl.classList.add('exploding');
+    setTimeout(() => {
+        boardEl.classList.remove('exploding');
+    }, 600);
+
     // Clean up after animation completes (600ms matches longest shake)
     setTimeout(() => {
         allTiles.forEach(tile => {
@@ -1696,7 +1772,7 @@ function bombDrop(e) {
     // Decrement power-up and track usage
     gameState.powerups[type + 'Bomb']--;
     gameState.powerupsUsed[type + 'Bomb']++;
-    updatePowerupButtons();
+    updatePowerupTiles();
     if (gameState.soundEnabled) soundManager.playBombDrop();
     
     exitBombMode();
@@ -1750,7 +1826,7 @@ function useShuffle() {
 
     gameState.powerups.shuffle--;
     gameState.powerupsUsed.shuffle++;
-    updatePowerupButtons();
+    updatePowerupTiles();
     if (gameState.soundEnabled) soundManager.playNote(330, 0.2, 'sawtooth');
 
     clearSelection();
