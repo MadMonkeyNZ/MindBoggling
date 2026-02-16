@@ -1523,6 +1523,17 @@ function createScorePopup(score) {
     const popup = document.createElement('div');
     popup.className = 'score-popup';
     popup.textContent = gameState.isEndlessMode ? `+${score}%` : `+${score}`;
+    popup.style.position = 'fixed';
+    popup.style.zIndex = '10000';
+    popup.style.pointerEvents = 'none';
+    popup.style.left = '50%';
+    popup.style.top = '50%';
+    popup.style.transform = 'translate(-50%, -50%)';
+    popup.style.fontSize = '2.5rem';
+    popup.style.fontWeight = '800';
+    popup.style.color = '#22c55e';
+    popup.style.textShadow = '0 0 20px rgba(34, 197, 94, 0.8)';
+    popup.style.animation = 'scorePopup 0.8s ease-out forwards';
     document.body.appendChild(popup);
     setTimeout(() => popup.remove(), 800);
 }
@@ -1937,12 +1948,61 @@ function addWord(word, finalScore, tileMult) {
     clearSelection();
 }
 
+// ==================== FIXED POPUP FUNCTIONS ====================
 function showTimeBonus(seconds) {
     const popup = document.createElement('div');
     popup.className = 'time-bonus-popup';
     popup.textContent = `+${seconds} sec!`;
+    popup.style.position = 'fixed';
+    popup.style.zIndex = '10000';
+    popup.style.pointerEvents = 'none';
+    popup.style.left = '50%';
+    popup.style.top = '30%';
+    popup.style.transform = 'translate(-50%, -50%)';
+    popup.style.fontSize = '2rem';
+    popup.style.fontWeight = 'bold';
+    popup.style.color = '#22c55e';
+    popup.style.textShadow = '0 0 10px rgba(34,197,94,0.8)';
+    popup.style.animation = 'fadeUp 1s ease-out forwards';
     document.body.appendChild(popup);
     setTimeout(() => popup.remove(), 1000);
+}
+
+function celebratePowerup(type) {
+    const tile = elements.powerupBar?.querySelector(`.powerup-tile.${type}`);
+    if (tile) {
+        tile.classList.add('powerup-unlock');
+        setTimeout(() => tile.classList.remove('powerup-unlock'), 500);
+    }
+    if (gameState.soundEnabled) soundManager.playPowerupUnlock();
+    
+    // Show "+1" popup – now with fixed positioning
+    const popup = document.createElement('div');
+    popup.className = 'powerup-popup';
+    popup.textContent = '+1';
+    popup.style.position = 'fixed';
+    popup.style.zIndex = '10000';
+    popup.style.pointerEvents = 'none';
+    popup.style.textAlign = 'center';
+    popup.style.fontSize = '2rem';
+    popup.style.fontWeight = 'bold';
+    popup.style.color = '#fbbf24';
+    popup.style.textShadow = '0 0 10px #f59e0b';
+    popup.style.animation = 'fadeUp 0.8s ease-out forwards';
+    
+    const rect = tile?.getBoundingClientRect();
+    if (rect) {
+        popup.style.left = (rect.left + rect.width / 2) + 'px';
+        popup.style.top = rect.top + 'px';
+        popup.style.transform = 'translate(-50%, -50%)';
+    } else {
+        popup.style.left = '50%';
+        popup.style.top = '50%';
+        popup.style.transform = 'translate(-50%, -50%)';
+    }
+    
+    document.body.appendChild(popup);
+    setTimeout(() => popup.remove(), 800);
 }
 
 function updateComboDisplay() {
@@ -1967,31 +2027,7 @@ function updateComboDisplay() {
     }
 }
 
-// ==================== POWER-UPS ====================
-function celebratePowerup(type) {
-    const tile = elements.powerupBar?.querySelector(`.powerup-tile.${type}`);
-    if (tile) {
-        tile.classList.add('powerup-unlock');
-        setTimeout(() => tile.classList.remove('powerup-unlock'), 500);
-    }
-    if (gameState.soundEnabled) soundManager.playPowerupUnlock();
-    
-    // Show "+1" popup
-    const popup = document.createElement('div');
-    popup.className = 'powerup-popup';
-    popup.textContent = '+1';
-    const rect = tile?.getBoundingClientRect();
-    if (rect) {
-        popup.style.left = rect.left + rect.width/2 + 'px';
-        popup.style.top = rect.top + 'px';
-    } else {
-        popup.style.left = '50%';
-        popup.style.top = '50%';
-    }
-    document.body.appendChild(popup);
-    setTimeout(() => popup.remove(), 800);
-}
-
+// ==================== POWER-UPS (continued) ====================
 function clearHint() {
     if (gameState.hintedPath.length) {
         gameState.hintedPath.forEach(idx => {
