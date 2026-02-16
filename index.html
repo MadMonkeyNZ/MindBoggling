@@ -6,6 +6,24 @@
     <title>Boggle - Word Search Game</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Remove old pseudo‑element arcs – they are now drawn on canvas */
+        .tile.multiplier-2.selected::after,
+        .tile.multiplier-3.selected::after {
+            display: none;
+        }
+        /* Canvas overlay for prism effect */
+        #prism-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            border-radius: 16px;
+        }
+    </style>
 </head>
 <body>
     <div id="app">
@@ -137,7 +155,8 @@
                 </div>
             </div>
             
-            <div id="board-wrap">
+            <div id="board-wrap" style="position: relative;">
+                <canvas id="prism-canvas"></canvas>
                 <div id="board"></div>
             </div>
             

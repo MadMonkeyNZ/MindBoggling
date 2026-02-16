@@ -376,7 +376,185 @@ let gameState = {
     // Persistent hint
     hintedWord: null,
     hintedPath: [],
+    // Bomb drag state
+    bombDragActive: false,
+    bombDragType: null,
+    bombGhost: null,
 };
+
+// ==================== PRISM VOID CANVAS (IMPROVED) ====================
+let prismCtx = null;
+let prismAnimationFrame = null;
+let prismSystems = {}; // key: tileIndex, value: { particles: [], multiplier }
+
+function initPrismCanvas() {
+    const canvas = document.getElementById('prism-canvas');
+    if (!canvas) return;
+    const boardWrap = document.getElementById('board-wrap');
+    canvas.width = boardWrap.clientWidth;
+    canvas.height = boardWrap.clientHeight;
+    prismCtx = canvas.getContext('2d');
+}
+
+// Resize listener for canvas
+window.addEventListener('resize', () => {
+    if (gameState.isPlaying) initPrismCanvas();
+});
+
+// Create a new particle system for a given tile index
+function createPrismSystem(tileIndex) {
+    const multiplier = gameState.tileMultipliers[tileIndex];
+    const particles = [];
+    const count = 40; // More particles for richer effect
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            angle: Math.random() * Math.PI * 2,
+            life: Math.random() * 100,
+            speed: 0.3 + Math.random() * 0.7,
+            size: 2 + Math.random() * 4,
+            offset: Math.random() * 50,
+            driftX: (Math.random() - 0.5) * 2,
+            driftY: (Math.random() - 0.5) * 2,
+        });
+    }
+    prismSystems[tileIndex] = { particles, multiplier };
+}
+
+// Remove a particle system
+function removePrismSystem(tileIndex) {
+    delete prismSystems[tileIndex];
+}
+
+// Start or restart effect for a tile
+function startPrismEffect(tileIndex) {
+    if (!gameState.powerupsEnabled) return;
+    if (!prismCtx) initPrismCanvas();
+
+    // If system already exists, we can keep it or reset; we'll just ensure it's there
+    if (!prismSystems[tileIndex]) {
+        createPrismSystem(tileIndex);
+    }
+
+    // If animation not running, start it
+    if (!prismAnimationFrame) {
+        drawPrism();
+    }
+}
+
+// Draw all active systems
+function drawPrism() {
+    if (!prismCtx) return;
+    
+    // Clear canvas completely – no darkening
+    prismCtx.clearRect(0, 0, prismCtx.canvas.width, prismCtx.canvas.height);
+    
+    const boardWrap = document.getElementById('board-wrap');
+    const boardRect = boardWrap.getBoundingClientRect();
+    
+    // For each active system
+    for (let [idxStr, system] of Object.entries(prismSystems)) {
+        const idx = parseInt(idxStr);
+        const tile = document.querySelector(`.tile[data-index="${idx}"]`);
+        if (!tile) continue; // tile might be gone? shouldn't happen
+        
+        const rect = tile.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2 - boardRect.left;
+        const centerY = rect.top + rect.height / 2 - boardRect.top;
+        const multiplier = system.multiplier;
+        
+        // Draw a soft radial glow behind the tile
+        const gradient = prismCtx.createRadialGradient(centerX, centerY, 10, centerX, centerY, 80);
+        if (multiplier === 2) {
+            gradient.addColorStop(0, 'rgba(255, 215, 0, 0.3)'); // gold
+            gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
+        } else {
+            gradient.addColorStop(0, 'rgba(155, 48, 255, 0.3)'); // purple
+            gradient.addColorStop(1, 'rgba(155, 48, 255, 0)');
+        }
+        prismCtx.fillStyle = gradient;
+        prismCtx.beginPath();
+        prismCtx.arc(centerX, centerY, 80, 0, Math.PI * 2);
+        prismCtx.fill();
+        
+        prismCtx.globalCompositeOperation = 'lighter';
+        
+        // Update and draw particles
+        system.particles.forEach(p => {
+            p.life += p.speed;
+            if (p.life > 100) {
+                p.life = 0;
+                p.angle = Math.random() * Math.PI * 2;
+            }
+            
+            const pct = p.life / 100;
+            // Dynamic hue based on multiplier and time
+            const timeHue = (Date.now() / 30) % 360;
+            let hue;
+            if (multiplier === 2) {
+                hue = 45 + Math.sin(timeHue * 0.1) * 15; // gold range
+            } else {
+                hue = 270 + Math.sin(timeHue * 0.1) * 20; // purple range
+            }
+            
+            const alpha = 0.8 * (1 - pct);
+            prismCtx.strokeStyle = `hsla(${hue}, 90%, 65%, ${alpha})`;
+            prismCtx.fillStyle = `hsla(${hue}, 90%, 65%, ${alpha})`;
+            prismCtx.lineWidth = p.size * (1 - pct);
+            
+            // Arc around tile
+            prismCtx.beginPath();
+            const radius = 60 + pct * 70 + Math.sin(Date.now() * 0.005 + p.angle) * 10;
+            prismCtx.arc(centerX, centerY, radius, p.angle, p.angle + 0.4);
+            prismCtx.stroke();
+            
+            // Drifting blob with extra waviness
+            let vx = centerX + Math.cos(p.angle) * (50 + pct * 80);
+            let vy = centerY + Math.sin(p.angle) * (50 + pct * 80);
+            
+            vx += Math.sin(Date.now() * 0.004 + p.angle * 2) * 20;
+            vy += Math.cos(Date.now() * 0.003 + p.angle * 2) * 20;
+            
+            prismCtx.beginPath();
+            prismCtx.arc(vx, vy, p.size * (1 - pct) * 2, 0, Math.PI * 2);
+            prismCtx.fill();
+        });
+        
+        prismCtx.globalCompositeOperation = 'source-over';
+    }
+    
+    // Continue animation if any systems exist
+    if (Object.keys(prismSystems).length > 0 && gameState.isPlaying) {
+        prismAnimationFrame = requestAnimationFrame(drawPrism);
+    } else {
+        prismAnimationFrame = null;
+    }
+}
+
+// Update systems based on current selected tiles
+function syncPrismSystems() {
+    // Remove systems for tiles no longer selected
+    for (let idxStr in prismSystems) {
+        const idx = parseInt(idxStr);
+        if (!gameState.selectedTiles.includes(idx)) {
+            removePrismSystem(idx);
+        }
+    }
+    // Add systems for newly selected multiplier tiles
+    gameState.selectedTiles.forEach(idx => {
+        if (gameState.tileMultipliers[idx] > 1 && !prismSystems[idx]) {
+            createPrismSystem(idx);
+        }
+    });
+    
+    // Start/stop animation as needed
+    if (Object.keys(prismSystems).length > 0 && !prismAnimationFrame && gameState.isPlaying) {
+        drawPrism();
+    } else if (Object.keys(prismSystems).length === 0 && prismAnimationFrame) {
+        cancelAnimationFrame(prismAnimationFrame);
+        prismAnimationFrame = null;
+        if (prismCtx) prismCtx.clearRect(0, 0, prismCtx.canvas.width, prismCtx.canvas.height);
+    }
+}
 
 // ==================== DICTIONARY LOADING ====================
 async function loadDictionary() {
@@ -655,8 +833,8 @@ const elements = {
     timeBonusTotal: document.getElementById('time-bonus-total'),
     longestWordFound: document.getElementById('longest-word-found'),
     foundWordsList: document.getElementById('found-words-list'),
-    // Power-up tiles container
-    powerupTiles: document.getElementById('powerup-tiles'),
+    // Power-up bar inside top-bar
+    powerupBar: document.getElementById('powerup-bar'),
     wordsProgress: document.getElementById('words-progress')
 };
 
@@ -824,8 +1002,12 @@ function setupEventListeners() {
         }
     });
 
-    // Power-up buttons (original, now handled by tiles)
-    // We'll keep them but they won't be visible in power-up mode
+    // Global listeners to end bomb drag
+    document.addEventListener('mousemove', onDragMove);
+    document.addEventListener('mouseup', onDragEnd);
+    document.addEventListener('touchmove', onDragMove, { passive: false });
+    document.addEventListener('touchend', onDragEnd);
+    document.addEventListener('touchcancel', onDragEnd);
 }
 
 // ==================== SCREEN MANAGEMENT ====================
@@ -850,20 +1032,25 @@ function switchScreen(screenId) {
     }, 200);
 }
 
-// ==================== POWER-UP TILES ====================
+// ==================== POWER-UP TILES (now inside top bar) ====================
 function createPowerupTiles() {
-    if (!elements.powerupTiles) return;
-    elements.powerupTiles.innerHTML = `
+    if (!elements.powerupBar) {
+        // Create if not exists
+        elements.powerupBar = document.createElement('div');
+        elements.powerupBar.id = 'powerup-bar';
+        elements.topBar.appendChild(elements.powerupBar);
+    }
+    elements.powerupBar.innerHTML = `
         <div class="powerup-tile hint" data-powerup="hint">
             <div class="icon">💡</div>
             <div class="count">0</div>
         </div>
         <div class="powerup-tile vowelBomb" data-powerup="vowelBomb">
-            <div class="icon">AIO</div>
+            <div class="icon">a</div>
             <div class="count">0</div>
         </div>
         <div class="powerup-tile consonantBomb" data-powerup="consonantBomb">
-            <div class="icon">XYZ</div>
+            <div class="icon">b</div>
             <div class="count">0</div>
         </div>
         <div class="powerup-tile shuffle" data-powerup="shuffle">
@@ -872,25 +1059,29 @@ function createPowerupTiles() {
         </div>
     `;
 
-    // Add click listeners
-    elements.powerupTiles.querySelectorAll('.powerup-tile').forEach(tile => {
+    // Add click listeners for hint and shuffle (non-drag)
+    elements.powerupBar.querySelectorAll('.powerup-tile.hint, .powerup-tile.shuffle').forEach(tile => {
         tile.addEventListener('click', (e) => {
             const powerup = tile.dataset.powerup;
             if (powerup === 'hint') useHint();
-            else if (powerup === 'vowelBomb') enterBombMode('vowel');
-            else if (powerup === 'consonantBomb') enterBombMode('consonant');
             else if (powerup === 'shuffle') useShuffle();
         });
+    });
+
+    // Add drag start for bombs
+    elements.powerupBar.querySelectorAll('.powerup-tile.vowelBomb, .powerup-tile.consonantBomb').forEach(tile => {
+        tile.addEventListener('mousedown', (e) => startBombDrag(e));
+        tile.addEventListener('touchstart', (e) => startBombDrag(e), { passive: false });
     });
 }
 
 function updatePowerupTiles() {
-    if (!elements.powerupTiles) return;
+    if (!elements.powerupBar) return;
     const tiles = {
-        hint: elements.powerupTiles.querySelector('.powerup-tile.hint .count'),
-        vowelBomb: elements.powerupTiles.querySelector('.powerup-tile.vowelBomb .count'),
-        consonantBomb: elements.powerupTiles.querySelector('.powerup-tile.consonantBomb .count'),
-        shuffle: elements.powerupTiles.querySelector('.powerup-tile.shuffle .count')
+        hint: elements.powerupBar.querySelector('.powerup-tile.hint .count'),
+        vowelBomb: elements.powerupBar.querySelector('.powerup-tile.vowelBomb .count'),
+        consonantBomb: elements.powerupBar.querySelector('.powerup-tile.consonantBomb .count'),
+        shuffle: elements.powerupBar.querySelector('.powerup-tile.shuffle .count')
     };
     if (tiles.hint) tiles.hint.textContent = gameState.powerups.hint || 0;
     if (tiles.vowelBomb) tiles.vowelBomb.textContent = gameState.powerups.vowelBomb || 0;
@@ -898,7 +1089,7 @@ function updatePowerupTiles() {
     if (tiles.shuffle) tiles.shuffle.textContent = gameState.powerups.shuffle || 0;
 
     // Enable/disable based on count
-    elements.powerupTiles.querySelectorAll('.powerup-tile').forEach(tile => {
+    elements.powerupBar.querySelectorAll('.powerup-tile').forEach(tile => {
         const powerup = tile.dataset.powerup;
         const count = gameState.powerups[powerup] || 0;
         if (count === 0) {
@@ -907,6 +1098,210 @@ function updatePowerupTiles() {
             tile.classList.remove('disabled');
         }
     });
+}
+
+// ==================== BOMB DRAG & DROP ====================
+function startBombDrag(e) {
+    e.preventDefault();
+    if (!gameState.isPlaying) return;
+    const tile = e.currentTarget;
+    const powerup = tile.dataset.powerup; // 'vowelBomb' or 'consonantBomb'
+    if (gameState.powerups[powerup] === 0) return;
+
+    // Cancel any existing drag
+    cancelBombDrag();
+
+    gameState.bombDragActive = true;
+    gameState.bombDragType = powerup === 'vowelBomb' ? 'vowel' : 'consonant';
+
+    // Create ghost element
+    const ghost = document.createElement('div');
+    ghost.className = 'bomb-drag-ghost';
+    ghost.textContent = powerup === 'vowelBomb' ? 'a' : 'b';
+    document.body.appendChild(ghost);
+    gameState.bombGhost = ghost;
+
+    // Initial position
+    updateGhostPosition(e);
+}
+
+function updateGhostPosition(e) {
+    if (!gameState.bombDragActive || !gameState.bombGhost) return;
+    let clientX, clientY;
+    if (e.type === 'touchmove' || e.type === 'touchstart') {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+    }
+    gameState.bombGhost.style.left = clientX + 'px';
+    gameState.bombGhost.style.top = clientY + 'px';
+}
+
+function onDragMove(e) {
+    if (!gameState.bombDragActive) return;
+    e.preventDefault();
+    updateGhostPosition(e);
+
+    // Check if over board
+    const boardRect = elements.board.getBoundingClientRect();
+    let clientX, clientY;
+    if (e.type === 'touchmove') {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+    }
+
+    if (clientX >= boardRect.left && clientX <= boardRect.right &&
+        clientY >= boardRect.top && clientY <= boardRect.bottom) {
+        // Find tile under cursor and update bomb hover
+        const tile = getTileAtPosition(clientX, clientY);
+        if (tile) {
+            const index = parseInt(tile.dataset.index);
+            const size = gameState.gridSize;
+            const row = Math.floor(index / size);
+            const col = index % size;
+            if (row < size-1 && col < size-1) {
+                // Valid 2x2 area
+                const indices = [
+                    row * size + col,
+                    row * size + col + 1,
+                    (row + 1) * size + col,
+                    (row + 1) * size + col + 1
+                ];
+                clearBombHighlight();
+                indices.forEach(idx => {
+                    const t = document.querySelector(`.tile[data-index="${idx}"]`);
+                    if (t) t.classList.add('bomb-target');
+                });
+                gameState.bombHighlightCells = indices;
+            } else {
+                clearBombHighlight();
+            }
+        } else {
+            clearBombHighlight();
+        }
+    } else {
+        clearBombHighlight();
+    }
+}
+
+function onDragEnd(e) {
+    if (!gameState.bombDragActive) return;
+    e.preventDefault();
+
+    // Check if dropped over board with valid highlight
+    if (gameState.bombHighlightCells.length > 0) {
+        // Trigger bomb drop
+        const type = gameState.bombDragType;
+        const indices = gameState.bombHighlightCells;
+        
+        // Apply bomb (letter change)
+        const vowels = ['A','E','I','O','U'];
+        const consonants = ['R','S','T','N','L','C','D','M','P','B','G','F'];
+        indices.forEach(idx => {
+            if (type === 'vowel') {
+                gameState.board[idx] = vowels[Math.floor(Math.random() * vowels.length)];
+            } else {
+                gameState.board[idx] = consonants[Math.floor(Math.random() * consonants.length)];
+            }
+        });
+        
+        // Animate tiles
+        indices.forEach((idx, i) => {
+            const tile = document.querySelector(`.tile[data-index="${idx}"]`);
+            if (tile) {
+                setTimeout(() => {
+                    tile.classList.add('bomb-drop');
+                    tile.querySelector('.tile-content').textContent = gameState.board[idx];
+                    setTimeout(() => tile.classList.remove('bomb-drop'), 400);
+                }, i * 50);
+            }
+        });
+
+        // Directional shake
+        const size = gameState.gridSize;
+        const topLeftIdx = indices[0];
+        const r = Math.floor(topLeftIdx / size);
+        const c = topLeftIdx % size;
+        const bombCenterRow = r + 0.5;
+        const bombCenterCol = c + 0.5;
+
+        const allTiles = document.querySelectorAll('.tile');
+        allTiles.forEach(tile => {
+            const idx = parseInt(tile.dataset.index);
+            const row = Math.floor(idx / size);
+            const col = idx % size;
+
+            const dx = col - bombCenterCol;
+            const dy = row - bombCenterRow;
+
+            let dirClass = '';
+            if (Math.abs(dx) > Math.abs(dy)) {
+                dirClass = dx > 0 ? 'bomb-shake-right' : 'bomb-shake-left';
+            } else {
+                dirClass = dy > 0 ? 'bomb-shake-down' : 'bomb-shake-up';
+            }
+
+            tile.classList.remove('bomb-shake-right', 'bomb-shake-left', 'bomb-shake-up', 'bomb-shake-down');
+            tile.style.animationDelay = '';
+
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const delay = distance * 0.05;
+            tile.style.animationDelay = `${delay}s`;
+            tile.classList.add(dirClass);
+
+            if (indices.includes(idx)) {
+                tile.classList.add('bomb-drop');
+            }
+        });
+
+        elements.board.classList.add('exploding');
+        setTimeout(() => {
+            elements.board.classList.remove('exploding');
+        }, 600);
+
+        setTimeout(() => {
+            allTiles.forEach(tile => {
+                tile.classList.remove('bomb-shake-right', 'bomb-shake-left', 'bomb-shake-up', 'bomb-shake-down', 'bomb-drop');
+                tile.style.animationDelay = '';
+            });
+        }, 600);
+        
+        // Decrement power-up
+        gameState.powerups[type === 'vowel' ? 'vowelBomb' : 'consonantBomb']--;
+        gameState.powerupsUsed[type === 'vowel' ? 'vowelBomb' : 'consonantBomb']++;
+        updatePowerupTiles();
+        if (gameState.soundEnabled) soundManager.playBombDrop();
+        
+        clearSelection();
+        setTimeout(() => analyzeBoardAsync(), 500);
+    }
+
+    // Clean up drag state
+    cancelBombDrag();
+    clearBombHighlight();
+}
+
+function cancelBombDrag() {
+    if (gameState.bombGhost) {
+        gameState.bombGhost.remove();
+        gameState.bombGhost = null;
+    }
+    gameState.bombDragActive = false;
+    gameState.bombDragType = null;
+    clearBombHighlight();
+}
+
+function clearBombHighlight() {
+    gameState.bombHighlightCells.forEach(idx => {
+        const t = document.querySelector(`.tile[data-index="${idx}"]`);
+        if (t) t.classList.remove('bomb-target');
+    });
+    gameState.bombHighlightCells = [];
 }
 
 // ==================== GAME FUNCTIONS ====================
@@ -963,27 +1358,20 @@ async function startGame() {
     // Reset power-ups if enabled (start at zero)
     if (gameState.powerupsEnabled) {
         gameState.powerups = { hint: 0, vowelBomb: 0, consonantBomb: 0, shuffle: 0 };
-        // Hide progress bar, show power-up tiles
+        // Hide progress bar, show power-up bar
         if (elements.wordsProgress) elements.wordsProgress.style.display = 'none';
-        if (!elements.powerupTiles) {
-            // Create container if not exists
-            const container = document.createElement('div');
-            container.id = 'powerup-tiles';
-            elements.gameUI.insertBefore(container, elements.boardWrap);
-            elements.powerupTiles = container;
-        }
         createPowerupTiles();
-        elements.powerupTiles.style.display = 'flex';
-        updatePowerupTiles();
+        elements.powerupBar.style.display = 'flex';
     } else {
-        // Show progress bar, hide power-up tiles
+        // Show progress bar, hide power-up bar
         if (elements.wordsProgress) elements.wordsProgress.style.display = 'block';
-        if (elements.powerupTiles) elements.powerupTiles.style.display = 'none';
+        if (elements.powerupBar) elements.powerupBar.style.display = 'none';
     }
     
     gameState.board = generateBoard();
     
     renderBoard();
+    initPrismCanvas(); // Initialize canvas after board is rendered
     switchScreen('game-ui');
     updateScore();
     updateComboDisplay();
@@ -1210,6 +1598,9 @@ function handleTileStart(index, event) {
     
     gameState.isDragging = true;
     
+    // Sync prism systems after adding tile
+    syncPrismSystems();
+    
     const moveHandler = (e) => handleTileMove(e);
     const endHandler = (e) => handleTileEnd(e);
     
@@ -1256,6 +1647,9 @@ function handleTileMove(event) {
                 
                 elements.currentWordElement.style.transform = 'scale(1.05)';
                 setTimeout(() => elements.currentWordElement.style.transform = 'scale(1)', 100);
+
+                // Sync prism systems after adding tile
+                syncPrismSystems();
             }
         } else {
             // Already selected – if it's not the last tile, truncate back to it (deselect after)
@@ -1301,6 +1695,14 @@ function clearSelection() {
     gameState.currentWord = "";
     elements.currentWordElement.textContent = '';
     elements.currentWordElement.classList.remove('invalid');
+    
+    // Remove all prism systems
+    prismSystems = {};
+    if (prismAnimationFrame) {
+        cancelAnimationFrame(prismAnimationFrame);
+        prismAnimationFrame = null;
+        if (prismCtx) prismCtx.clearRect(0, 0, prismCtx.canvas.width, prismCtx.canvas.height);
+    }
 }
 
 // New function to truncate selection when backtracking
@@ -1324,6 +1726,9 @@ function truncateSelectionTo(index) {
     // Rebuild currentWord from remaining tiles
     gameState.currentWord = gameState.selectedTiles.map(idx => gameState.board[idx]).join('');
     elements.currentWordElement.textContent = gameState.currentWord;
+
+    // Sync prism systems after removal
+    syncPrismSystems();
 }
 
 // ==================== WORD SUBMISSION ====================
@@ -1550,9 +1955,9 @@ function updateComboDisplay() {
     if (!comboEl) {
         comboEl = document.createElement('div');
         comboEl.id = 'combo-meter';
-        document.getElementById('top-bar').appendChild(comboEl);
+        elements.topBar.appendChild(comboEl); // attach to top-bar, will be positioned absolutely
     }
-    comboEl.style.display = 'inline-block';
+    comboEl.style.display = 'block';
     if (gameState.combo >= 2) {
         comboEl.textContent = `🔥 Combo x${gameState.comboMultiplier}`;
         comboEl.classList.add('combo-active');
@@ -1564,7 +1969,7 @@ function updateComboDisplay() {
 
 // ==================== POWER-UPS ====================
 function celebratePowerup(type) {
-    const tile = elements.powerupTiles?.querySelector(`.powerup-tile.${type}`);
+    const tile = elements.powerupBar?.querySelector(`.powerup-tile.${type}`);
     if (tile) {
         tile.classList.add('powerup-unlock');
         setTimeout(() => tile.classList.remove('powerup-unlock'), 500);
@@ -1638,173 +2043,6 @@ function useHint() {
     gameState.powerupsUsed.hint++;
     updatePowerupTiles();
     if (gameState.soundEnabled) soundManager.playNote(392, 0.3, 'sine');
-}
-
-function enterBombMode(type) {
-    if (!gameState.isPlaying || gameState.powerups[type + 'Bomb'] === 0) return;
-    if (gameState.bombPlacementMode) {
-        exitBombMode();
-        return;
-    }
-    gameState.bombPlacementMode = type;
-    document.body.classList.add('bomb-mode');
-    // Add event listeners for hover and click on board – use passive: false to allow preventDefault
-    const boardEl = document.getElementById('board');
-    boardEl.addEventListener('mousemove', bombHover);
-    boardEl.addEventListener('click', bombDrop);
-    boardEl.addEventListener('touchmove', bombHover, { passive: false });
-    boardEl.addEventListener('touchstart', bombDrop, { passive: false }); // use touchstart for immediate response
-}
-
-function exitBombMode() {
-    gameState.bombPlacementMode = null;
-    document.body.classList.remove('bomb-mode');
-    clearBombHighlight();
-    const boardEl = document.getElementById('board');
-    boardEl.removeEventListener('mousemove', bombHover);
-    boardEl.removeEventListener('click', bombDrop);
-    boardEl.removeEventListener('touchmove', bombHover);
-    boardEl.removeEventListener('touchstart', bombDrop);
-}
-
-function bombHover(e) {
-    if (!gameState.bombPlacementMode) return;
-    e.preventDefault(); // for touch
-    // Get touch or mouse position to find tile
-    let clientX, clientY;
-    if (e.type === 'touchmove') {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-    } else {
-        clientX = e.clientX;
-        clientY = e.clientY;
-    }
-    const tile = getTileAtPosition(clientX, clientY);
-    if (!tile) return;
-    const index = parseInt(tile.dataset.index);
-    const size = gameState.gridSize;
-    const row = Math.floor(index / size);
-    const col = index % size;
-    if (row >= size-1 || col >= size-1) return; // can't place 2x2 at edge
-    
-    const indices = [
-        row * size + col,
-        row * size + col + 1,
-        (row + 1) * size + col,
-        (row + 1) * size + col + 1
-    ];
-    clearBombHighlight();
-    indices.forEach(idx => {
-        const t = document.querySelector(`.tile[data-index="${idx}"]`);
-        if (t) t.classList.add('bomb-target');
-    });
-    gameState.bombHighlightCells = indices;
-}
-
-function clearBombHighlight() {
-    gameState.bombHighlightCells.forEach(idx => {
-        const t = document.querySelector(`.tile[data-index="${idx}"]`);
-        if (t) t.classList.remove('bomb-target');
-    });
-    gameState.bombHighlightCells = [];
-}
-
-function bombDrop(e) {
-    if (!gameState.bombPlacementMode || gameState.bombHighlightCells.length === 0) return;
-    e.preventDefault();
-    e.stopPropagation(); // Prevent tile selection from firing
-    const type = gameState.bombPlacementMode;
-    const indices = gameState.bombHighlightCells;
-    
-    // Apply bomb (letter change)
-    const vowels = ['A','E','I','O','U'];
-    const consonants = ['R','S','T','N','L','C','D','M','P','B','G','F'];
-    indices.forEach(idx => {
-        if (type === 'vowel') {
-            gameState.board[idx] = vowels[Math.floor(Math.random() * vowels.length)];
-        } else {
-            gameState.board[idx] = consonants[Math.floor(Math.random() * consonants.length)];
-        }
-        // Keep existing multiplier
-    });
-    
-    // Animate tiles – staggered letter update (existing)
-    indices.forEach((idx, i) => {
-        const tile = document.querySelector(`.tile[data-index="${idx}"]`);
-        if (tile) {
-            setTimeout(() => {
-                tile.classList.add('bomb-drop');
-                tile.querySelector('.tile-content').textContent = gameState.board[idx];
-                setTimeout(() => tile.classList.remove('bomb-drop'), 400);
-            }, i * 50);
-        }
-    });
-
-    // ===== DIRECTIONAL SHAKE & RIPPLE =====
-    const size = gameState.gridSize;
-    const topLeftIdx = indices[0];
-    const r = Math.floor(topLeftIdx / size);
-    const c = topLeftIdx % size;
-    const bombCenterRow = r + 0.5;
-    const bombCenterCol = c + 0.5;
-
-    const allTiles = document.querySelectorAll('.tile');
-    allTiles.forEach(tile => {
-        const idx = parseInt(tile.dataset.index);
-        const row = Math.floor(idx / size);
-        const col = idx % size;
-
-        const dx = col - bombCenterCol;
-        const dy = row - bombCenterRow;
-
-        // Determine primary direction
-        let dirClass = '';
-        if (Math.abs(dx) > Math.abs(dy)) {
-            dirClass = dx > 0 ? 'bomb-shake-right' : 'bomb-shake-left';
-        } else {
-            dirClass = dy > 0 ? 'bomb-shake-down' : 'bomb-shake-up';
-        }
-
-        // Remove any previous shake classes and inline delay
-        tile.classList.remove('bomb-shake-right', 'bomb-shake-left', 'bomb-shake-up', 'bomb-shake-down');
-        tile.style.animationDelay = '';
-
-        // Set new class with ripple delay (distance-based)
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const delay = distance * 0.05; // seconds
-        tile.style.animationDelay = `${delay}s`;
-        tile.classList.add(dirClass);
-
-        // Also add bomb-drop class for the four affected tiles (extra effect)
-        if (indices.includes(idx)) {
-            tile.classList.add('bomb-drop');
-        }
-    });
-
-    // Add explosion overlay
-    const boardEl = document.getElementById('board');
-    boardEl.classList.add('exploding');
-    setTimeout(() => {
-        boardEl.classList.remove('exploding');
-    }, 600);
-
-    // Clean up after animation completes (600ms matches longest shake)
-    setTimeout(() => {
-        allTiles.forEach(tile => {
-            tile.classList.remove('bomb-shake-right', 'bomb-shake-left', 'bomb-shake-up', 'bomb-shake-down', 'bomb-drop');
-            tile.style.animationDelay = '';
-        });
-    }, 600);
-    
-    // Decrement power-up and track usage
-    gameState.powerups[type + 'Bomb']--;
-    gameState.powerupsUsed[type + 'Bomb']++;
-    updatePowerupTiles();
-    if (gameState.soundEnabled) soundManager.playBombDrop();
-    
-    exitBombMode();
-    clearSelection();
-    setTimeout(() => analyzeBoardAsync(), 500);
 }
 
 function useShuffle() {
@@ -1895,6 +2133,15 @@ function endGame() {
     
     // Clear any persistent hint
     clearHint();
+    // Cancel any ongoing bomb drag
+    cancelBombDrag();
+    // Stop prism animation
+    prismSystems = {};
+    if (prismAnimationFrame) {
+        cancelAnimationFrame(prismAnimationFrame);
+        prismAnimationFrame = null;
+        if (prismCtx) prismCtx.clearRect(0, 0, prismCtx.canvas.width, prismCtx.canvas.height);
+    }
     
     document.getElementById('game-ui').style.opacity = '0';
     setTimeout(() => {
@@ -2070,4 +2317,9 @@ function renderUnifiedResults() {
 document.addEventListener('DOMContentLoaded', () => {
     switchScreen('loading-screen');
     setTimeout(initializeGame, 500);
+});
+
+// Helper to get top-bar element (used in updateComboDisplay)
+Object.defineProperty(elements, 'topBar', {
+    get: () => document.getElementById('top-bar')
 });
