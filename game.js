@@ -366,8 +366,13 @@ let gameState = {
     },
     totalTimeBonus: 0,          // seconds added by time bonuses
     longestWordFound: "",       // longest word actually found
-    bombPlacementMode: null,   // 'vowel' or 'consonant' or null
+    bombPlacementMode: null,   // legacy (kept for ESC handler)
     bombHighlightCells: [],    // indices of current highlight
+    bombDragStartX: 0,
+    bombDragStartY: 0,
+    bombDragAxis: null,        // 'row' or 'col', locked after 12px drag
+    bombDropAxis: null,        // axis confirmed on drop
+    bombDropAxisIndex: -1,     // row/col index to detonate
     streakTimer: null,
     streakTimeout: 5000,       // base 5 seconds
     lastWordTime: 0,
@@ -387,6 +392,252 @@ let prismCtx = null;
 let prismAnimationFrame = null;
 let prismSystems = {}; // key: tileIndex, value: { particles: [], multiplier }
 
+// ==================== WORD TRAIL CANVAS ====================
+let trailCtx       = null;
+let trailAnimActive = false;
+let trailPhase      = 0;
+let trailBurstParticles = [];
+let trailBurstFrame = null;
+
+function initTrailCanvas() {
+    const canvas = document.getElementById('trail-canvas');
+    if (!canvas) return;
+    const boardWrap = document.getElementById('board-wrap');
+    canvas.width  = boardWrap.clientWidth;
+    canvas.height = boardWrap.clientHeight;
+    trailCtx = canvas.getContext('2d');
+}
+
+function clearTrail() {
+    trailAnimActive = false;
+    if (trailCtx) trailCtx.clearRect(0, 0, trailCtx.canvas.width, trailCtx.canvas.height);
+    if (trailBurstFrame) { cancelAnimationFrame(trailBurstFrame); trailBurstFrame = null; }
+    trailBurstParticles = [];
+}
+
+function getTileCenter(index) {
+    const boardWrap = document.getElementById('board-wrap');
+    if (!boardWrap) return null;
+    const boardRect = boardWrap.getBoundingClientRect();
+    const tile = document.querySelector(`.tile[data-index="${index}"]`);
+    if (!tile) return null;
+    const r = tile.getBoundingClientRect();
+    return { x: r.left + r.width / 2 - boardRect.left, y: r.top + r.height / 2 - boardRect.top };
+}
+
+function startTrailAnimation() {
+    if (trailAnimActive) return;
+    trailAnimActive = true;
+    const loop = () => {
+        if (!trailAnimActive) return;
+        trailPhase = (trailPhase + 4) % 360;
+        drawWordTrailPath();
+        requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+}
+
+function drawWordTrailPath() {
+    if (!trailCtx || !gameState.selectedTiles.length) return;
+    const canvas = trailCtx.canvas;
+    trailCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const points = gameState.selectedTiles.map(i => getTileCenter(i)).filter(Boolean);
+    if (!points.length) return;
+
+    // Color by word length
+    const len = gameState.currentWord.length;
+    let hue, sat, lit;
+    if      (len >= 7) { hue = 142; sat = 72; lit = 55; }   // deep green
+    else if (len >= 5) { hue = 160; sat = 78; lit = 55; }   // teal-green
+    else if (len >= 3) { hue = 195; sat = 90; lit = 55; }   // cyan
+    else               { hue = 215; sat = 55; lit = 68; }   // pale blue
+
+    const pulse = 0.82 + 0.18 * Math.sin(trailPhase * Math.PI / 180);
+
+    if (points.length === 1) {
+        const g = trailCtx.createRadialGradient(points[0].x, points[0].y, 0, points[0].x, points[0].y, 24);
+        g.addColorStop(0, `hsla(${hue},${sat}%,${lit}%,${0.55 * pulse})`);
+        g.addColorStop(1, `hsla(${hue},${sat}%,${lit}%,0)`);
+        trailCtx.fillStyle = g;
+        trailCtx.beginPath();
+        trailCtx.arc(points[0].x, points[0].y, 24, 0, Math.PI * 2);
+        trailCtx.fill();
+        return;
+    }
+
+    // Build smooth quadratic-bezier path
+    const buildPath = (ctx, pts) => {
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 0; i < pts.length - 1; i++) {
+            const mx = (pts[i].x + pts[i+1].x) / 2;
+            const my = (pts[i].y + pts[i+1].y) / 2;
+            ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+        }
+        ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
+    };
+
+    trailCtx.lineCap  = 'round';
+    trailCtx.lineJoin = 'round';
+
+    // Layered glow: outer → mid → core
+    const layers = [
+        { w: 28, a: 0.06 },
+        { w: 16, a: 0.14 },
+        { w: 7,  a: 0.45 },
+        { w: 2.5,a: 0.92 },
+    ];
+    layers.forEach(({ w, a }) => {
+        buildPath(trailCtx, points);
+        trailCtx.lineWidth   = w;
+        trailCtx.strokeStyle = `hsla(${hue},${sat}%,${lit + 12}%,${a * pulse})`;
+        trailCtx.stroke();
+    });
+
+    // Nodes at each tile
+    points.forEach((pt, i) => {
+        const isLast  = i === points.length - 1;
+        const outer   = isLast ? 10 + 3 * pulse : 5;
+        const inner   = isLast ? 5  + 1.5 * pulse : 3;
+
+        trailCtx.beginPath();
+        trailCtx.arc(pt.x, pt.y, outer + 5, 0, Math.PI * 2);
+        trailCtx.fillStyle = `hsla(${hue},${sat}%,${lit}%,${0.12 * pulse})`;
+        trailCtx.fill();
+
+        trailCtx.beginPath();
+        trailCtx.arc(pt.x, pt.y, outer, 0, Math.PI * 2);
+        trailCtx.fillStyle = `hsla(${hue},${sat}%,${lit}%,${0.25 * pulse})`;
+        trailCtx.fill();
+
+        trailCtx.beginPath();
+        trailCtx.arc(pt.x, pt.y, inner, 0, Math.PI * 2);
+        trailCtx.fillStyle = `hsla(${hue},${sat}%,${lit + 22}%,${0.95 * pulse})`;
+        trailCtx.fill();
+    });
+
+    // Length badge near last tile
+    if (len >= 3) {
+        const last = points[points.length - 1];
+        trailCtx.save();
+        trailCtx.font        = 'bold 10px system-ui, sans-serif';
+        trailCtx.textAlign   = 'center';
+        trailCtx.textBaseline = 'middle';
+        const badgeX = last.x;
+        const badgeY = last.y - 22;
+        // pill background
+        trailCtx.beginPath();
+        trailCtx.roundRect(badgeX - 11, badgeY - 8, 22, 16, 8);
+        trailCtx.fillStyle = `hsla(${hue},${sat}%,${lit}%,${0.4 * pulse})`;
+        trailCtx.fill();
+        trailCtx.fillStyle = `hsla(${hue},${sat}%,${lit + 25}%,0.9)`;
+        trailCtx.fillText(len, badgeX, badgeY);
+        trailCtx.restore();
+    }
+}
+
+// Burst particles from each selected tile on word submit
+function burstTrail(valid) {
+    if (!trailCtx) { clearTrail(); return; }
+    trailAnimActive = false;
+
+    const hue = valid ? 142 : 0;
+    const points = gameState.selectedTiles.map(i => getTileCenter(i)).filter(Boolean);
+
+    trailBurstParticles = [];
+    points.forEach(pt => {
+        const count = valid ? 14 : 9;
+        for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 * i / count) + Math.random() * 0.6;
+            const speed = valid ? (2.5 + Math.random() * 4.5) : (1.5 + Math.random() * 3);
+            trailBurstParticles.push({
+                x: pt.x, y: pt.y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                size: 3 + Math.random() * 4,
+                alpha: 1,
+                hue: hue + (Math.random() - 0.5) * 40,
+                spin: (Math.random() - 0.5) * 0.3,
+            });
+        }
+    });
+
+    if (trailBurstFrame) cancelAnimationFrame(trailBurstFrame);
+    animateBurst();
+}
+
+function animateBurst() {
+    if (!trailCtx) return;
+    const canvas = trailCtx.canvas;
+    trailCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+    trailBurstParticles = trailBurstParticles.filter(p => p.alpha > 0.04);
+
+    trailBurstParticles.forEach(p => {
+        p.x     += p.vx;
+        p.y     += p.vy;
+        p.vy    += 0.18;          // gravity
+        p.vx    *= 0.97;          // air resistance
+        p.alpha *= 0.87;
+        p.size  *= 0.95;
+
+        trailCtx.save();
+        trailCtx.translate(p.x, p.y);
+        trailCtx.rotate(p.spin);
+        trailCtx.beginPath();
+        // star shape for valid, circle for invalid
+        if (p.hue > 60) { // valid = greenish, draw small star
+            for (let s = 0; s < 5; s++) {
+                const a = (s * 4 * Math.PI / 5) - Math.PI / 2;
+                const r = p.size;
+                const ri = p.size * 0.4;
+                s === 0 ? trailCtx.moveTo(Math.cos(a) * r, Math.sin(a) * r)
+                        : trailCtx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+                const ai = a + 2 * Math.PI / 10;
+                trailCtx.lineTo(Math.cos(ai) * ri, Math.sin(ai) * ri);
+            }
+            trailCtx.closePath();
+        } else {
+            trailCtx.arc(0, 0, p.size, 0, Math.PI * 2);
+        }
+        trailCtx.fillStyle = `hsla(${p.hue}, 80%, 65%, ${p.alpha})`;
+        trailCtx.fill();
+        trailCtx.restore();
+    });
+
+    if (trailBurstParticles.length > 0) {
+        trailBurstFrame = requestAnimationFrame(animateBurst);
+    } else {
+        clearTrail();
+    }
+}
+
+// ==================== TILE RECT CACHE (mobile perf) ====================
+// Cached bounding rects so getTileAtPosition doesn't thrash layout on every touchmove
+let tileRectCache = []; // Array indexed by tile index
+let tileRectCacheValid = false;
+
+function buildTileRectCache() {
+    tileRectCache = [];
+    const tiles = document.querySelectorAll('#board .tile');
+    tiles.forEach(tile => {
+        const idx = parseInt(tile.dataset.index);
+        tileRectCache[idx] = { el: tile, rect: tile.getBoundingClientRect() };
+    });
+    tileRectCacheValid = true;
+}
+
+function invalidateTileRectCache() {
+    tileRectCacheValid = false;
+}
+
+window.addEventListener('resize', invalidateTileRectCache);
+window.addEventListener('orientationchange', () => {
+    invalidateTileRectCache();
+    setTimeout(buildTileRectCache, 300); // rebuild after reflow
+});
+
 function initPrismCanvas() {
     const canvas = document.getElementById('prism-canvas');
     if (!canvas) return;
@@ -398,7 +649,10 @@ function initPrismCanvas() {
 
 // Resize listener for canvas
 window.addEventListener('resize', () => {
-    if (gameState.isPlaying) initPrismCanvas();
+    if (gameState.isPlaying) {
+        initPrismCanvas();
+        initTrailCanvas();
+    }
 });
 
 // Create a new particle system for a given tile index
@@ -833,6 +1087,9 @@ const elements = {
     timeBonusTotal: document.getElementById('time-bonus-total'),
     longestWordFound: document.getElementById('longest-word-found'),
     foundWordsList: document.getElementById('found-words-list'),
+    // Powerup mode longest-possible board
+    powerupLongestWordLabel: document.getElementById('powerup-longest-word-label'),
+    powerupSummaryBoard: document.getElementById('powerup-summary-board'),
     // Power-up bar inside top-bar
     powerupBar: document.getElementById('powerup-bar'),
     wordsProgress: document.getElementById('words-progress')
@@ -1046,11 +1303,13 @@ function createPowerupTiles() {
             <div class="count">0</div>
         </div>
         <div class="powerup-tile vowelBomb" data-powerup="vowelBomb">
-            <div class="icon">a</div>
+            <div class="icon">↔️</div>
+            <div class="label">Row</div>
             <div class="count">0</div>
         </div>
         <div class="powerup-tile consonantBomb" data-powerup="consonantBomb">
-            <div class="icon">b</div>
+            <div class="icon">↕️</div>
+            <div class="label">Col</div>
             <div class="count">0</div>
         </div>
         <div class="powerup-tile shuffle" data-powerup="shuffle">
@@ -1100,7 +1359,12 @@ function updatePowerupTiles() {
     });
 }
 
-// ==================== BOMB DRAG & DROP ====================
+// ==================== BOMB: DRAG-AND-DROP ROW / COLUMN ====================
+// Drag a bomb from the power-up bar onto the board.
+// Dragging more horizontally highlights the full ROW under the cursor (→ ROW).
+// Dragging more vertically highlights the full COLUMN under the cursor (↓ COL).
+// Drop to detonate. New letters drop in Tetris-style.
+
 function startBombDrag(e) {
     e.preventDefault();
     if (!gameState.isPlaying) return;
@@ -1108,35 +1372,36 @@ function startBombDrag(e) {
     const powerup = tile.dataset.powerup; // 'vowelBomb' or 'consonantBomb'
     if (gameState.powerups[powerup] === 0) return;
 
-    // Cancel any existing drag
     cancelBombDrag();
 
     gameState.bombDragActive = true;
     gameState.bombDragType = powerup === 'vowelBomb' ? 'vowel' : 'consonant';
 
-    // Create ghost element
+    // Record start position (kept for legacy; axis is now determined by bomb type)
+    const pt = e.type === 'touchstart' ? e.touches[0] : e;
+    gameState.bombDragStartX = pt.clientX;
+    gameState.bombDragStartY = pt.clientY;
+    gameState.bombDragAxis = null;
+    gameState.bombDropAxis = null;
+    gameState.bombDropAxisIndex = -1;
+
+    // Create ghost element — label shows what the bomb targets
     const ghost = document.createElement('div');
     ghost.className = 'bomb-drag-ghost';
-    ghost.textContent = powerup === 'vowelBomb' ? 'a' : 'b';
+    const icon      = powerup === 'vowelBomb' ? '↔️' : '↕️';
+    const typeLabel = powerup === 'vowelBomb' ? 'ROW BOMB' : 'COL BOMB';
+    ghost.innerHTML = `<span class="ghost-icon">${icon}</span><span class="ghost-axis-label">${typeLabel}</span>`;
     document.body.appendChild(ghost);
     gameState.bombGhost = ghost;
 
-    // Initial position
     updateGhostPosition(e);
 }
 
 function updateGhostPosition(e) {
     if (!gameState.bombDragActive || !gameState.bombGhost) return;
-    let clientX, clientY;
-    if (e.type === 'touchmove' || e.type === 'touchstart') {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-    } else {
-        clientX = e.clientX;
-        clientY = e.clientY;
-    }
-    gameState.bombGhost.style.left = clientX + 'px';
-    gameState.bombGhost.style.top = clientY + 'px';
+    const pt = (e.type === 'touchmove' || e.type === 'touchstart') ? e.touches[0] : e;
+    gameState.bombGhost.style.left = pt.clientX + 'px';
+    gameState.bombGhost.style.top  = pt.clientY + 'px';
 }
 
 function onDragMove(e) {
@@ -1144,155 +1409,243 @@ function onDragMove(e) {
     e.preventDefault();
     updateGhostPosition(e);
 
-    // Check if over board
+    const pt = e.type === 'touchmove' ? e.touches[0] : e;
+    const clientX = pt.clientX;
+    const clientY = pt.clientY;
+
+    // The axis is determined by the bomb TYPE, not by drag direction:
+    //   vowelBomb   = ↔️ Row bomb  → always selects a full horizontal row
+    //   consonantBomb = ↕️ Col bomb → always selects a full vertical column
+    const axis = gameState.bombDragType === 'vowel' ? 'row' : 'col';
+
+    // Update ghost label
+    const axisLabel = gameState.bombGhost && gameState.bombGhost.querySelector('.ghost-axis-label');
+    if (axisLabel) axisLabel.textContent = axis === 'row' ? '↔ DROP ON ROW' : '↕ DROP ON COL';
+
+    // Highlight the row or column under the cursor
     const boardRect = elements.board.getBoundingClientRect();
-    let clientX, clientY;
-    if (e.type === 'touchmove') {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-    } else {
-        clientX = e.clientX;
-        clientY = e.clientY;
-    }
+    clearBombHighlight();
+    gameState.bombDropAxis = null;
+    gameState.bombDropAxisIndex = -1;
 
     if (clientX >= boardRect.left && clientX <= boardRect.right &&
-        clientY >= boardRect.top && clientY <= boardRect.bottom) {
-        // Find tile under cursor and update bomb hover
-        const tile = getTileAtPosition(clientX, clientY);
-        if (tile) {
-            const index = parseInt(tile.dataset.index);
-            const size = gameState.gridSize;
-            const row = Math.floor(index / size);
-            const col = index % size;
-            if (row < size-1 && col < size-1) {
-                // Valid 2x2 area
-                const indices = [
-                    row * size + col,
-                    row * size + col + 1,
-                    (row + 1) * size + col,
-                    (row + 1) * size + col + 1
-                ];
-                clearBombHighlight();
-                indices.forEach(idx => {
-                    const t = document.querySelector(`.tile[data-index="${idx}"]`);
-                    if (t) t.classList.add('bomb-target');
-                });
-                gameState.bombHighlightCells = indices;
-            } else {
-                clearBombHighlight();
-            }
+        clientY >= boardRect.top  && clientY <= boardRect.bottom) {
+
+        const size = gameState.gridSize;
+        const relX = clientX - boardRect.left;
+        const relY = clientY - boardRect.top;
+        const col = Math.max(0, Math.min(size - 1, Math.floor((relX / boardRect.width)  * size)));
+        const row = Math.max(0, Math.min(size - 1, Math.floor((relY / boardRect.height) * size)));
+
+        let indices = [];
+        if (axis === 'row') {
+            for (let c = 0; c < size; c++) indices.push(row * size + c);
+            gameState.bombDropAxisIndex = row;
         } else {
-            clearBombHighlight();
+            for (let r = 0; r < size; r++) indices.push(r * size + col);
+            gameState.bombDropAxisIndex = col;
         }
+        gameState.bombDropAxis = axis;
+
+        indices.forEach(idx => {
+            const t = document.querySelector(`.tile[data-index="${idx}"]`);
+            if (t) t.classList.add('bomb-target');
+        });
+        gameState.bombHighlightCells = indices;
+
+        // Pulse ghost green when over a valid target
+        if (gameState.bombGhost) gameState.bombGhost.classList.add('ghost-valid');
     } else {
-        clearBombHighlight();
+        if (gameState.bombGhost) gameState.bombGhost.classList.remove('ghost-valid');
     }
 }
 
 function onDragEnd(e) {
     if (!gameState.bombDragActive) return;
-    e.preventDefault();
+    // Don't call preventDefault here — we need touchend to fire naturally
 
-    // Check if dropped over board with valid highlight
-    if (gameState.bombHighlightCells.length > 0) {
-        // Trigger bomb drop
+    if (gameState.bombHighlightCells.length > 0 && gameState.bombDropAxis !== null) {
         const type = gameState.bombDragType;
-        const indices = gameState.bombHighlightCells;
-        
-        // Apply bomb (letter change)
-        const vowels = ['A','E','I','O','U'];
-        const consonants = ['R','S','T','N','L','C','D','M','P','B','G','F'];
-        indices.forEach(idx => {
-            if (type === 'vowel') {
-                gameState.board[idx] = vowels[Math.floor(Math.random() * vowels.length)];
-            } else {
-                gameState.board[idx] = consonants[Math.floor(Math.random() * consonants.length)];
-            }
-        });
-        
-        // Animate tiles
-        indices.forEach((idx, i) => {
-            const tile = document.querySelector(`.tile[data-index="${idx}"]`);
-            if (tile) {
-                setTimeout(() => {
-                    tile.classList.add('bomb-drop');
-                    tile.querySelector('.tile-content').textContent = gameState.board[idx];
-                    setTimeout(() => tile.classList.remove('bomb-drop'), 400);
-                }, i * 50);
-            }
-        });
+        const axis = gameState.bombDropAxis;
+        const axisIdx = gameState.bombDropAxisIndex;
+        // Remove ghost before explosion so it doesn't linger
+        if (gameState.bombGhost) { gameState.bombGhost.remove(); gameState.bombGhost = null; }
+        gameState.bombDragActive = false;
+        applyBombExplosion(axis, axisIdx, type);
+    } else {
+        cancelBombDrag();
+    }
+}
 
-        // Directional shake
-        const size = gameState.gridSize;
-        const topLeftIdx = indices[0];
-        const r = Math.floor(topLeftIdx / size);
-        const c = topLeftIdx % size;
-        const bombCenterRow = r + 0.5;
-        const bombCenterCol = c + 0.5;
-
-        const allTiles = document.querySelectorAll('.tile');
-        allTiles.forEach(tile => {
-            const idx = parseInt(tile.dataset.index);
-            const row = Math.floor(idx / size);
-            const col = idx % size;
-
-            const dx = col - bombCenterCol;
-            const dy = row - bombCenterRow;
-
-            let dirClass = '';
-            if (Math.abs(dx) > Math.abs(dy)) {
-                dirClass = dx > 0 ? 'bomb-shake-right' : 'bomb-shake-left';
-            } else {
-                dirClass = dy > 0 ? 'bomb-shake-down' : 'bomb-shake-up';
-            }
-
-            tile.classList.remove('bomb-shake-right', 'bomb-shake-left', 'bomb-shake-up', 'bomb-shake-down');
-            tile.style.animationDelay = '';
-
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            const delay = distance * 0.05;
-            tile.style.animationDelay = `${delay}s`;
-            tile.classList.add(dirClass);
-
-            if (indices.includes(idx)) {
-                tile.classList.add('bomb-drop');
-            }
-        });
-
-        elements.board.classList.add('exploding');
-        setTimeout(() => {
-            elements.board.classList.remove('exploding');
-        }, 600);
-
-        setTimeout(() => {
-            allTiles.forEach(tile => {
-                tile.classList.remove('bomb-shake-right', 'bomb-shake-left', 'bomb-shake-up', 'bomb-shake-down', 'bomb-drop');
-                tile.style.animationDelay = '';
-            });
-        }, 600);
-        
-        // Decrement power-up
-        gameState.powerups[type === 'vowel' ? 'vowelBomb' : 'consonantBomb']--;
-        gameState.powerupsUsed[type === 'vowel' ? 'vowelBomb' : 'consonantBomb']++;
-        updatePowerupTiles();
-        if (gameState.soundEnabled) soundManager.playBombDrop();
-        
-        clearSelection();
-        setTimeout(() => analyzeBoardAsync(), 500);
+function applyBombExplosion(axis, axisIdx, type) {
+    const size = gameState.gridSize;
+    let indices = [];
+    if (axis === 'row') {
+        for (let c = 0; c < size; c++) indices.push(axisIdx * size + c);
+    } else {
+        for (let r = 0; r < size; r++) indices.push(r * size + axisIdx);
     }
 
-    // Clean up drag state
+    // Close drag overlay
     cancelBombDrag();
-    clearBombHighlight();
+
+    const vowels     = ['A','E','I','O','U'];
+    const consonants = ['R','S','T','N','L','C','D','M','P','B','G','F'];
+
+    if (gameState.soundEnabled) soundManager.playBombDrop();
+
+    // PHASE 1 — Blast targeted tiles OUT of the board with scatter physics
+    // Each tile flies away in a direction determined by its position on the axis.
+    let blastsDone = 0;
+    const blastTotal = indices.length;
+
+    // Add an explosion flash overlay on the board for extra drama
+    const flashOverlay = document.createElement('div');
+    flashOverlay.style.cssText = `
+        position:absolute; inset:0; border-radius:12px; pointer-events:none; z-index:20;
+        background: radial-gradient(circle at 50% 50%, rgba(255,200,60,0.55) 0%, rgba(255,100,20,0.3) 40%, transparent 72%);
+        animation: bombFlash 0.38s ease-out forwards;
+    `;
+    document.getElementById('board-wrap').appendChild(flashOverlay);
+    setTimeout(() => flashOverlay.remove(), 420);
+
+    indices.forEach(idx => {
+        const tileEl = document.querySelector(`.tile[data-index="${idx}"]`);
+        if (!tileEl) { blastsDone++; return; }
+
+        animateTileBlastOut(tileEl, idx, size, axis, axisIdx, () => {
+            blastsDone++;
+            // PHASE 2 — once ALL tiles have finished their blast-out, drop replacements in
+            if (blastsDone === blastTotal) {
+                if (axis === 'row') {
+                    for (let c = 0; c < size; c++) {
+                        applyGravityToColumn(c, axisIdx, type, vowels, consonants);
+                    }
+                } else {
+                    applyGravityToColStrip(axisIdx, type, vowels, consonants);
+                }
+
+                // Decrement power-up
+                gameState.powerups[type === 'vowel' ? 'vowelBomb' : 'consonantBomb']--;
+                gameState.powerupsUsed[type === 'vowel' ? 'vowelBomb' : 'consonantBomb']++;
+                updatePowerupTiles();
+                clearSelection();
+                invalidateTileRectCache();
+                setTimeout(() => {
+                    buildTileRectCache();
+                    analyzeBoardAsync();
+                }, 650);
+            }
+        });
+    });
+}
+
+// Row bomb: one row is blasted. Tiles above shift down by one slot,
+// and a brand-new letter falls from above the board into the top slot.
+function applyGravityToColumn(col, blownRow, type, vowels, consonants) {
+    const size = gameState.gridSize;
+
+    // Build the new column state
+    let colLetters = [];
+    for (let r = 0; r < size; r++) colLetters.push(gameState.board[r * size + col]);
+
+    colLetters.splice(blownRow, 1);                                   // remove blown slot
+
+    const pool      = type === 'vowel' ? vowels : consonants;
+    const newLetter = pool[Math.floor(Math.random() * pool.length)];
+    colLetters.unshift(newLetter);                                    // new tile drops into top slot
+
+    // Write back to board state
+    for (let r = 0; r < size; r++) gameState.board[r * size + col] = colLetters[r];
+
+    const boardRect = elements.board.getBoundingClientRect();
+
+    for (let r = 0; r < size; r++) {
+        const tileEl = document.querySelector(`.tile[data-index="${r * size + col}"]`);
+        if (!tileEl) continue;
+
+        // Update letter
+        tileEl.querySelector('.tile-content').textContent = colLetters[r];
+        // Ensure tile is visible (blast-out hid it) then animate
+        tileEl.style.opacity = '0';
+
+        const tileRect = tileEl.getBoundingClientRect();
+        const delay    = r * 38;   // cascade top→bottom
+
+        if (r === 0) {
+            // ── Brand-new tile — falls from above the board with full path animation
+            const distFromTop = tileRect.top - boardRect.top + tileRect.height;
+            animateTileFall(tileEl, -(distFromTop + 24), delay);
+        } else if (r <= blownRow) {
+            // ── Survivor from above the blast — slides down one slot
+            // (the blast-out already flew it away; now it returns to its NEW position
+            //  which is one row lower — we simulate that by sliding from –tileHeight to 0)
+            const shiftDown = tileRect.height + 4;
+            animateTileSlideDown(tileEl, shiftDown, delay);
+        } else {
+            // ── Tiles below the blast are unaffected — fade back in quickly
+            setTimeout(() => {
+                tileEl.style.cssText = '';
+                tileEl.style.opacity = '0';
+                tileEl.style.transition = 'opacity 160ms ease';
+                requestAnimationFrame(() => { tileEl.style.opacity = '1'; });
+                setTimeout(() => { tileEl.style.cssText = ''; }, 200);
+            }, delay);
+        }
+    }
+}
+
+// Column bomb: entire column replaced with new letters, all falling from above.
+function applyGravityToColStrip(axisCol, type, vowels, consonants) {
+    const size = gameState.gridSize;
+    const pool = type === 'vowel' ? vowels : consonants;
+
+    // Generate and store new letters
+    for (let r = 0; r < size; r++) {
+        gameState.board[r * size + axisCol] = pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    // Add overflow clip while tiles are mid-air
+    elements.board.classList.add('tiles-falling');
+
+    const boardRect = elements.board.getBoundingClientRect();
+
+    for (let r = 0; r < size; r++) {
+        const tileEl = document.querySelector(`.tile[data-index="${r * size + axisCol}"]`);
+        if (!tileEl) continue;
+
+        // Update letter and hide so animateTileFall can reveal it
+        tileEl.querySelector('.tile-content').textContent = gameState.board[r * size + axisCol];
+        tileEl.style.opacity = '0';
+
+        const tileRect    = tileEl.getBoundingClientRect();
+        const distToBoard = tileRect.top - boardRect.top + tileRect.height;
+        const startY      = -(distToBoard + 20);
+        const delay       = r * 48;  // cascade top→bottom
+
+        animateTileFall(tileEl, startY, delay);
+    }
+
+    // Remove clip class once the last tile has landed
+    const lastDelay    = (size - 1) * 48;
+    const lastDist     = Math.abs(-(elements.board.getBoundingClientRect().height + 20));
+    const lastDuration = Math.min(700, 340 + lastDist * 0.52);
+    setTimeout(() => elements.board.classList.remove('tiles-falling'), lastDelay + lastDuration + 40);
 }
 
 function cancelBombDrag() {
+    // Remove ghost
     if (gameState.bombGhost) {
         gameState.bombGhost.remove();
         gameState.bombGhost = null;
     }
+    // Remove dim from all tiles
+    document.querySelectorAll('#board .tile.bomb-dim').forEach(t => t.classList.remove('bomb-dim'));
     gameState.bombDragActive = false;
     gameState.bombDragType = null;
+    gameState.bombDragAxis = null;
+    gameState.bombDropAxis = null;
+    gameState.bombDropAxisIndex = -1;
     clearBombHighlight();
 }
 
@@ -1303,6 +1656,12 @@ function clearBombHighlight() {
     });
     gameState.bombHighlightCells = [];
 }
+
+
+
+
+
+
 
 // ==================== GAME FUNCTIONS ====================
 async function startGame() {
@@ -1342,6 +1701,9 @@ async function startGame() {
     gameState.wordsFoundCount = 0;
     gameState.bombPlacementMode = null;
     gameState.bombHighlightCells = [];
+    gameState.bombDragAxis = null;
+    gameState.bombDropAxis = null;
+    gameState.bombDropAxisIndex = -1;
     gameState.nextScoreBonus = gameState.scoreMilestone;
     gameState.lastWordTime = Date.now();
     // Reset power-up usage stats
@@ -1371,7 +1733,8 @@ async function startGame() {
     gameState.board = generateBoard();
     
     renderBoard();
-    initPrismCanvas(); // Initialize canvas after board is rendered
+    initPrismCanvas();
+    initTrailCanvas();
     switchScreen('game-ui');
     updateScore();
     updateComboDisplay();
@@ -1383,7 +1746,15 @@ async function startGame() {
     } else {
         elements.timerElement.style.color = '#10b981';
         elements.timerElement.classList.remove('blink', 'endless');
-        startTimer();
+        // Timer starts once the tile drop-in animation finishes.
+        // Stagger: col × 60ms + row × 40ms (same as renderBoard).
+        // Longest fall: bottom-right tile of the grid.
+        const size           = gameState.gridSize;
+        const lastTileDelay  = (size - 1) * 60 + (size - 1) * 40;   // matches renderBoard stagger
+        const lastFallDist   = 420;                                    // approx longest startOffsetY magnitude
+        const lastFallDur    = Math.min(700, 340 + lastFallDist * 0.52);
+        const dropInFinishMs = lastTileDelay + lastFallDur + 80;      // +80ms buffer
+        setTimeout(() => startTimer(), dropInFinishMs);
     }
     
     setTimeout(() => analyzeBoardAsync(), 50);
@@ -1427,49 +1798,296 @@ function generateBoard() {
     return board;
 }
 
+// ==================== TILE PHYSICS ====================
+// Path-based tile drop animation — 5 hand-crafted paths give each tile a
+// distinct personality while guaranteeing a clean landing at t=1.
+//
+// Path types:
+//   0 – Gentle wobble (subtle side sway)
+//   1 – Left-wall arc (curves toward left, corrects on approach)
+//   2 – Right-wall arc (mirror)
+//   3 – S-drift (fluid double-curve)
+//   4 – Fast slam (aggressive straight fall, heavy squish)
+
+const _eIn3  = t => t * t * t;
+const _eOut3 = t => 1 - (1 - t) ** 3;
+
+/**
+ * Drop a tile from startOffsetY (negative px, above its natural slot) down
+ * to its natural grid position using a pre-baked path.
+ * @param {HTMLElement} tileEl
+ * @param {number}      startOffsetY  — starting Y offset (negative = above board)
+ * @param {number}      delay         — ms to wait before animating
+ * @param {Function}    [onSettle]    — called once tile is fully settled
+ */
+function animateTileFall(tileEl, startOffsetY, delay, onSettle) {
+    const pathType  = Math.floor(Math.random() * 5);
+    const startRot  = (Math.random() - 0.5) * 0.30;   // small initial rotation (radians)
+    const dist      = Math.abs(startOffsetY);
+    // Duration scales with fall distance, capped so long falls don't feel sluggish
+    const duration  = Math.min(700, 340 + dist * 0.52);
+
+    // Teleport tile to start position (invisible)
+    tileEl.style.cssText = `opacity:0; transform:translateY(${startOffsetY}px); transition:none; will-change:transform,opacity;`;
+
+    setTimeout(() => {
+        let t0 = null;
+
+        function frame(ts) {
+            if (!t0) t0 = ts;
+            const elapsed = ts - t0;
+            const t = Math.min(1, elapsed / duration);
+
+            // ── Vertical: gravity curve with micro spring-bounce near landing ──
+            let vf;
+            if (t < 0.87) {
+                // Accelerating fall (easeInCubic scaled to 87% of time)
+                vf = _eIn3(t / 0.87);
+            } else {
+                // Tiny spring overshoot: dip below 1, then snap back to exactly 1
+                const u = (t - 0.87) / 0.13;
+                vf = 1 - 0.038 * Math.sin(u * Math.PI);
+            }
+            const curY = startOffsetY * (1 - vf);  // startOffsetY→0 as vf→1
+
+            // ── Horizontal path offset (returns to 0 by t=1 via envelope) ──
+            const env = 1 - t * t;   // amplitude envelope: 1 at t=0, 0 at t=1
+            let hx = 0;
+            switch (pathType) {
+                case 0: // Gentle wobble
+                    hx = Math.sin(t * Math.PI * 2.4) * 5 * env;
+                    break;
+                case 1: // Arc left
+                    hx = -17 * Math.sin(t * Math.PI) * (1 - t * 0.32);
+                    break;
+                case 2: // Arc right
+                    hx = +17 * Math.sin(t * Math.PI) * (1 - t * 0.32);
+                    break;
+                case 3: // S-drift
+                    hx = Math.sin(t * Math.PI * 1.85) * 13 * env;
+                    break;
+                case 4: // Fast slam — barely any horizontal drift
+                    hx = Math.sin(t * Math.PI * 1.3) * 6 * env;
+                    break;
+            }
+
+            // ── Rotation eases smoothly to 0 ──
+            const rot = startRot * (1 - _eOut3(t));
+
+            // ── Landing squish (brief scaleX/scaleY deformation) ──
+            let sx = 1, sy = 1;
+            if (t > 0.81 && t < 1) {
+                const lt = (t - 0.81) / 0.19;
+                // Squish amount larger for the slam path
+                const sqAmt = pathType === 4 ? 0.16 : 0.10;
+                const sq = Math.sin(lt * Math.PI) * sqAmt;
+                sx = 1 + sq * 0.55;
+                sy = 1 - sq;
+            }
+
+            tileEl.style.opacity   = Math.min(1, elapsed / 80).toFixed(3);
+            tileEl.style.transform = `translateX(${hx.toFixed(2)}px) translateY(${curY.toFixed(2)}px) rotate(${rot.toFixed(4)}rad) scaleX(${sx.toFixed(4)}) scaleY(${sy.toFixed(4)})`;
+
+            if (t < 1) {
+                requestAnimationFrame(frame);
+            } else {
+                tileEl.style.cssText = '';   // remove all inline styles — CSS classes take over
+                if (onSettle) onSettle();
+            }
+        }
+
+        requestAnimationFrame(frame);
+    }, delay);
+}
+
+/**
+ * Blast a tile OUT of the board — it flies away and fades to nothing.
+ * Used as the first phase of a bomb explosion before new tiles drop in.
+ * @param {HTMLElement} tileEl
+ * @param {number}      index   — tile index in the grid
+ * @param {number}      size    — grid size (4 or 5)
+ * @param {string}      axis    — 'row' or 'col'
+ * @param {number}      axisIdx — which row/col is being bombed
+ * @param {Function}    [onDone]
+ */
+function animateTileBlastOut(tileEl, index, size, axis, axisIdx, onDone) {
+    const row = Math.floor(index / size);
+    const col = index % size;
+    const cx  = (size - 1) / 2;   // centre of the grid
+
+    // Determine blast velocity based on position relative to the explosion axis
+    let vx, vy, rotEnd;
+    if (axis === 'row') {
+        // Row bomb: tiles scatter upward; columns near edges fly further sideways
+        const xSpread = (col - cx) / cx;   // –1 … +1
+        vx     = xSpread * 60 + (Math.random() - 0.5) * 22;
+        vy     = -(65 + Math.random() * 55);
+        rotEnd = (Math.random() - 0.5) * 1.6;
+    } else {
+        // Col bomb: tiles scatter sideways; rows near edges fly further up/down
+        const ySpread = (row - cx) / cx;
+        const dir     = axisIdx <= cx ? -1 : 1;   // fly away from board centre
+        vx     = dir * (72 + Math.random() * 48);
+        vy     = ySpread * 55 + (Math.random() - 0.5) * 22;
+        rotEnd = (Math.random() - 0.5) * 1.6;
+    }
+
+    const duration = 270 + Math.random() * 70;
+    let t0 = null;
+
+    tileEl.style.willChange = 'transform, opacity';
+
+    function frame(ts) {
+        if (!t0) t0 = ts;
+        const t    = Math.min(1, (ts - t0) / duration);
+        // ease-in-out for a satisfying arc, then slow at the end as it fades
+        const ease = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+
+        tileEl.style.transform = `translate(${(vx * ease).toFixed(1)}px, ${(vy * ease).toFixed(1)}px) rotate(${(rotEnd * ease).toFixed(3)}rad) scale(${(1 - ease * 0.28).toFixed(3)})`;
+        tileEl.style.opacity   = (1 - ease * ease).toFixed(3);   // quadratic fade
+
+        if (t < 1) {
+            requestAnimationFrame(frame);
+        } else {
+            // Hide completely — the caller will reuse this element with animateTileFall
+            tileEl.style.opacity    = '0';
+            tileEl.style.transform  = '';
+            tileEl.style.willChange = '';
+            if (onDone) onDone();
+        }
+    }
+    requestAnimationFrame(frame);
+}
+
+/**
+ * Smoothly slide a tile DOWN by shiftPx pixels (used for row-bomb survivors
+ * that need to shift one slot lower after the row above them is removed).
+ * @param {HTMLElement} tileEl
+ * @param {number}      shiftPx  — positive px to shift downward
+ * @param {number}      delay
+ * @param {Function}    [onSettle]
+ */
+function animateTileSlideDown(tileEl, shiftPx, delay, onSettle) {
+    const duration = Math.min(480, 260 + shiftPx * 0.30);
+
+    // Start at –shiftPx (i.e. original position) and settle at 0 (new position)
+    tileEl.style.cssText = `transform:translateY(${-shiftPx}px); transition:none; will-change:transform;`;
+
+    setTimeout(() => {
+        let t0 = null;
+        function frame(ts) {
+            if (!t0) t0 = ts;
+            const t = Math.min(1, (ts - t0) / duration);
+            // spring-like settle
+            let vf;
+            if (t < 0.88) {
+                vf = _eIn3(t / 0.88);
+            } else {
+                const u = (t - 0.88) / 0.12;
+                vf = 1 - 0.025 * Math.sin(u * Math.PI);
+            }
+            const curY = -shiftPx * (1 - vf);
+
+            // tiny landing squish for survivors too
+            let sx = 1, sy = 1;
+            if (t > 0.84 && t < 1) {
+                const lt = (t - 0.84) / 0.16;
+                const sq = Math.sin(lt * Math.PI) * 0.07;
+                sx = 1 + sq * 0.5;
+                sy = 1 - sq;
+            }
+            tileEl.style.transform = `translateY(${curY.toFixed(2)}px) scaleX(${sx.toFixed(4)}) scaleY(${sy.toFixed(4)})`;
+            if (t < 1) {
+                requestAnimationFrame(frame);
+            } else {
+                tileEl.style.cssText = '';
+                if (onSettle) onSettle();
+            }
+        }
+        requestAnimationFrame(frame);
+    }, delay);
+}
+
 function renderBoard() {
     elements.board.innerHTML = '';
     elements.board.style.gridTemplateColumns = `repeat(${gameState.gridSize}, 1fr)`;
-    
+    // Clip overflow so tiles appear to fall from above the board edge
+    elements.board.classList.add('tiles-falling');
+
+    const size = gameState.gridSize;
+
     gameState.board.forEach((letter, index) => {
         const tile = document.createElement('div');
         tile.className = 'tile';
         tile.dataset.index = index;
         tile.dataset.multiplier = gameState.tileMultipliers[index];
-        
-        // Add multiplier class if power-ups enabled and multiplier > 1
+
         if (gameState.powerupsEnabled && gameState.tileMultipliers[index] > 1) {
             tile.classList.add(`multiplier-${gameState.tileMultipliers[index]}`);
         }
-        
+
         const content = document.createElement('div');
         content.className = 'tile-content';
         content.textContent = letter;
         tile.appendChild(content);
-        
-        // Add multiplier badge if >1
+
         if (gameState.powerupsEnabled && gameState.tileMultipliers[index] > 1) {
             const badge = document.createElement('div');
             badge.className = 'tile-multiplier';
             badge.textContent = `${gameState.tileMultipliers[index]}x`;
             tile.appendChild(badge);
         }
-        
+
         const hitbox = document.createElement('div');
         hitbox.className = 'tile-hitbox';
         tile.appendChild(hitbox);
-        
-        tile.addEventListener('mousedown', (e) => handleTileStart(index, e));
+
+        tile.addEventListener('mousedown',  (e) => handleTileStart(index, e));
         tile.addEventListener('touchstart', (e) => handleTileStart(index, e), { passive: false });
-        
         tile.addEventListener('mouseenter', () => {
             if (gameState.isDragging && !gameState.selectedTiles.includes(index)) {
                 tile.classList.add('hover');
             }
         });
         tile.addEventListener('mouseleave', () => tile.classList.remove('hover'));
-        
+
+        // Hide tile immediately — animateTileFall will handle it
+        tile.style.cssText = 'opacity:0; transform:translateY(-400px); transition:none;';
         elements.board.appendChild(tile);
+    });
+
+    // Measure the board so we can calculate realistic fall distances
+    requestAnimationFrame(() => {
+        const boardRect = elements.board.getBoundingClientRect();
+        const tileEls   = elements.board.querySelectorAll('.tile');
+
+        let lastSettleTime = 0;
+
+        tileEls.forEach((tile, i) => {
+            const row = Math.floor(i / size);
+            const col = i % size;
+
+            // Tiles start above the board. The higher the row, the shorter the fall
+            // (row 0 tiles are near the top so start just barely above; row N are far below)
+            // We want: top row enters first, bottom row last → stagger by row too
+            const tileRect    = tile.getBoundingClientRect();
+            const distToBoard = tileRect.top - boardRect.top + tileRect.height; // px from top of board to tile bottom
+            const startY      = -(distToBoard + 20); // 20px extra clearance above board top
+
+            // Column-first cascade: col × 60ms, then row × 40ms within column
+            const delay = col * 60 + row * 40;
+
+            const settleAt = delay + Math.min(620, 320 + Math.abs(startY) * 0.55) + 30;
+            if (settleAt > lastSettleTime) lastSettleTime = settleAt;
+
+            animateTileFall(tile, startY, delay, null);
+        });
+
+        // Once the last tile has settled: remove clipping, build rect cache, enable interaction
+        setTimeout(() => {
+            elements.board.classList.remove('tiles-falling');
+            buildTileRectCache();
+        }, lastSettleTime + 30);
     });
 }
 
@@ -1489,8 +2107,7 @@ function updateScore() {
     
     const oldScore = parseInt(elements.scoreElement.textContent) || 0;
     if (displayScore > oldScore) {
-        createScorePopup(displayScore - oldScore);
-        elements.scoreElement.style.transform = 'scale(1.2)';
+        elements.scoreElement.style.transform = 'scale(1.25)';
         elements.scoreElement.style.color = '#22c55e';
         setTimeout(() => {
             elements.scoreElement.style.transform = 'scale(1)';
@@ -1515,27 +2132,39 @@ function updateScore() {
     }
 }
 
-function createScorePopup(score) {
+function createWordScorePopup(word, score, kind) {
     const now = Date.now();
-    if (now - gameState.lastScoreTime < 100) return;
+    if (now - gameState.lastScoreTime < 80) return;
     gameState.lastScoreTime = now;
-    
+
+    const palette = {
+        valid:     { word: '#4ade80', score: '#22c55e', glow: 'rgba(34,197,94,0.65)'  },
+        duplicate: { word: '#c4b5fd', score: '#8b5cf6', glow: 'rgba(139,92,246,0.65)' },
+        higher:    { word: '#fde68a', score: '#f59e0b', glow: 'rgba(245,158,11,0.65)' },
+    };
+    const c = palette[kind] || palette.valid;
+
+    // Position near board center
+    const boardEl = elements.board;
+    const br      = boardEl ? boardEl.getBoundingClientRect() : null;
+    const cx      = br ? br.left + br.width  / 2 : window.innerWidth  / 2;
+    const cy      = br ? br.top  + br.height / 2 : window.innerHeight / 2;
+
     const popup = document.createElement('div');
-    popup.className = 'score-popup';
-    popup.textContent = gameState.isEndlessMode ? `+${score}%` : `+${score}`;
-    popup.style.position = 'fixed';
-    popup.style.zIndex = '10000';
-    popup.style.pointerEvents = 'none';
-    popup.style.left = '50%';
-    popup.style.top = '50%';
-    popup.style.transform = 'translate(-50%, -50%)';
-    popup.style.fontSize = '2.5rem';
-    popup.style.fontWeight = '800';
-    popup.style.color = '#22c55e';
-    popup.style.textShadow = '0 0 20px rgba(34, 197, 94, 0.8)';
-    popup.style.animation = 'scorePopup 0.8s ease-out forwards';
+    popup.className = 'score-popup-v2';
+    popup.style.cssText = `
+        position: fixed; z-index: 10000; pointer-events: none;
+        left: ${cx}px; top: ${cy}px;
+        transform: translate(-50%, -50%);
+        animation: scorePopupV2 0.95s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    `;
+    const dispScore = gameState.isEndlessMode ? `+${score}%` : `+${score}`;
+    popup.innerHTML = `
+        <div class="sp-word"  style="color:${c.word};  text-shadow:0 0 18px ${c.glow}">${word}</div>
+        <div class="sp-score" style="color:${c.score}; text-shadow:0 0 30px ${c.glow}">${dispScore}</div>
+    `;
     document.body.appendChild(popup);
-    setTimeout(() => popup.remove(), 800);
+    setTimeout(() => popup.remove(), 950);
 }
 
 function startTimer() {
@@ -1570,15 +2199,17 @@ function stopTimer() {
 
 // ==================== TILE INTERACTION ====================
 function getTileAtPosition(x, y) {
-    const tiles = document.querySelectorAll('.tile');
-    for (const tile of tiles) {
-        const rect = tile.getBoundingClientRect();
-        const hitboxWidth = rect.width * 0.7;
-        const hitboxHeight = rect.height * 0.7;
-        const hitboxX = rect.left + (rect.width - hitboxWidth) / 2;
-        const hitboxY = rect.top + (rect.height - hitboxHeight) / 2;
-        if (x >= hitboxX && x <= hitboxX + hitboxWidth && y >= hitboxY && y <= hitboxY + hitboxHeight) {
-            return tile;
+    if (!tileRectCacheValid) buildTileRectCache();
+    for (let i = 0; i < tileRectCache.length; i++) {
+        const entry = tileRectCache[i];
+        if (!entry) continue;
+        const r = entry.rect;
+        const hw = r.width * 0.35;
+        const hh = r.height * 0.35;
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        if (x >= cx - hw && x <= cx + hw && y >= cy - hh && y <= cy + hh) {
+            return entry.el;
         }
     }
     return null;
@@ -1595,9 +2226,8 @@ function handleTileStart(index, event) {
     gameState.selectedTiles.push(index);
     const tile = document.querySelector(`.tile[data-index="${index}"]`);
     if (tile) {
+        tile.style.cssText = ''; // clear any lingering drop-in inline styles
         tile.classList.add('selected');
-        tile.style.transform = 'scale(1.1)';
-        setTimeout(() => tile.style.transform = 'scale(1.08)', 50);
     }
     
     const letter = gameState.board[index];
@@ -1608,6 +2238,9 @@ function handleTileStart(index, event) {
     if (gameState.soundEnabled) soundManager.playTileSelect();
     
     gameState.isDragging = true;
+    
+    // Start word trail animation
+    startTrailAnimation();
     
     // Sync prism systems after adding tile
     syncPrismSystems();
@@ -1624,12 +2257,23 @@ function handleTileStart(index, event) {
     gameState.currentEndHandler = endHandler;
 }
 
+let _tileMoveRafPending = false;
+let _tileMoveLastEvent = null;
+
 function handleTileMove(event) {
     if (!gameState.isDragging) return;
+    // Throttle via RAF for mobile performance
+    _tileMoveLastEvent = event;
+    if (_tileMoveRafPending) return;
+    _tileMoveRafPending = true;
+    requestAnimationFrame(() => {
+        _tileMoveRafPending = false;
+        const ev = _tileMoveLastEvent;
+        if (!gameState.isDragging || !ev) return;
     
-    const clientX = event.type.includes('mouse') ? event.clientX : event.touches[0].clientX;
-    const clientY = event.type.includes('mouse') ? event.clientY : event.touches[0].clientY;
-    
+    const clientX = ev.type.includes('mouse') ? ev.clientX : ev.touches[0].clientX;
+    const clientY = ev.type.includes('mouse') ? ev.clientY : ev.touches[0].clientY;
+
     const tile = getTileAtPosition(clientX, clientY);
     if (tile) {
         const index = parseInt(tile.dataset.index);
@@ -1645,6 +2289,7 @@ function handleTileMove(event) {
             
             if (rowDiff <= 1 && colDiff <= 1) {
                 gameState.selectedTiles.push(index);
+                tile.style.cssText = ''; // clear any lingering inline styles
                 tile.classList.add('selected');
                 tile.classList.add('new-selection');
                 setTimeout(() => tile.classList.remove('new-selection'), 100);
@@ -1673,6 +2318,7 @@ function handleTileMove(event) {
             // If it's the last tile, do nothing (already selected)
         }
     }
+    }); // end RAF
 }
 
 function handleTileEnd() {
@@ -1698,7 +2344,7 @@ function clearSelection() {
     gameState.selectedTiles.forEach(index => {
         const tile = document.querySelector(`.tile[data-index="${index}"]`);
         if (tile) {
-            tile.style.transform = 'scale(1)';
+            tile.style.cssText = '';
             tile.classList.remove('selected');
         }
     });
@@ -1706,6 +2352,9 @@ function clearSelection() {
     gameState.currentWord = "";
     elements.currentWordElement.textContent = '';
     elements.currentWordElement.classList.remove('invalid');
+    
+    // Clear word trail
+    clearTrail();
     
     // Remove all prism systems
     prismSystems = {};
@@ -1726,8 +2375,8 @@ function truncateSelectionTo(index) {
     toRemove.forEach(idx => {
         const tile = document.querySelector(`.tile[data-index="${idx}"]`);
         if (tile) {
+            tile.style.cssText = '';
             tile.classList.remove('selected');
-            tile.style.transform = 'scale(1)';
         }
     });
 
@@ -1835,6 +2484,7 @@ function submitWord() {
         elements.currentWordElement.style.color = '#ef4444';
         elements.currentWordElement.classList.add('invalid');
         if (gameState.soundEnabled) soundManager.playWordInvalid();
+        burstTrail(false);
         setTimeout(() => {
             elements.currentWordElement.style.color = '#f1f5f9';
             elements.currentWordElement.classList.remove('invalid');
@@ -1849,6 +2499,9 @@ function submitWord() {
     elements.currentWordElement.textContent = word;
     elements.currentWordElement.style.color = '#f1f5f9';
     if (gameState.soundEnabled) soundManager.playWordValid();
+    
+    // Trail burst before clearing
+    burstTrail(true);
     
     addWord(word, finalScore, tileMult);
 }
@@ -1897,6 +2550,9 @@ function addWord(word, finalScore, tileMult) {
             gameState.nextScoreBonus += gameState.scoreMilestone;
         }
     }
+    
+    // Show word score popup
+    createWordScorePopup(word, finalScore, 'valid');
     
     // Award random power-ups based on triggers
     if (gameState.powerupsEnabled) {
@@ -2009,22 +2665,39 @@ function updateComboDisplay() {
     if (!gameState.powerupsEnabled) {
         const comboEl = document.getElementById('combo-meter');
         if (comboEl) comboEl.style.display = 'none';
+        // Clear heat
+        elements.board.classList.remove('combo-heat-2','combo-heat-3','combo-heat-5');
         return;
     }
     let comboEl = document.getElementById('combo-meter');
     if (!comboEl) {
         comboEl = document.createElement('div');
         comboEl.id = 'combo-meter';
-        elements.topBar.appendChild(comboEl); // attach to top-bar, will be positioned absolutely
+        elements.topBar.appendChild(comboEl);
     }
-    comboEl.style.display = 'block';
-    if (gameState.combo >= 2) {
-        comboEl.textContent = `🔥 Combo x${gameState.comboMultiplier}`;
-        comboEl.classList.add('combo-active');
+
+    // Update board heat class
+    const board = elements.board;
+    board.classList.remove('combo-heat-2','combo-heat-3','combo-heat-5');
+
+    if (gameState.combo >= 5) {
+        board.classList.add('combo-heat-5');
+        comboEl.innerHTML = `<span class="combo-fire">🔥🔥</span> <span class="combo-count">×${gameState.comboMultiplier.toFixed(1)}</span><span class="combo-streak">${gameState.combo} streak</span>`;
+        comboEl.className = 'combo-active combo-inferno';
+    } else if (gameState.combo >= 3) {
+        board.classList.add('combo-heat-3');
+        comboEl.innerHTML = `<span class="combo-fire">🔥</span> <span class="combo-count">×${gameState.comboMultiplier.toFixed(1)}</span><span class="combo-streak">${gameState.combo} streak</span>`;
+        comboEl.className = 'combo-active combo-hot';
+    } else if (gameState.combo >= 2) {
+        board.classList.add('combo-heat-2');
+        comboEl.innerHTML = `🔥 Combo <span class="combo-count">×${gameState.comboMultiplier.toFixed(1)}</span>`;
+        comboEl.className = 'combo-active';
     } else {
         comboEl.textContent = '';
-        comboEl.classList.remove('combo-active');
+        comboEl.className   = '';
     }
+
+    comboEl.style.display = gameState.combo >= 2 ? 'block' : 'none';
 }
 
 // ==================== POWER-UPS (continued) ====================
@@ -2135,8 +2808,11 @@ function useShuffle() {
 }
 
 // ==================== BOARD ANALYSIS ASYNC ====================
-function analyzeBoardAsync() {
+async function analyzeBoardAsync() {
     console.time('findAllPossibleWords');
+    // Yield to browser between chunks via the existing batch logic
+    // Run in a microtask so we don't freeze the UI on mobile
+    await new Promise(resolve => setTimeout(resolve, 0));
     gameState.allPossibleWords = findAllPossibleWords();
     console.timeEnd('findAllPossibleWords');
     
@@ -2255,6 +2931,9 @@ function updateSummaryScreen() {
         elements.shuffleUsed.textContent = gameState.powerupsUsed.shuffle;
         elements.timeBonusTotal.textContent = gameState.totalTimeBonus;
         elements.longestWordFound.textContent = gameState.longestWordFound || '—';
+
+        // Render longest-possible word on final board state
+        renderPowerupSummaryBoard();
         
         // List all found words, sorted longest to shortest
         const foundWordsArray = Array.from(gameState.wordsFound.keys()).sort((a, b) => b.length - a.length);
@@ -2295,6 +2974,45 @@ function renderSummaryBoard() {
     
     if (elements.longestWordLabel) {
         elements.longestWordLabel.textContent = gameState.longestWord || '—';
+    }
+}
+
+// Render the final board with the longest-possible word highlighted — for power-up mode summary
+function renderPowerupSummaryBoard() {
+    const boardEl = elements.powerupSummaryBoard;
+    const labelEl = elements.powerupLongestWordLabel;
+    if (!boardEl) return;
+
+    boardEl.innerHTML = '';
+    boardEl.style.gridTemplateColumns = `repeat(${gameState.gridSize}, 1fr)`;
+
+    const longestPathIndices = new Set(gameState.longestWordPath.map(t => t.index));
+
+    gameState.board.forEach((letter, index) => {
+        const tile = document.createElement('div');
+        tile.className = 'tile';
+        if (longestPathIndices.has(index)) tile.classList.add('highlight-longest');
+
+        const content = document.createElement('div');
+        content.className = 'tile-content';
+        content.textContent = letter;
+        tile.appendChild(content);
+
+        boardEl.appendChild(tile);
+    });
+
+    if (labelEl) labelEl.textContent = gameState.longestWord || '—';
+
+    // If no longest word yet (analysis still running), show a placeholder
+    if (!gameState.longestWord) {
+        if (labelEl) labelEl.textContent = 'Calculating…';
+        // Retry once analysis finishes
+        const retry = setInterval(() => {
+            if (gameState.longestWord) {
+                clearInterval(retry);
+                renderPowerupSummaryBoard();
+            }
+        }, 200);
     }
 }
 

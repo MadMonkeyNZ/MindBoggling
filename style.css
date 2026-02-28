@@ -471,31 +471,8 @@ body {
 }
 
 /* ================= COMBO METER (overlay) ================= */
-#combo-meter {
-  position: absolute;
-  top: 100%; /* below top-bar */
-  left: 50%;
-  transform: translateX(-50%);
-  margin-top: 5px;
-  padding: 4px 12px;
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
-  border-radius: 20px;
-  font-weight: 800;
-  color: #0f172a;
-  box-shadow: 0 0 15px #f59e0b;
-  z-index: 30;
-  white-space: nowrap;
-  pointer-events: none;
-}
+/* combo-meter styles moved to canvas/trail section above */
 
-#combo-meter.combo-active {
-  animation: comboPulse 0.5s infinite;
-}
-
-@keyframes comboPulse {
-  0%, 100% { transform: translateX(-50%) scale(1); }
-  50% { transform: translateX(-50%) scale(1.1); }
-}
 
 /* ================= PROGRESS BAR (hidden in power-up mode) ================= */
 #words-progress {
@@ -576,12 +553,6 @@ body {
   width: 100%;
   max-width: 460px;
   padding: 0 4px;
-  animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-@keyframes popIn {
-  0% { opacity: 0; transform: scale(0.8); }
-  100% { opacity: 1; transform: scale(1); }
 }
 
 #board {
@@ -598,6 +569,11 @@ body {
   padding: 6px;
   background: rgba(255, 255, 255, 0.03);
   transition: transform 0.2s;
+  /* clip tiles during drop-in, cleared by JS after animation */
+}
+
+#board.tiles-falling {
+  overflow: hidden;
 }
 
 /* Bomb explosion overlay */
@@ -645,6 +621,7 @@ body {
   overflow: visible;
   min-height: 60px;
   transform: translateZ(0);
+  will-change: transform, opacity;
   border: 1px solid rgba(255, 255, 255, 0.5);
   cursor: pointer;
   transform-origin: center;
@@ -777,56 +754,51 @@ body {
 /* ================= BOMB DRAG GHOST ================= */
 .bomb-drag-ghost {
   position: fixed;
-  width: 50px;
-  height: 50px;
-  background: radial-gradient(circle at 30% 30%, #2d2d2d, #111);
-  border: 2px solid #555;
-  border-radius: 50%;
-  box-shadow: 0 0 20px rgba(255,0,0,0.5), inset 0 0 10px #fbbf24;
+  min-width: 64px;
+  height: 64px;
+  background: rgba(10, 18, 36, 0.92);
+  border: 2px solid rgba(245, 158, 11, 0.7);
+  border-radius: 14px;
+  box-shadow: 0 0 18px rgba(245,158,11,0.5), 0 4px 16px rgba(0,0,0,0.4);
   pointer-events: none;
   z-index: 9999;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -120%); /* float above finger */
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2px;
+  padding: 6px 10px;
+  backdrop-filter: blur(4px);
+}
+
+.ghost-icon {
   font-size: 1.6rem;
-  font-weight: bold;
-  color: #fbbf24;
-  text-shadow: 0 0 10px #f59e0b;
+  line-height: 1;
 }
 
-.bomb-drag-ghost::before {
-  content: '';
-  position: absolute;
-  top: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 3px;
-  height: 12px;
-  background: #8b5a2b;
-  border-radius: 2px;
-  box-shadow: 0 0 5px #fbbf24;
+.ghost-axis-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #fde68a;
+  letter-spacing: 0.5px;
+  min-height: 14px;
 }
 
-.bomb-drag-ghost::after {
-  content: '';
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 7px;
-  height: 7px;
-  background: radial-gradient(circle, #ffaa00, #cc5500);
-  border-radius: 50%;
-  box-shadow: 0 0 10px #ffaa00;
+.bomb-drag-ghost.ghost-valid {
+  border-color: #22c55e;
+  box-shadow: 0 0 20px rgba(34,197,94,0.6), 0 4px 16px rgba(0,0,0,0.4);
 }
 
 /* ================= BOMB TARGET HIGHLIGHT ================= */
+/* Full row/col highlight — more vivid amber glow */
 .tile.bomb-target {
-  box-shadow: 0 0 0 3px #f59e0b, 0 0 20px #f59e0b;
-  transform: scale(1.02);
+  background: linear-gradient(145deg, #fef3c7, #fde68a) !important;
+  color: #92400e !important;
+  box-shadow: 0 0 0 3px #f59e0b, 0 0 16px rgba(245,158,11,0.6) !important;
+  transform: scale(1.04);
   z-index: 20;
-  transition: all 0.1s;
+  transition: all 0.08s ease;
 }
 
 .tile.bomb-drop {
@@ -1089,26 +1061,9 @@ body {
   flex: 1;
 }
 
-/* Score popup animation */
+/* Legacy score-popup (kept for safety, v2 takes over) */
 .score-popup {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: #22c55e;
-  text-shadow: 0 0 20px rgba(34, 197, 94, 0.8);
-  z-index: 1000;
-  pointer-events: none;
-  animation: scorePopup 0.8s ease-out forwards;
-}
-
-@keyframes scorePopup {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-  20% { opacity: 1; transform: translate(-50%, -100%) scale(1.2); }
-  80% { opacity: 0.8; transform: translate(-50%, -120%) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -150%) scale(0.8); }
+  display: none;
 }
 
 /* ================= LOADING SCREEN ================= */
@@ -1532,6 +1487,14 @@ body {
   text-align: center;
 }
 
+#powerup-longest-section {
+  padding: 12px 15px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  text-align: center;
+}
+
 .summary-board-wrap {
   max-width: 200px;
   margin: 10px auto 0;
@@ -1641,4 +1604,262 @@ body {
   pointer-events: none;
   z-index: 10;
   border-radius: 16px;
+}
+
+/* ================= WORD TRAIL CANVAS ================= */
+#trail-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 30;
+  border-radius: 16px;
+}
+
+/* ================= SCORE POPUP V2 ================= */
+.score-popup-v2 {
+  pointer-events: none;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.sp-word {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.sp-score {
+  font-size: 3rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+@keyframes scorePopupV2 {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(-8deg); }
+  30%  { opacity: 1; transform: translate(-50%, -70%) scale(1.2) rotate(2deg); }
+  60%  { opacity: 1; transform: translate(-50%, -80%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -120%) scale(0.85); }
+}
+
+/* ================= COMBO HEAT GLOW ================= */
+/* Warm glow on board border as combo grows */
+#board.combo-heat-2 {
+  box-shadow:
+    0 25px 50px rgba(0,0,0,0.4),
+    0 0 0 2px rgba(251,146,60,0.4),
+    0 0 20px rgba(251,146,60,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+#board.combo-heat-3 {
+  box-shadow:
+    0 25px 50px rgba(0,0,0,0.4),
+    0 0 0 2px rgba(249,115,22,0.7),
+    0 0 35px rgba(249,115,22,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.1);
+  animation: heatPulse3 1.2s ease-in-out infinite;
+}
+
+#board.combo-heat-5 {
+  box-shadow:
+    0 25px 50px rgba(0,0,0,0.4),
+    0 0 0 3px rgba(239,68,68,0.9),
+    0 0 60px rgba(239,68,68,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.1);
+  animation: heatPulse5 0.7s ease-in-out infinite;
+}
+
+@keyframes heatPulse3 {
+  0%,100% { box-shadow: 0 25px 50px rgba(0,0,0,0.4), 0 0 0 2px rgba(249,115,22,0.7), 0 0 35px rgba(249,115,22,0.3), inset 0 1px 0 rgba(255,255,255,0.1); }
+  50%     { box-shadow: 0 25px 50px rgba(0,0,0,0.4), 0 0 0 2px rgba(249,115,22,0.9), 0 0 55px rgba(249,115,22,0.5), inset 0 1px 0 rgba(255,255,255,0.1); }
+}
+
+@keyframes heatPulse5 {
+  0%,100% { box-shadow: 0 25px 50px rgba(0,0,0,0.4), 0 0 0 3px rgba(239,68,68,0.9), 0 0 60px rgba(239,68,68,0.45), inset 0 1px 0 rgba(255,255,255,0.1); }
+  50%     { box-shadow: 0 25px 50px rgba(0,0,0,0.4), 0 0 0 3px #ef4444, 0 0 90px rgba(239,68,68,0.7), inset 0 1px 0 rgba(255,255,255,0.1); }
+}
+
+/* Heat-coloured tiles when combo is active */
+#board.combo-heat-3 .tile.selected {
+  background: linear-gradient(145deg, #fdba74, #f97316) !important;
+  color: #fff !important;
+  box-shadow: 0 0 28px rgba(249,115,22,0.8), 0 8px 20px rgba(249,115,22,0.4), inset 0 2px 4px rgba(255,255,255,0.4) !important;
+}
+
+#board.combo-heat-5 .tile.selected {
+  background: linear-gradient(145deg, #fca5a5, #ef4444) !important;
+  color: #fff !important;
+  box-shadow: 0 0 40px rgba(239,68,68,1), 0 8px 25px rgba(239,68,68,0.5), inset 0 2px 4px rgba(255,255,255,0.4) !important;
+  animation: infernoTile 0.45s infinite !important;
+}
+
+@keyframes infernoTile {
+  0%,100% { transform: scale(1.1); }
+  50%     { transform: scale(1.14) rotate(1deg); }
+}
+
+/* Enhanced combo meter */
+#combo-meter {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 6px;
+  padding: 5px 14px;
+  background: linear-gradient(135deg, rgba(251,191,36,0.2), rgba(245,158,11,0.15));
+  border: 1px solid rgba(251,191,36,0.4);
+  border-radius: 20px;
+  font-weight: 800;
+  font-size: 0.82rem;
+  color: #fbbf24;
+  box-shadow: 0 0 12px rgba(251,191,36,0.3);
+  z-index: 30;
+  white-space: nowrap;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+#combo-meter.combo-active {
+  animation: comboSlideIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+#combo-meter.combo-hot {
+  background: linear-gradient(135deg, rgba(249,115,22,0.25), rgba(234,88,12,0.2));
+  border-color: rgba(249,115,22,0.5);
+  color: #fb923c;
+  box-shadow: 0 0 18px rgba(249,115,22,0.4);
+}
+
+#combo-meter.combo-inferno {
+  background: linear-gradient(135deg, rgba(239,68,68,0.3), rgba(185,28,28,0.25));
+  border-color: rgba(239,68,68,0.6);
+  color: #fca5a5;
+  box-shadow: 0 0 25px rgba(239,68,68,0.5);
+  animation: comboSlideIn 0.35s cubic-bezier(0.34,1.56,0.64,1), comboInfernoGlow 0.6s ease-in-out infinite;
+}
+
+.combo-count { font-size: 1rem; }
+.combo-streak { font-size: 0.65rem; opacity: 0.7; margin-left: 3px; }
+.combo-fire   { font-size: 0.9rem; }
+
+@keyframes comboSlideIn {
+  0% { transform: translateX(-50%) scale(0.7) translateY(6px); opacity: 0; }
+  100% { transform: translateX(-50%) scale(1) translateY(0); opacity: 1; }
+}
+
+@keyframes comboInfernoGlow {
+  0%,100% { box-shadow: 0 0 25px rgba(239,68,68,0.5); }
+  50% { box-shadow: 0 0 40px rgba(239,68,68,0.8); }
+}
+
+/* ================= BOMB OVERLAY (row/col selector) ================= */
+#bomb-axis-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 18, 36, 0.92);
+  border-radius: 16px;
+  z-index: 50;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  backdrop-filter: blur(4px);
+}
+
+.bomb-overlay-header {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f59e0b;
+  text-align: center;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.bomb-axis-btns {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.bomb-axis-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.bomb-axis-label {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.bomb-axis-btn {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1.5px solid rgba(245, 158, 11, 0.5);
+  color: #fde68a;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 70px;
+  text-align: center;
+}
+
+.bomb-axis-btn:active {
+  background: rgba(245, 158, 11, 0.4);
+  transform: scale(0.95);
+}
+
+.bomb-cancel-btn {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1.5px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 4px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Dim tiles while bomb overlay is shown */
+.tile.bomb-dim {
+  opacity: 0.35;
+  transition: opacity 0.2s;
+}
+
+/* Bomb flash overlay (injected by JS onto board-wrap) */
+@keyframes bombFlash {
+  0%   { opacity: 0; transform: scale(0.6); }
+  25%  { opacity: 1; transform: scale(1.08); }
+  65%  { opacity: 0.7; transform: scale(1.0); }
+  100% { opacity: 0; transform: scale(1.2); }
+}
+
+/* Keep bomb-explode class for backwards compat but disable old animation */
+.tile.bomb-explode {
+  /* replaced by JS animateTileBlastOut */
+}
+
+/* Powerup tile label */
+.powerup-tile .label {
+  font-size: 0.55rem;
+  color: #94a3b8;
+  font-weight: 600;
+  line-height: 1;
+  margin-top: 1px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }

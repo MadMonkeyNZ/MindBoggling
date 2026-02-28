@@ -82,6 +82,7 @@
                                 <button class="toggle-btn active" data-length="3">3</button>
                                 <button class="toggle-btn" data-length="4">4</button>
                                 <button class="toggle-btn" data-length="5">5</button>
+                                <button class="toggle-btn" data-length="6">6</button>
                             </div>
                         </div>
                         
@@ -158,6 +159,7 @@
             <div id="board-wrap" style="position: relative;">
                 <canvas id="prism-canvas"></canvas>
                 <div id="board"></div>
+                <canvas id="trail-canvas"></canvas>
             </div>
             
             <div class="current-word-section">
@@ -221,11 +223,11 @@
                         </div>
                         <div class="stat-box">
                             <div class="stat-value" id="powerup-vowel-used">0</div>
-                            <div class="stat-label">Vowel Bombs</div>
+                            <div class="stat-label">Row Bombs</div>
                         </div>
                         <div class="stat-box">
                             <div class="stat-value" id="powerup-consonant-used">0</div>
-                            <div class="stat-label">Consonant Bombs</div>
+                            <div class="stat-label">Col Bombs</div>
                         </div>
                         <div class="stat-box">
                             <div class="stat-value" id="powerup-shuffle-used">0</div>
@@ -237,9 +239,20 @@
                         </div>
                         <div class="stat-box">
                             <div class="stat-value" id="longest-word-found">-</div>
-                            <div class="stat-label">Longest Word</div>
+                            <div class="stat-label">Longest Found</div>
                         </div>
                     </div>
+
+                    <!-- Longest POSSIBLE word on final board state -->
+                    <div id="powerup-longest-section" style="margin: 16px 0;">
+                        <h3 style="color: #0ea5e9; margin: 10px 0; text-align:center;">
+                            Longest Possible: <span id="powerup-longest-word-label">—</span>
+                        </h3>
+                        <div id="powerup-summary-board-wrap" class="board-wrap summary-board-wrap">
+                            <div id="powerup-summary-board" class="board summary-board"></div>
+                        </div>
+                    </div>
+
                     <div class="found-words-only">
                         <h3 style="color: #0ea5e9; margin: 10px 0;">Words You Found</h3>
                         <div id="found-words-list" class="words-list" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
