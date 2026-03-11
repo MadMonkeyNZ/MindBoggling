@@ -44,6 +44,10 @@
                         <div class="highscore-label">5×5 High Score</div>
                         <div id="highscore-5x5" class="highscore-value">0</div>
                     </div>
+                    <div class="highscore-box">
+                        <div class="highscore-label">6×6 High Score</div>
+                        <div id="highscore-6x6" class="highscore-value">0</div>
+                    </div>
                 </div>
                 
                 <div class="menu-buttons">
@@ -61,6 +65,7 @@
                             <div class="toggle-group">
                                 <button class="toggle-btn active" data-size="4">4×4</button>
                                 <button class="toggle-btn" data-size="5">5×5</button>
+                                <button class="toggle-btn" data-size="6">6×6</button>
                             </div>
                         </div>
                         
@@ -100,6 +105,18 @@
                             <div class="toggle-group powerups-group">
                                 <button class="toggle-btn active" data-powerups="on">On</button>
                                 <button class="toggle-btn" data-powerups="off">Off</button>
+                            </div>
+                        </div>
+
+                        <!-- LEARNER MODE TOGGLE -->
+                        <div class="setting-group">
+                            <label class="setting-label">
+                                Learner Mode
+                                <span class="setting-hint">Unlimited hints · no high score</span>
+                            </label>
+                            <div class="toggle-group learner-group">
+                                <button class="toggle-btn" data-learner="on">On</button>
+                                <button class="toggle-btn active" data-learner="off">Off</button>
                             </div>
                         </div>
 
@@ -223,11 +240,11 @@
                         </div>
                         <div class="stat-box">
                             <div class="stat-value" id="powerup-vowel-used">0</div>
-                            <div class="stat-label">Row Bombs</div>
+                            <div class="stat-label">Row Dice Used</div>
                         </div>
                         <div class="stat-box">
                             <div class="stat-value" id="powerup-consonant-used">0</div>
-                            <div class="stat-label">Col Bombs</div>
+                            <div class="stat-label">Col Dice Used</div>
                         </div>
                         <div class="stat-box">
                             <div class="stat-value" id="powerup-shuffle-used">0</div>
@@ -254,7 +271,7 @@
                     </div>
 
                     <div class="found-words-only">
-                        <h3 style="color: #0ea5e9; margin: 10px 0;">Words You Found</h3>
+                        <h3 style="color: #0ea5e9; margin: 10px 0;">All Possible Words <span style="color:#94a3b8; font-size:0.8em;">(green = found)</span></h3>
                         <div id="found-words-list" class="words-list" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
                     </div>
                 </div>

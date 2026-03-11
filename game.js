@@ -15,6 +15,15 @@ const CONFIG = {
         "DHHNOT", "DHLNOR", "EIIITT", "EMOTTT", "ENSSSU",
         "FIPRSY", "GORRVW", "HIPRRY", "NOOTUW", "OOOTTU"
     ],
+
+    DICE_6x6: [
+        "AAEEGN", "ABBJOO", "ACHOPS", "AFFKPS", "AOOTTW", "CIMOTU",
+        "DEILRX", "DELRVY", "DISTTY", "EEGHNW", "EEINSU", "EHRTVW",
+        "EIOSST", "ELRTTY", "HIMNQU", "HLNNRZ", "AAAFRS", "AAEEEE",
+        "AAFIRS", "ADENNN", "AEEGMU", "AEGMNN", "AFIRSY", "CCNSTW",
+        "CEIILT", "CEILPT", "CEIPST", "DDLNOR", "DHHNOT", "DHLNOR",
+        "EIIITT", "EMOTTT", "ENSSSU", "FIPRSY", "GORRVW", "NOOTUW"
+    ],
     
     LETTER_VALUES: {
         'A':1,'B':3,'C':3,'D':2,'E':1,'F':4,'G':2,'H':4,'I':1,
@@ -347,6 +356,7 @@ let gameState = {
     maxWordLength: 0,
     // New features
     powerupsEnabled: true,
+    learnerMode: false,       // unlimited hints, no high score
     tileMultipliers: [],       // parallel to board
     combo: 0,
     comboMultiplier: 1,
@@ -652,6 +662,17 @@ window.addEventListener('resize', () => {
     if (gameState.isPlaying) {
         initPrismCanvas();
         initTrailCanvas();
+        // Redraw hint path at new size if one is active
+        if (gameState.hintedPath.length) {
+            requestAnimationFrame(() => {
+                const canvas = document.getElementById('hint-overlay-canvas');
+                const board  = document.getElementById('board');
+                if (canvas && board) {
+                    canvas._pathColour = { h: 42, s: 95, l: 58 };
+                    drawPathOnCanvas(gameState.hintedPath, board, canvas);
+                }
+            });
+        }
     }
 });
 
@@ -900,8 +921,17 @@ function isValidPrefix(prefix) {
 
 function calculateWordScore(word) {
     let score = 0;
-    for (let i = 0; i < word.length; i++) {
-        score += CONFIG.LETTER_VALUES[word[i]] || 1;
+    // Expand QU back to Q+U for scoring so Qu tile counts as two letters
+    const expanded = word.replace(/QU/g, 'QU'); // already expanded
+    let i = 0;
+    while (i < expanded.length) {
+        if (expanded[i] === 'Q' && expanded[i+1] === 'U') {
+            score += (CONFIG.LETTER_VALUES['Q'] || 10) + (CONFIG.LETTER_VALUES['U'] || 1);
+            i += 2;
+        } else {
+            score += CONFIG.LETTER_VALUES[expanded[i]] || 1;
+            i++;
+        }
     }
     if (word.length >= 5) score += word.length * 2;
     if (word.length >= 8) score += word.length * 3;
@@ -909,70 +939,62 @@ function calculateWordScore(word) {
 }
 
 // ==================== BOARD ANALYSIS ====================
-function findAllPossibleWords() {
+// Async chunked DFS — yields to browser after each row so UI never freezes,
+// even on a 6x6 board. minWordLength used for early pruning.
+async function findAllPossibleWords() {
     if (!gameState.dictionaryLoaded) return new Map();
-    
-    const words = new Map();
+
+    const words    = new Map();
     const gridSize = gameState.gridSize;
-    const board = gameState.board;
-    
+    const board    = gameState.board;
+    const minLen   = gameState.minWordLength;
+    const maxDepth = gameState.maxWordLength;
+
     const grid = [];
     for (let i = 0; i < gridSize; i++) {
         grid.push(board.slice(i * gridSize, (i + 1) * gridSize));
     }
-    
+
     const directions = [
         [-1,-1], [-1,0], [-1,1],
         [0,-1],          [0,1],
         [1,-1],  [1,0],  [1,1]
     ];
-    
-    const maxDepth = gameState.maxWordLength;
-    
+
     function dfs(row, col, visited, currentWord, path) {
-        if (currentWord.length > maxDepth) {
-            visited[row][col] = false;
-            path.pop();
-            return;
-        }
-        
         visited[row][col] = true;
         const letter = grid[row][col];
         currentWord += letter;
-        path.push({row, col, index: row * gridSize + col});
-        
-        if (!isValidPrefix(currentWord)) {
-            visited[row][col] = false;
-            path.pop();
-            return;
-        }
-        
-        if (currentWord.length >= gameState.minWordLength && isValidWord(currentWord)) {
-            const score = calculateWordScore(currentWord);
-            if (!words.has(currentWord) || score > words.get(currentWord).score) {
-                words.set(currentWord, { score, path: [...path] });
+        path.push({ row, col, index: row * gridSize + col });
+
+        if (currentWord.length <= maxDepth && isValidPrefix(currentWord)) {
+            if (currentWord.length >= minLen && isValidWord(currentWord)) {
+                const score = calculateWordScore(currentWord);
+                if (!words.has(currentWord) || score > words.get(currentWord).score) {
+                    words.set(currentWord, { score, path: [...path] });
+                }
+            }
+            for (const [dr, dc] of directions) {
+                const nr = row + dr, nc = col + dc;
+                if (nr >= 0 && nr < gridSize && nc >= 0 && nc < gridSize && !visited[nr][nc]) {
+                    dfs(nr, nc, visited, currentWord, path);
+                }
             }
         }
-        
-        for (const [dr, dc] of directions) {
-            const newRow = row + dr;
-            const newCol = col + dc;
-            if (newRow >= 0 && newRow < gridSize && newCol >= 0 && newCol < gridSize && !visited[newRow][newCol]) {
-                dfs(newRow, newCol, visited, currentWord, path);
-            }
-        }
-        
+
         visited[row][col] = false;
         path.pop();
     }
-    
+
+    // Yield to browser between rows so the UI stays responsive on large grids
     for (let row = 0; row < gridSize; row++) {
+        await new Promise(resolve => setTimeout(resolve, 0));
         for (let col = 0; col < gridSize; col++) {
             const visited = Array(gridSize).fill().map(() => Array(gridSize).fill(false));
             dfs(row, col, visited, "", []);
         }
     }
-    
+
     return words;
 }
 
@@ -1058,6 +1080,7 @@ const elements = {
     startButton: document.getElementById('start-game'),
     highscore4x4: document.getElementById('highscore-4x4'),
     highscore5x5: document.getElementById('highscore-5x5'),
+    highscore6x6: document.getElementById('highscore-6x6'),
     scoreElement: document.getElementById('score'),
     timerElement: document.getElementById('timer'),
     wordCountElement: document.getElementById('word-count'),
@@ -1095,6 +1118,132 @@ const elements = {
     wordsProgress: document.getElementById('words-progress')
 };
 
+// ==================== SESSION STATE (crash recovery) ====================
+let _sessionSaveInterval = null;
+
+function saveSessionState() {
+    if (!gameState.isPlaying) return;
+    try {
+        const snap = {
+            board:          gameState.board,
+            score:          gameState.score,
+            timeLeft:       gameState.timeLeft,
+            gridSize:       gameState.gridSize,
+            timeLimit:      gameState.timeLimit,
+            minWordLength:  gameState.minWordLength,
+            isEndlessMode:  gameState.isEndlessMode,
+            powerupsEnabled: gameState.powerupsEnabled,
+            wordsFound:     Array.from(gameState.wordsFound.entries()),
+            tileMultipliers: gameState.tileMultipliers,
+            powerups:       gameState.powerups,
+            powerupsUsed:   gameState.powerupsUsed,
+            totalTimeBonus: gameState.totalTimeBonus,
+            longestWordFound: gameState.longestWordFound,
+            combo:          gameState.combo,
+            comboMultiplier: gameState.comboMultiplier,
+            wordsFoundCount: gameState.wordsFoundCount,
+            nextScoreBonus: gameState.nextScoreBonus,
+            ts:             Date.now(),
+        };
+        sessionStorage.setItem('boggle_session', JSON.stringify(snap));
+    } catch(e) { /* quota exceeded or private mode */ }
+}
+
+function clearSessionState() {
+    try { sessionStorage.removeItem('boggle_session'); } catch(e) {}
+}
+
+function startSessionSave() {
+    if (_sessionSaveInterval) clearInterval(_sessionSaveInterval);
+    _sessionSaveInterval = setInterval(saveSessionState, 10000); // every 10s
+}
+
+function stopSessionSave() {
+    if (_sessionSaveInterval) { clearInterval(_sessionSaveInterval); _sessionSaveInterval = null; }
+    clearSessionState();
+}
+
+function checkSessionRestore() {
+    try {
+        const raw = sessionStorage.getItem('boggle_session');
+        if (!raw) return false;
+        const snap = JSON.parse(raw);
+        // Ignore stale sessions (> 2 hours)
+        if (!snap || !snap.ts || Date.now() - snap.ts > 7200000) {
+            clearSessionState();
+            return false;
+        }
+        return snap;
+    } catch(e) { return false; }
+}
+
+async function restoreSession(snap) {
+    gameState.gridSize      = snap.gridSize;
+    gameState.timeLimit     = snap.timeLimit;
+    gameState.minWordLength = snap.minWordLength;
+    gameState.isEndlessMode = snap.isEndlessMode;
+    gameState.powerupsEnabled = snap.powerupsEnabled;
+    gameState.board         = snap.board;
+    gameState.score         = snap.score;
+    gameState.timeLeft      = Math.max(0, snap.timeLeft);
+    gameState.tileMultipliers = snap.tileMultipliers || snap.board.map(() => 1);
+    gameState.wordsFound    = new Map(snap.wordsFound || []);
+    gameState.powerups      = snap.powerups || { hint:0, vowelBomb:0, consonantBomb:0, shuffle:0 };
+    gameState.powerupsUsed  = snap.powerupsUsed || { hint:0, vowelBomb:0, consonantBomb:0, shuffle:0 };
+    gameState.totalTimeBonus = snap.totalTimeBonus || 0;
+    gameState.longestWordFound = snap.longestWordFound || "";
+    gameState.combo         = snap.combo || 0;
+    gameState.comboMultiplier = snap.comboMultiplier || 1;
+    gameState.wordsFoundCount = snap.wordsFoundCount || 0;
+    gameState.nextScoreBonus = snap.nextScoreBonus || 100;
+    gameState.isPlaying     = true;
+    gameState.analysisComplete = false;
+    gameState.selectedTiles = [];
+    gameState.currentWord   = "";
+    gameState.isDragging    = false;
+
+    if (gameState.soundEnabled) {
+        try { await soundManager.resume(); } catch(e) {}
+    }
+    if (musicEnabled) playMusic();
+
+    renderBoard();
+    initPrismCanvas();
+    initTrailCanvas();
+    switchScreen('game-ui');
+    updateScore();
+    updateComboDisplay();
+
+    if (gameState.powerupsEnabled) {
+        if (elements.wordsProgress) elements.wordsProgress.style.display = 'none';
+        createPowerupTiles();
+        updatePowerupTiles();
+        elements.powerupBar.style.display = 'flex';
+    } else {
+        if (elements.wordsProgress) elements.wordsProgress.style.display = 'block';
+        if (elements.powerupBar) elements.powerupBar.style.display = 'none';
+    }
+
+    if (!gameState.isEndlessMode) {
+        elements.timerElement.style.color = '#10b981';
+        elements.timerElement.classList.remove('blink', 'endless');
+        updateTimerDisplay();
+        // Short delay for board render then start timer
+        setTimeout(() => startTimer(), 800);
+    } else {
+        elements.timerElement.innerHTML = '∞<br><div class="endless-percentage">0%</div>';
+        elements.timerElement.style.color = '#8b5cf6';
+        elements.timerElement.classList.add('endless');
+    }
+
+    startSessionSave();
+    startStreakTimer();
+    setTimeout(() => analyzeBoardAsync(), 100);
+
+    clearSessionState(); // consumed — fresh save will start from current state
+    console.log('Session restored successfully');
+}
+
 async function initializeGame() {
     console.log("Initializing Boggle game...");
     updateLoadingProgress(10, "Loading game assets...");
@@ -1111,6 +1260,13 @@ async function initializeGame() {
         gameState.powerupsEnabled = JSON.parse(powerupsPref);
     }
     updatePowerupsToggle();
+
+    // Load learner mode preference
+    const learnerPref = localStorage.getItem('boggle_learner_mode');
+    if (learnerPref !== null) {
+        gameState.learnerMode = JSON.parse(learnerPref);
+    }
+    updateLearnerToggle();
     
     // Load background music preference
     const musicPref = localStorage.getItem('boggle_music_enabled');
@@ -1131,10 +1287,18 @@ async function initializeGame() {
     
     updateLoadingProgress(100, "Game ready!");
     
-    setTimeout(() => {
-        switchScreen('main-menu');
-        console.log(`Game initialized with ${gameState.dictionarySize.toLocaleString()} words in dictionary`);
-    }, 500);
+    // Check for an interrupted session to restore
+    const savedSession = checkSessionRestore();
+    if (savedSession) {
+        setTimeout(async () => {
+            await restoreSession(savedSession);
+        }, 500);
+    } else {
+        setTimeout(() => {
+            switchScreen('main-menu');
+            console.log(`Game initialized with ${gameState.dictionarySize.toLocaleString()} words in dictionary`);
+        }, 500);
+    }
 }
 
 function updateLoadingProgress(percent, status) {
@@ -1146,8 +1310,13 @@ function updateLoadingProgress(percent, status) {
 function loadHighScores() {
     const score4x4 = localStorage.getItem('boggle_highscore_4x4') || '0';
     const score5x5 = localStorage.getItem('boggle_highscore_5x5') || '0';
-    elements.highscore4x4.textContent = score4x4;
-    elements.highscore5x5.textContent = score5x5;
+    const score6x6 = localStorage.getItem('boggle_highscore_6x6') || '0';
+    const endless4 = localStorage.getItem('boggle_endless_4x4') || '0%';
+    const endless5 = localStorage.getItem('boggle_endless_5x5') || '0%';
+    const endless6 = localStorage.getItem('boggle_endless_6x6') || '0%';
+    if (elements.highscore4x4) elements.highscore4x4.innerHTML = `${score4x4}<span class="hs-endless">${endless4}</span>`;
+    if (elements.highscore5x5) elements.highscore5x5.innerHTML = `${score5x5}<span class="hs-endless">${endless5}</span>`;
+    if (elements.highscore6x6) elements.highscore6x6.innerHTML = `${score6x6}<span class="hs-endless">${endless6}</span>`;
 }
 
 function updateSoundToggle() {
@@ -1168,6 +1337,17 @@ function updatePowerupsToggle() {
         const activeBtn = gameState.powerupsEnabled ? 
             toggleGroup.querySelector('.toggle-btn[data-powerups="on"]') :
             toggleGroup.querySelector('.toggle-btn[data-powerups="off"]');
+        if (activeBtn) activeBtn.classList.add('active');
+    }
+}
+
+function updateLearnerToggle() {
+    const toggleGroup = document.querySelector('.toggle-group.learner-group');
+    if (toggleGroup) {
+        toggleGroup.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = gameState.learnerMode ?
+            toggleGroup.querySelector('.toggle-btn[data-learner="on"]') :
+            toggleGroup.querySelector('.toggle-btn[data-learner="off"]');
         if (activeBtn) activeBtn.classList.add('active');
     }
 }
@@ -1202,6 +1382,14 @@ function setupEventListeners() {
                 this.classList.add('active');
                 gameState.powerupsEnabled = this.dataset.powerups === 'on';
                 localStorage.setItem('boggle_powerups_enabled', JSON.stringify(gameState.powerupsEnabled));
+                return;
+            }
+
+            if (group.classList.contains('learner-group')) {
+                group.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                gameState.learnerMode = this.dataset.learner === 'on';
+                localStorage.setItem('boggle_learner_mode', JSON.stringify(gameState.learnerMode));
                 return;
             }
             
@@ -1269,24 +1457,21 @@ function setupEventListeners() {
 
 // ==================== SCREEN MANAGEMENT ====================
 function switchScreen(screenId) {
-    const currentScreen = document.querySelector('.screen.active');
-    if (currentScreen) {
-        currentScreen.classList.remove('active');
-        currentScreen.style.transform = 'translateY(20px)';
-        currentScreen.style.opacity = '0';
-    }
-    
-    setTimeout(() => {
-        elements.mainMenu.classList.remove('active');
-        elements.gameUI.classList.remove('active');
-        elements.gameOver.classList.remove('active');
-        elements.loadingScreen.classList.remove('active');
-        
-        const newScreen = document.getElementById(screenId);
-        newScreen.classList.add('active');
-        newScreen.style.transform = 'translateY(0)';
-        newScreen.style.opacity = '1';
-    }, 200);
+    // Remove active from all screens — CSS transitions handle the fade
+    // Do NOT set inline styles; they override the CSS class and can get stranded
+    document.querySelectorAll('.screen').forEach(s => {
+        s.classList.remove('active');
+        s.style.opacity = '';
+        s.style.transform = '';
+    });
+
+    // Small rAF delay so the removal is painted before the add, ensuring transition fires
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const newScreen = document.getElementById(screenId);
+            if (newScreen) newScreen.classList.add('active');
+        });
+    });
 }
 
 // ==================== POWER-UP TILES (now inside top bar) ====================
@@ -1303,12 +1488,12 @@ function createPowerupTiles() {
             <div class="count">0</div>
         </div>
         <div class="powerup-tile vowelBomb" data-powerup="vowelBomb">
-            <div class="icon">↔️</div>
+            <div class="icon">🎲</div>
             <div class="label">Row</div>
             <div class="count">0</div>
         </div>
         <div class="powerup-tile consonantBomb" data-powerup="consonantBomb">
-            <div class="icon">↕️</div>
+            <div class="icon">🎲</div>
             <div class="label">Col</div>
             <div class="count">0</div>
         </div>
@@ -1375,7 +1560,7 @@ function startBombDrag(e) {
     cancelBombDrag();
 
     gameState.bombDragActive = true;
-    gameState.bombDragType = powerup === 'vowelBomb' ? 'vowel' : 'consonant';
+    gameState.bombDragType = powerup === 'vowelBomb' ? 'row' : 'col';
 
     // Record start position (kept for legacy; axis is now determined by bomb type)
     const pt = e.type === 'touchstart' ? e.touches[0] : e;
@@ -1388,8 +1573,8 @@ function startBombDrag(e) {
     // Create ghost element — label shows what the bomb targets
     const ghost = document.createElement('div');
     ghost.className = 'bomb-drag-ghost';
-    const icon      = powerup === 'vowelBomb' ? '↔️' : '↕️';
-    const typeLabel = powerup === 'vowelBomb' ? 'ROW BOMB' : 'COL BOMB';
+    const icon      = powerup === 'vowelBomb' ? '🎲' : '🎲';
+    const typeLabel = powerup === 'vowelBomb' ? 'ROW DICE' : 'COL DICE';
     ghost.innerHTML = `<span class="ghost-icon">${icon}</span><span class="ghost-axis-label">${typeLabel}</span>`;
     document.body.appendChild(ghost);
     gameState.bombGhost = ghost;
@@ -1416,7 +1601,7 @@ function onDragMove(e) {
     // The axis is determined by the bomb TYPE, not by drag direction:
     //   vowelBomb   = ↔️ Row bomb  → always selects a full horizontal row
     //   consonantBomb = ↕️ Col bomb → always selects a full vertical column
-    const axis = gameState.bombDragType === 'vowel' ? 'row' : 'col';
+    const axis = gameState.bombDragType === 'row' ? 'row' : 'col';
 
     // Update ghost label
     const axisLabel = gameState.bombGhost && gameState.bombGhost.querySelector('.ghost-axis-label');
@@ -1489,17 +1674,13 @@ function applyBombExplosion(axis, axisIdx, type) {
     // Close drag overlay
     cancelBombDrag();
 
-    const vowels     = ['A','E','I','O','U'];
-    const consonants = ['R','S','T','N','L','C','D','M','P','B','G','F'];
-
     if (gameState.soundEnabled) soundManager.playBombDrop();
 
     // PHASE 1 — Blast targeted tiles OUT of the board with scatter physics
-    // Each tile flies away in a direction determined by its position on the axis.
     let blastsDone = 0;
     const blastTotal = indices.length;
 
-    // Add an explosion flash overlay on the board for extra drama
+    // Explosion flash overlay
     const flashOverlay = document.createElement('div');
     flashOverlay.style.cssText = `
         position:absolute; inset:0; border-radius:12px; pointer-events:none; z-index:20;
@@ -1515,45 +1696,60 @@ function applyBombExplosion(axis, axisIdx, type) {
 
         animateTileBlastOut(tileEl, idx, size, axis, axisIdx, () => {
             blastsDone++;
-            // PHASE 2 — once ALL tiles have finished their blast-out, drop replacements in
             if (blastsDone === blastTotal) {
                 if (axis === 'row') {
                     for (let c = 0; c < size; c++) {
-                        applyGravityToColumn(c, axisIdx, type, vowels, consonants);
+                        applyGravityToColumn(c, axisIdx);
                     }
                 } else {
-                    applyGravityToColStrip(axisIdx, type, vowels, consonants);
+                    applyGravityToColStrip(axisIdx);
                 }
 
                 // Decrement power-up
-                gameState.powerups[type === 'vowel' ? 'vowelBomb' : 'consonantBomb']--;
-                gameState.powerupsUsed[type === 'vowel' ? 'vowelBomb' : 'consonantBomb']++;
+                gameState.powerups[type === 'row' ? 'vowelBomb' : 'consonantBomb']--;
+                gameState.powerupsUsed[type === 'row' ? 'vowelBomb' : 'consonantBomb']++;
                 updatePowerupTiles();
                 clearSelection();
                 invalidateTileRectCache();
+                // Wait for all fall/slide animations to fully settle before rebuilding
+                // the rect cache. Row bomb: size * 38ms stagger + ~500ms max fall.
+                // Col bomb: (size-1)*48ms stagger + ~700ms fall + tiles-falling removal.
+                const settlePad = gameState.gridSize * 55 + 820;
                 setTimeout(() => {
+                    // Ensure tiles-falling clip class is gone before measuring
+                    elements.board.classList.remove('tiles-falling');
+                    invalidateTileRectCache();
                     buildTileRectCache();
                     analyzeBoardAsync();
-                }, 650);
+                }, settlePad);
             }
         });
     });
 }
 
+// Generate a single random boggle letter from the dice pool
+function getRandomDiceLetter() {
+    let diceSet;
+    if (gameState.gridSize === 4) diceSet = CONFIG.DICE_4x4;
+    else if (gameState.gridSize === 5) diceSet = CONFIG.DICE_5x5;
+    else diceSet = CONFIG.DICE_6x6;
+    const die = diceSet[Math.floor(Math.random() * diceSet.length)];
+    const flipped = Math.random() < 0.5 ? die.split('').reverse().join('') : die;
+    const face = flipped[Math.floor(Math.random() * flipped.length)];
+    return face === 'Q' ? 'QU' : face;
+}
+
 // Row bomb: one row is blasted. Tiles above shift down by one slot,
-// and a brand-new letter falls from above the board into the top slot.
-function applyGravityToColumn(col, blownRow, type, vowels, consonants) {
+// and a brand-new random boggle letter falls from above the board into the top slot.
+function applyGravityToColumn(col, blownRow) {
     const size = gameState.gridSize;
 
     // Build the new column state
     let colLetters = [];
     for (let r = 0; r < size; r++) colLetters.push(gameState.board[r * size + col]);
 
-    colLetters.splice(blownRow, 1);                                   // remove blown slot
-
-    const pool      = type === 'vowel' ? vowels : consonants;
-    const newLetter = pool[Math.floor(Math.random() * pool.length)];
-    colLetters.unshift(newLetter);                                    // new tile drops into top slot
+    colLetters.splice(blownRow, 1);       // remove blown slot
+    colLetters.unshift(getRandomDiceLetter()); // new tile drops into top slot
 
     // Write back to board state
     for (let r = 0; r < size; r++) gameState.board[r * size + col] = colLetters[r];
@@ -1564,45 +1760,47 @@ function applyGravityToColumn(col, blownRow, type, vowels, consonants) {
         const tileEl = document.querySelector(`.tile[data-index="${r * size + col}"]`);
         if (!tileEl) continue;
 
-        // Update letter
+        // Update letter content first
         tileEl.querySelector('.tile-content').textContent = colLetters[r];
-        // Ensure tile is visible (blast-out hid it) then animate
-        tileEl.style.opacity = '0';
+
+        // Also update QU class
+        if (colLetters[r] === 'QU') tileEl.classList.add('tile-qu');
+        else tileEl.classList.remove('tile-qu');
 
         const tileRect = tileEl.getBoundingClientRect();
-        const delay    = r * 38;   // cascade top→bottom
+        const delay    = r * 38;
 
         if (r === 0) {
-            // ── Brand-new tile — falls from above the board with full path animation
+            // Brand-new tile falls from above
             const distFromTop = tileRect.top - boardRect.top + tileRect.height;
-            animateTileFall(tileEl, -(distFromTop + 24), delay);
-        } else if (r <= blownRow) {
-            // ── Survivor from above the blast — slides down one slot
-            // (the blast-out already flew it away; now it returns to its NEW position
-            //  which is one row lower — we simulate that by sliding from –tileHeight to 0)
-            const shiftDown = tileRect.height + 4;
-            animateTileSlideDown(tileEl, shiftDown, delay);
-        } else {
-            // ── Tiles below the blast are unaffected — fade back in quickly
-            setTimeout(() => {
+            tileEl.style.opacity = '0';
+            animateTileFall(tileEl, -(distFromTop + 24), delay, () => {
                 tileEl.style.cssText = '';
-                tileEl.style.opacity = '0';
-                tileEl.style.transition = 'opacity 160ms ease';
-                requestAnimationFrame(() => { tileEl.style.opacity = '1'; });
-                setTimeout(() => { tileEl.style.cssText = ''; }, 200);
-            }, delay);
+            });
+        } else if (r <= blownRow) {
+            // Survivor shifts down one row
+            const shiftDown = tileRect.height + 4;
+            animateTileSlideDown(tileEl, shiftDown, delay, () => {
+                tileEl.style.cssText = '';
+            });
+        } else {
+            // Unaffected tile below blast — just ensure clean inline state
+            // Use a short fade-in via animateTileFall with 0 start offset
+            tileEl.style.opacity = '0';
+            animateTileFall(tileEl, 0, delay, () => {
+                tileEl.style.cssText = '';
+            });
         }
     }
 }
 
-// Column bomb: entire column replaced with new letters, all falling from above.
-function applyGravityToColStrip(axisCol, type, vowels, consonants) {
+// Column bomb: entire column replaced with random boggle dice, all falling from above.
+function applyGravityToColStrip(axisCol) {
     const size = gameState.gridSize;
-    const pool = type === 'vowel' ? vowels : consonants;
 
-    // Generate and store new letters
+    // Generate and store new random boggle letters
     for (let r = 0; r < size; r++) {
-        gameState.board[r * size + axisCol] = pool[Math.floor(Math.random() * pool.length)];
+        gameState.board[r * size + axisCol] = getRandomDiceLetter();
     }
 
     // Add overflow clip while tiles are mid-air
@@ -1729,6 +1927,33 @@ async function startGame() {
         if (elements.wordsProgress) elements.wordsProgress.style.display = 'block';
         if (elements.powerupBar) elements.powerupBar.style.display = 'none';
     }
+
+    // Learner mode: show a dedicated hint bar regardless of powerups setting
+    let learnerBar = document.getElementById('learner-hint-bar');
+    if (gameState.learnerMode) {
+        if (!learnerBar) {
+            learnerBar = document.createElement('div');
+            learnerBar.id = 'learner-hint-bar';
+            learnerBar.className = 'learner-hint-bar';
+            learnerBar.innerHTML = `
+                <span class="learner-bar-label"><i class="fas fa-graduation-cap"></i> Learner Mode</span>
+                <button id="learner-hint-btn" class="learner-hint-btn">
+                    <i class="fas fa-lightbulb"></i> Hint
+                </button>
+            `;
+            // Insert after top-bar
+            const topBar = document.getElementById('top-bar');
+            topBar.parentNode.insertBefore(learnerBar, topBar.nextSibling);
+        }
+        learnerBar.style.display = 'flex';
+        const lhBtn = document.getElementById('learner-hint-btn');
+        if (lhBtn) {
+            lhBtn.onclick = null;
+            lhBtn.addEventListener('click', () => useHint());
+        }
+    } else {
+        if (learnerBar) learnerBar.style.display = 'none';
+    }
     
     gameState.board = generateBoard();
     
@@ -1758,6 +1983,7 @@ async function startGame() {
     }
     
     setTimeout(() => analyzeBoardAsync(), 50);
+    startSessionSave();
 }
 
 function startStreakTimer() {
@@ -1773,10 +1999,16 @@ function startStreakTimer() {
 }
 
 function generateBoard() {
-    const diceSet = gameState.gridSize === 4 ? CONFIG.DICE_4x4 : CONFIG.DICE_5x5;
+    let diceSet;
+    if (gameState.gridSize === 4) diceSet = CONFIG.DICE_4x4;
+    else if (gameState.gridSize === 5) diceSet = CONFIG.DICE_5x5;
+    else diceSet = CONFIG.DICE_6x6;
+
     const shuffledDice = [...diceSet].sort(() => Math.random() - 0.5);
     const board = shuffledDice.map(die => {
-        const face = die[Math.floor(Math.random() * die.length)];
+        // Random face, random orientation (die can be read forwards or backwards)
+        const flipped = Math.random() < 0.5 ? die.split('').reverse().join('') : die;
+        const face = flipped[Math.floor(Math.random() * flipped.length)];
         return face === 'Q' ? 'QU' : face;
     });
     
@@ -1821,6 +2053,20 @@ const _eOut3 = t => 1 - (1 - t) ** 3;
  * @param {Function}    [onSettle]    — called once tile is fully settled
  */
 function animateTileFall(tileEl, startOffsetY, delay, onSettle) {
+    // Special case: startOffsetY=0 means just fade-in in place (unaffected tile restore)
+    if (startOffsetY === 0) {
+        tileEl.style.cssText = 'opacity:0; transition:none;';
+        setTimeout(() => {
+            tileEl.style.transition = 'opacity 180ms ease';
+            requestAnimationFrame(() => { tileEl.style.opacity = '1'; });
+            setTimeout(() => {
+                tileEl.style.cssText = '';
+                if (onSettle) onSettle();
+            }, 220);
+        }, delay);
+        return;
+    }
+
     const pathType  = Math.floor(Math.random() * 5);
     const startRot  = (Math.random() - 0.5) * 0.30;   // small initial rotation (radians)
     const dist      = Math.abs(startOffsetY);
@@ -2019,6 +2265,7 @@ function renderBoard() {
     gameState.board.forEach((letter, index) => {
         const tile = document.createElement('div');
         tile.className = 'tile';
+        if (letter === 'QU') tile.classList.add('tile-qu');
         tile.dataset.index = index;
         tile.dataset.multiplier = gameState.tileMultipliers[index];
 
@@ -2167,6 +2414,61 @@ function createWordScorePopup(word, score, kind) {
     setTimeout(() => popup.remove(), 950);
 }
 
+// Score comparison popup: shown when a duplicate word is re-found at a HIGHER score
+function createScoreComparePopup(word, oldScore, newScore, diff) {
+    const boardEl = elements.board;
+    const br = boardEl ? boardEl.getBoundingClientRect() : null;
+    const cx = br ? br.left + br.width / 2 : window.innerWidth / 2;
+    const cy = br ? br.top + br.height / 2 - 30 : window.innerHeight / 2;
+
+    const popup = document.createElement('div');
+    popup.className = 'score-popup-v2';
+    popup.style.cssText = `
+        position:fixed; z-index:10000; pointer-events:none;
+        left:${cx}px; top:${cy}px;
+        transform:translate(-50%,-50%);
+        animation: scorePopupV2 1.1s cubic-bezier(0.34,1.56,0.64,1) forwards;
+        text-align:center;
+    `;
+    popup.innerHTML = `
+        <div class="sp-word"  style="color:#fde68a; text-shadow:0 0 18px rgba(245,158,11,0.7)">${word}</div>
+        <div class="sp-score" style="color:#f59e0b; text-shadow:0 0 30px rgba(245,158,11,0.8)">+${diff}</div>
+        <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px">${oldScore} → ${newScore}</div>
+    `;
+    document.body.appendChild(popup);
+    setTimeout(() => popup.remove(), 1100);
+}
+
+// Duplicate reminder: shown when a word is re-found at same or lower score
+function createDuplicateReminderPopup(word, bankedScore, attemptedScore) {
+    const boardEl = elements.board;
+    const br = boardEl ? boardEl.getBoundingClientRect() : null;
+    const cx = br ? br.left + br.width / 2 : window.innerWidth / 2;
+    const cy = br ? br.top + br.height / 2 - 30 : window.innerHeight / 2;
+
+    const popup = document.createElement('div');
+    popup.className = 'score-popup-v2';
+    popup.style.cssText = `
+        position:fixed; z-index:10000; pointer-events:none;
+        left:${cx}px; top:${cy}px;
+        transform:translate(-50%,-50%);
+        animation: scorePopupV2 0.85s cubic-bezier(0.34,1.56,0.64,1) forwards;
+        text-align:center;
+    `;
+    // In powerup mode show the score comparison; classic mode just shows "already found"
+    const detail = (attemptedScore !== null && attemptedScore !== bankedScore)
+        ? `<div style="font-size:0.72rem; color:#94a3b8; margin-top:2px">banked ${bankedScore} · tried ${attemptedScore}</div>`
+        : `<div style="font-size:0.72rem; color:#94a3b8; margin-top:2px">already banked ${bankedScore}</div>`;
+    popup.innerHTML = `
+        <div class="sp-word"  style="color:#c4b5fd; text-shadow:0 0 18px rgba(139,92,246,0.6)">${word}</div>
+        <div class="sp-score" style="color:#8b5cf6; font-size:1rem">already found</div>
+        ${detail}
+    `;
+    document.body.appendChild(popup);
+    setTimeout(() => popup.remove(), 900);
+}
+
+
 function startTimer() {
     if (gameState.isEndlessMode) return;
     gameState.timeLeft = gameState.timeLimit;
@@ -2218,6 +2520,14 @@ function getTileAtPosition(x, y) {
 function handleTileStart(index, event) {
     if (!gameState.isPlaying) return;
     if (event.type === 'touchstart') event.preventDefault();
+
+    // Safety: always clear any lingering inline styles on the tile being started,
+    // and invalidate the rect cache so stale rects never block a tile permanently.
+    const tileCheck = document.querySelector(`.tile[data-index="${index}"]`);
+    if (tileCheck && tileCheck.style.length > 0) {
+        tileCheck.style.cssText = '';
+        invalidateTileRectCache();
+    }
     
     if (gameState.selectedTiles.length > 0 && !gameState.selectedTiles.includes(index)) {
         clearSelection();
@@ -2370,13 +2680,15 @@ function truncateSelectionTo(index) {
     const pos = gameState.selectedTiles.indexOf(index);
     if (pos === -1) return; // shouldn't happen
 
-    // Remove tiles after this position
+    // Remove tiles after this position with a brief "pop-off" pulse
     const toRemove = gameState.selectedTiles.slice(pos + 1);
     toRemove.forEach(idx => {
         const tile = document.querySelector(`.tile[data-index="${idx}"]`);
         if (tile) {
             tile.style.cssText = '';
             tile.classList.remove('selected');
+            tile.classList.add('deselect-pulse');
+            setTimeout(() => tile.classList.remove('deselect-pulse'), 280);
         }
     });
 
@@ -2437,12 +2749,13 @@ function submitWord() {
             elements.currentWordElement.style.color = '#fbbf24';
             if (gameState.soundEnabled) soundManager.playWordHigherScore();
             
-            // Update score: add the difference
+            // Show score improvement popup: "+Δ (was X → now Y)"
             const diff = finalScore - oldScore;
+            createScoreComparePopup(word, oldScore, finalScore, diff);
             gameState.wordsFound.set(word, finalScore);
             gameState.score += diff;
             
-            // Track longest word (if this word is longer than current longest)
+            // Track longest word
             if (word.length > gameState.longestWordFound.length) {
                 gameState.longestWordFound = word;
             }
@@ -2456,11 +2769,13 @@ function submitWord() {
             clearSelection();
             return;
         } else {
-            // Normal duplicate – flash purple, do NOT reset combo
+            // Normal duplicate – flash purple with score reminder
             flashTiles('flash-duplicate');
             elements.currentWordElement.style.animation = 'shakeDuplicate 0.5s ease';
             elements.currentWordElement.style.color = '#8b5cf6';
             if (gameState.soundEnabled) soundManager.playWordDuplicate();
+            // Show reminder of the score already banked
+            createDuplicateReminderPopup(word, oldScore, gameState.powerupsEnabled ? finalScore : null);
             setTimeout(() => {
                 elements.currentWordElement.style.animation = '';
                 elements.currentWordElement.style.color = '#f1f5f9';
@@ -2701,11 +3016,157 @@ function updateComboDisplay() {
 }
 
 // ==================== POWER-UPS (continued) ====================
+
+// ==================== PATH DRAWING UTILITY ====================
+// Draws a numbered, arrowed connection path on a canvas overlay.
+// orderedIndices: tile index array in traversal order
+// boardEl: the board/summary-board div (used to locate tiles by data-index)
+// canvasEl: the overlay <canvas> (must be sized/positioned over boardEl)
+function drawPathOnCanvas(orderedIndices, boardEl, canvasEl) {
+    if (!canvasEl || !boardEl || !orderedIndices.length) return;
+
+    // Size canvas to match its CSS size
+    const wrap = canvasEl.parentElement;
+    const wr   = wrap.getBoundingClientRect();
+    canvasEl.width  = Math.round(wr.width);
+    canvasEl.height = Math.round(wr.height);
+
+    const ctx = canvasEl.getContext('2d');
+    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+
+    // Collect tile data relative to the canvas wrapper
+    const pts = orderedIndices.map(idx => {
+        const tileEl = boardEl.querySelector(`.tile[data-index="${idx}"]`);
+        if (!tileEl) return null;
+        const tr = tileEl.getBoundingClientRect();
+        const cx = tr.left - wr.left + tr.width  / 2;
+        const cy = tr.top  - wr.top  + tr.height / 2;
+        const hw = tr.width / 2;  // half-tile width
+        return { x: cx, y: cy, hw };
+    }).filter(Boolean);
+
+    if (pts.length < 1) return;
+
+    const col = canvasEl._pathColour || { h: 42, s: 95, l: 58 };
+    const hue = col.h, sat = col.s, lig = col.l;
+
+    // ── 1. Draw thick glow line along the full path (bezier through mid-points) ──
+    if (pts.length > 1) {
+        // Build a smooth path through tile centres
+        const buildSmoothPath = (p) => {
+            ctx.beginPath();
+            ctx.moveTo(p[0].x, p[0].y);
+            for (let i = 0; i < p.length - 1; i++) {
+                const mx = (p[i].x + p[i+1].x) / 2;
+                const my = (p[i].y + p[i+1].y) / 2;
+                ctx.quadraticCurveTo(p[i].x, p[i].y, mx, my);
+            }
+            ctx.lineTo(p[p.length-1].x, p[p.length-1].y);
+        };
+
+        // Outer glow
+        buildSmoothPath(pts);
+        ctx.lineWidth   = 14;
+        ctx.strokeStyle = `hsla(${hue},${sat}%,${lig}%,0.18)`;
+        ctx.lineCap     = 'round';
+        ctx.lineJoin    = 'round';
+        ctx.stroke();
+
+        // Mid glow
+        buildSmoothPath(pts);
+        ctx.lineWidth   = 7;
+        ctx.strokeStyle = `hsla(${hue},${sat}%,${lig+15}%,0.40)`;
+        ctx.stroke();
+
+        // Core line
+        buildSmoothPath(pts);
+        ctx.lineWidth   = 3;
+        ctx.strokeStyle = `hsla(${hue},${sat}%,${lig+25}%,0.92)`;
+        ctx.stroke();
+
+        // ── 2. Draw arrowheads mid-segment (not at endpoint — badge covers it) ──
+        for (let i = 0; i < pts.length - 1; i++) {
+            const a = pts[i], b = pts[i+1];
+            // Arrow drawn at 60% of the way from a→b so it's clear of both badges
+            const tx = a.x + (b.x - a.x) * 0.60;
+            const ty = a.y + (b.y - a.y) * 0.60;
+            const ang = Math.atan2(b.y - a.y, b.x - a.x);
+            const ahLen = Math.max(10, pts[0].hw * 0.55);
+            const spread = 0.40;
+
+            ctx.beginPath();
+            ctx.moveTo(tx, ty);
+            ctx.lineTo(tx - ahLen * Math.cos(ang - spread),
+                       ty - ahLen * Math.sin(ang - spread));
+            ctx.lineTo(tx - ahLen * Math.cos(ang + spread),
+                       ty - ahLen * Math.sin(ang + spread));
+            ctx.closePath();
+            ctx.fillStyle = `hsla(${hue},${sat}%,${lig+20}%,0.95)`;
+            ctx.fill();
+        }
+    }
+
+    // ── 3. Draw step-number badges at CORNER of each tile (top-left offset) ──
+    // Badge sits in the top-left quadrant of the tile so the letter stays readable.
+    const badgeR  = Math.max(11, Math.round(pts[0].hw * 0.40));  // radius scales with tile
+    const offsetX = -pts[0].hw * 0.52;  // left of centre
+    const offsetY = -pts[0].hw * 0.52;  // above centre
+
+    pts.forEach((pt, i) => {
+        const bx = pt.x + offsetX;
+        const by = pt.y + offsetY;
+        const isLast = i === pts.length - 1;
+
+        // Backdrop shadow for legibility on any background
+        ctx.beginPath();
+        ctx.arc(bx, by, badgeR + 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fill();
+
+        // Badge fill — brighter for the last tile
+        const lAdj = isLast ? lig + 18 : lig;
+        const grad = ctx.createRadialGradient(bx, by - 1, 0, bx, by, badgeR);
+        grad.addColorStop(0, `hsla(${hue},${sat}%,${lAdj + 22}%,1)`);
+        grad.addColorStop(1, `hsla(${hue},${sat}%,${lAdj}%,1)`);
+        ctx.beginPath();
+        ctx.arc(bx, by, badgeR, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Badge border — extra ring on the last tile
+        ctx.beginPath();
+        ctx.arc(bx, by, badgeR, 0, Math.PI * 2);
+        ctx.strokeStyle = isLast
+            ? `hsla(${hue},${sat}%,${lig + 40}%,0.9)`
+            : `hsla(${hue},${sat}%,${lig + 25}%,0.65)`;
+        ctx.lineWidth = isLast ? 2.5 : 1.5;
+        ctx.stroke();
+
+        // Step number
+        const fontSize = Math.max(9, Math.round(badgeR * 1.05));
+        ctx.font         = `800 ${fontSize}px system-ui,sans-serif`;
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle    = '#0c0f1a';
+        ctx.fillText(String(i + 1), bx, by + 0.5);
+    });
+}
+
+function clearPathCanvas(canvasEl) {
+    if (!canvasEl) return;
+    const ctx = canvasEl.getContext('2d');
+    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+}
+
 function clearHint() {
+    clearPathCanvas(document.getElementById('hint-overlay-canvas'));
     if (gameState.hintedPath.length) {
         gameState.hintedPath.forEach(idx => {
             const tile = document.querySelector(`.tile[data-index="${idx}"]`);
-            if (tile) tile.classList.remove('hint-persistent');
+            if (tile) {
+                tile.classList.remove('hint-persistent');
+                delete tile.dataset.hintOrder;
+            }
         });
     }
     gameState.hintedWord = null;
@@ -2713,7 +3174,9 @@ function clearHint() {
 }
 
 function useHint() {
-    if (!gameState.isPlaying || gameState.powerups.hint === 0) return;
+    // In learner mode hints are always free and unlimited
+    const free = gameState.learnerMode;
+    if (!gameState.isPlaying || (!free && gameState.powerups.hint === 0)) return;
     if (!gameState.analysisComplete) {
         alert("Still analyzing board, try again in a moment.");
         return;
@@ -2735,9 +3198,21 @@ function useHint() {
     // Apply persistent hint
     gameState.hintedWord = word;
     gameState.hintedPath = path;
-    path.forEach(idx => {
+    path.forEach((idx, step) => {
         const tileEl = document.querySelector(`.tile[data-index="${idx}"]`);
-        if (tileEl) tileEl.classList.add('hint-persistent');
+        if (tileEl) {
+            tileEl.classList.add('hint-persistent');
+            tileEl.dataset.hintOrder = step + 1;
+        }
+    });
+    // Draw numbered directional path on canvas overlay
+    requestAnimationFrame(() => {
+        const canvas = document.getElementById('hint-overlay-canvas');
+        const board  = document.getElementById('board');
+        if (canvas && board) {
+            canvas._pathColour = { h: 42, s: 95, l: 58 };  // amber
+            drawPathOnCanvas(path, board, canvas);
+        }
     });
 
     // Briefly show the word
@@ -2748,9 +3223,11 @@ function useHint() {
         elements.currentWordElement.style.color = '';
     }, 2000);
 
-    gameState.powerups.hint--;
-    gameState.powerupsUsed.hint++;
-    updatePowerupTiles();
+    if (!free) {
+        gameState.powerups.hint--;
+        gameState.powerupsUsed.hint++;
+        updatePowerupTiles();
+    }
     if (gameState.soundEnabled) soundManager.playNote(392, 0.3, 'sine');
 }
 
@@ -2810,10 +3287,7 @@ function useShuffle() {
 // ==================== BOARD ANALYSIS ASYNC ====================
 async function analyzeBoardAsync() {
     console.time('findAllPossibleWords');
-    // Yield to browser between chunks via the existing batch logic
-    // Run in a microtask so we don't freeze the UI on mobile
-    await new Promise(resolve => setTimeout(resolve, 0));
-    gameState.allPossibleWords = findAllPossibleWords();
+    gameState.allPossibleWords = await findAllPossibleWords();
     console.timeEnd('findAllPossibleWords');
     
     const { longestWord, longestPath } = findLongestWord(gameState.allPossibleWords);
@@ -2839,6 +3313,7 @@ function quitGame() {
 
 function endGame() {
     stopTimer();
+    stopSessionSave();
     gameState.isPlaying = false;
     // Optionally pause background music when game ends (or keep playing – your choice)
     // pauseMusic(); // uncomment if you want music to stop when game ends
@@ -2890,34 +3365,57 @@ function updateSummaryScreen() {
     
     let currentHighScore = localStorage.getItem(highScoreKey);
     let isRecord = false;
-    
-    if (gameState.isEndlessMode) {
-        const currentPercentage = currentHighScore ? parseInt(currentHighScore) : 0;
-        if (finalPercentage > currentPercentage) {
-            localStorage.setItem(highScoreKey, `${finalPercentage}%`);
-            isRecord = true;
-            elements.bestScoreElement.textContent = `${finalPercentage}%`;
-        } else {
+
+    // Learner mode: never save a high score
+    if (gameState.learnerMode) {
+        elements.newRecordBadge.style.display = 'none';
+        // Show a "Learner Mode" badge instead
+        let lbadge = document.getElementById('learner-mode-badge');
+        if (!lbadge) {
+            lbadge = document.createElement('div');
+            lbadge.id = 'learner-mode-badge';
+            lbadge.className = 'learner-badge';
+            lbadge.innerHTML = '<i class="fas fa-graduation-cap"></i> Learner Mode — score not saved';
+            elements.finalScoreElement.parentNode.appendChild(lbadge);
+        }
+        lbadge.style.display = 'block';
+        if (gameState.isEndlessMode) {
             elements.bestScoreElement.textContent = currentHighScore || '0%';
+        } else {
+            elements.bestScoreElement.textContent = parseInt(currentHighScore) || 0;
         }
     } else {
-        const currentScore = parseInt(currentHighScore) || 0;
-        if (finalScore > currentScore) {
-            localStorage.setItem(highScoreKey, finalScore.toString());
-            isRecord = true;
-            elements.bestScoreElement.textContent = finalScore;
-        } else {
-            elements.bestScoreElement.textContent = currentScore;
-        }
-    }
+        const lbadge = document.getElementById('learner-mode-badge');
+        if (lbadge) lbadge.style.display = 'none';
 
-    elements.newRecordBadge.style.display = isRecord ? 'block' : 'none';
-    if(isRecord) elements.newRecordBadge.style.animation = 'trophyBounce 1s ease infinite';
+        if (gameState.isEndlessMode) {
+            const currentPercentage = currentHighScore ? parseInt(currentHighScore) : 0;
+            if (finalPercentage > currentPercentage) {
+                localStorage.setItem(highScoreKey, `${finalPercentage}%`);
+                isRecord = true;
+                elements.bestScoreElement.textContent = `${finalPercentage}%`;
+            } else {
+                elements.bestScoreElement.textContent = currentHighScore || '0%';
+            }
+        } else {
+            const currentScore = parseInt(currentHighScore) || 0;
+            if (finalScore > currentScore) {
+                localStorage.setItem(highScoreKey, finalScore.toString());
+                isRecord = true;
+                elements.bestScoreElement.textContent = finalScore;
+            } else {
+                elements.bestScoreElement.textContent = currentScore;
+            }
+        }
+
+        elements.newRecordBadge.style.display = isRecord ? 'block' : 'none';
+        if(isRecord) elements.newRecordBadge.style.animation = 'trophyBounce 1s ease infinite';
+    }
     
     loadHighScores();
 
-    // Show appropriate summary based on power-ups enabled
-    if (gameState.powerupsEnabled) {
+    // Show appropriate summary based on power-ups enabled or learner mode
+    if (gameState.powerupsEnabled || gameState.learnerMode) {
         // Hide classic summary elements
         document.querySelector('.summary-board-section').style.display = 'none';
         document.querySelector('.results-container').style.display = 'none';
@@ -2934,20 +3432,74 @@ function updateSummaryScreen() {
 
         // Render longest-possible word on final board state
         renderPowerupSummaryBoard();
-        
-        // List all found words, sorted longest to shortest
-        const foundWordsArray = Array.from(gameState.wordsFound.keys()).sort((a, b) => b.length - a.length);
-        elements.foundWordsList.innerHTML = foundWordsArray.map(word => 
-            `<span class="word-pill found">${word}</span>`
-        ).join('');
+
+        // List ALL possible words — wait for board analysis if still running
+        renderAllWordsWhenReady();
     } else {
         // Show classic summary
         document.querySelector('.summary-board-section').style.display = 'block';
         document.querySelector('.results-container').style.display = 'block';
         elements.powerupSummary.style.display = 'none';
         
-        renderUnifiedResults();
+        renderUnifiedResultsWhenReady();
         renderSummaryBoard();
+    }
+}
+
+// Populate the all-possible-words list, retrying until analysis is complete
+function renderAllWordsWhenReady() {
+    if (gameState.analysisComplete) {
+        _populateAllWordsList();
+    } else {
+        if (elements.foundWordsList) {
+            elements.foundWordsList.innerHTML =
+                '<span style="color:#94a3b8;font-size:0.85rem;padding:8px;">Analysing board…</span>';
+        }
+        const poll = setInterval(() => {
+            if (gameState.analysisComplete) {
+                clearInterval(poll);
+                _populateAllWordsList();
+                // Also refresh the longest-word board now analysis is done
+                renderPowerupSummaryBoard();
+            }
+        }, 300);
+    }
+}
+
+function _populateAllWordsList() {
+    if (!elements.foundWordsList) return;
+    const allPossible = Array.from(gameState.allPossibleWords.keys())
+        .sort((a, b) => b.length - a.length || a.localeCompare(b));
+    const foundSet = new Set(gameState.wordsFound.keys());
+    if (!allPossible.length) {
+        elements.foundWordsList.innerHTML =
+            '<span style="color:#64748b;font-size:0.85rem;">No scoreable words found on this board.</span>';
+        return;
+    }
+    elements.foundWordsList.innerHTML = allPossible.map(word => {
+        const isFound = foundSet.has(word);
+        return `<span class="word-pill ${isFound ? 'found' : 'missed'}"
+                      title="${isFound ? 'Found ✓' : 'Not found'}">${word}</span>`;
+    }).join('');
+}
+
+// Classic mode word list — also waits for analysis
+function renderUnifiedResultsWhenReady() {
+    if (gameState.analysisComplete) {
+        renderUnifiedResults();
+    } else {
+        const container = document.getElementById('results-grid');
+        if (container) {
+            container.innerHTML =
+                '<p style="color:#94a3b8;text-align:center;padding:20px;">Analysing board…</p>';
+        }
+        const poll = setInterval(() => {
+            if (gameState.analysisComplete) {
+                clearInterval(poll);
+                renderUnifiedResults();
+                renderSummaryBoard();
+            }
+        }, 300);
     }
 }
 
@@ -2958,11 +3510,16 @@ function renderSummaryBoard() {
     elements.summaryBoard.style.gridTemplateColumns = `repeat(${gameState.gridSize}, 1fr)`;
     
     const longestPathIndices = new Set(gameState.longestWordPath.map(tile => tile.index));
+    const longestPathOrder = new Map(gameState.longestWordPath.map((t, i) => [t.index, i + 1]));
     
     gameState.board.forEach((letter, index) => {
         const tile = document.createElement('div');
         tile.className = 'tile';
-        if (longestPathIndices.has(index)) tile.classList.add('highlight-longest');
+        tile.dataset.index = index;
+        if (longestPathIndices.has(index)) {
+            tile.classList.add('highlight-longest');
+            tile.dataset.hintOrder = longestPathOrder.get(index);
+        }
         
         const content = document.createElement('div');
         content.className = 'tile-content';
@@ -2974,6 +3531,21 @@ function renderSummaryBoard() {
     
     if (elements.longestWordLabel) {
         elements.longestWordLabel.textContent = gameState.longestWord || '—';
+    }
+
+    // Draw numbered directional path over the highlighted tiles
+    if (gameState.longestWordPath.length) {
+        requestAnimationFrame(() => {
+            const canvas = document.getElementById('summary-path-canvas');
+            if (canvas) {
+                canvas._pathColour = { h: 42, s: 90, l: 55 };
+                drawPathOnCanvas(
+                    gameState.longestWordPath.map(t => t.index),
+                    elements.summaryBoard,
+                    canvas
+                );
+            }
+        });
     }
 }
 
@@ -2987,11 +3559,16 @@ function renderPowerupSummaryBoard() {
     boardEl.style.gridTemplateColumns = `repeat(${gameState.gridSize}, 1fr)`;
 
     const longestPathIndices = new Set(gameState.longestWordPath.map(t => t.index));
+    const longestPathOrder = new Map(gameState.longestWordPath.map((t, i) => [t.index, i + 1]));
 
     gameState.board.forEach((letter, index) => {
         const tile = document.createElement('div');
         tile.className = 'tile';
-        if (longestPathIndices.has(index)) tile.classList.add('highlight-longest');
+        tile.dataset.index = index;
+        if (longestPathIndices.has(index)) {
+            tile.classList.add('highlight-longest');
+            tile.dataset.hintOrder = longestPathOrder.get(index);
+        }
 
         const content = document.createElement('div');
         content.className = 'tile-content';
@@ -3003,16 +3580,28 @@ function renderPowerupSummaryBoard() {
 
     if (labelEl) labelEl.textContent = gameState.longestWord || '—';
 
-    // If no longest word yet (analysis still running), show a placeholder
+    // If no longest word yet (analysis still running), show a placeholder and retry
     if (!gameState.longestWord) {
         if (labelEl) labelEl.textContent = 'Calculating…';
-        // Retry once analysis finishes
         const retry = setInterval(() => {
             if (gameState.longestWord) {
                 clearInterval(retry);
                 renderPowerupSummaryBoard();
             }
         }, 200);
+    } else if (gameState.longestWordPath.length) {
+        // Draw numbered directional path over the highlighted tiles
+        requestAnimationFrame(() => {
+            const canvas = document.getElementById('powerup-summary-path-canvas');
+            if (canvas) {
+                canvas._pathColour = { h: 42, s: 90, l: 55 };
+                drawPathOnCanvas(
+                    gameState.longestWordPath.map(t => t.index),
+                    boardEl,
+                    canvas
+                );
+            }
+        });
     }
 }
 
@@ -3066,6 +3655,54 @@ function renderUnifiedResults() {
         container.appendChild(groupDiv);
     }
 }
+
+// ==================== VISIBILITY CHANGE — PAUSE TIMER ====================
+let _timerPaused = false;
+let _tabHiddenAt = 0;
+
+document.addEventListener('visibilitychange', () => {
+    if (!gameState.isPlaying || gameState.isEndlessMode) return;
+
+    if (document.hidden) {
+        // Tab going to background — pause the countdown
+        if (gameState.timerInterval) {
+            clearInterval(gameState.timerInterval);
+            gameState.timerInterval = null;
+            _timerPaused = true;
+            _tabHiddenAt = Date.now();
+            saveSessionState(); // snapshot before backgrounding
+        }
+    } else if (_timerPaused) {
+        // Tab coming back — resume from where we left off
+        _timerPaused = false;
+        // Show a brief "PAUSED" flash to acknowledge the resume
+        const flash = document.createElement('div');
+        flash.textContent = '▶ Resumed';
+        flash.style.cssText = `
+            position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+            z-index:20000; background:rgba(15,23,42,0.9); color:#10b981;
+            font-size:1.4rem; font-weight:800; padding:12px 28px;
+            border-radius:12px; pointer-events:none;
+            animation:fadeUp 1s ease-out forwards;
+        `;
+        document.body.appendChild(flash);
+        setTimeout(() => flash.remove(), 1000);
+
+        // Restart the interval — timeLeft was already decremented before pause
+        clearInterval(gameState.timerInterval);
+        gameState.timerInterval = setInterval(() => {
+            gameState.timeLeft--;
+            updateTimerDisplay();
+            if (gameState.timeLeft <= 0) {
+                endGame();
+            } else if (gameState.timeLeft <= 10) {
+                elements.timerElement.classList.add('blink');
+                elements.timerElement.style.color = '#ef4444';
+                if (gameState.timeLeft <= 5) elements.timerElement.classList.add('shake');
+            }
+        }, 1000);
+    }
+});
 
 // ==================== START THE GAME ====================
 document.addEventListener('DOMContentLoaded', () => {
